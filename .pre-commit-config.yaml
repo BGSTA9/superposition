@@ -1,0 +1,34 @@
+# Hooks that match CI. ruff and nbstripout run from the uv environment ("local" hooks),
+# so their versions come from uv.lock instead of a second pin here.
+# Install with `make setup` (runs `pre-commit install`).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # SPEC §5: published figures are ≤ 500 KB. uv.lock is exempt (it must be committed).
+        args: ["--maxkb=500"]
+        exclude: ^uv\.lock$
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi, jupyter]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi, jupyter]
+      - id: nbstripout
+        name: nbstripout (notebooks are committed without outputs)
+        entry: uv run nbstripout
+        language: system
+        files: \.ipynb$

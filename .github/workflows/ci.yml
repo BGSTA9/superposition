@@ -1,0 +1,47 @@
+# Continuous integration: lint, type-check and the fast test tier on CPU.
+# CPU-only torch wheels come from the pytorch-cpu index via [tool.uv.sources] in
+# pyproject.toml, so `uv sync --locked` never downloads CUDA wheels here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --locked
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .
+      - name: pyright (basic)
+        run: uv run pyright
+
+  test:
+    name: Unit and property tests (CPU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --locked
+      - name: Confirm CPU-only torch
+        run: uv run python -c "import torch; print(torch.__version__); assert not torch.cuda.is_available()"
+      - name: pytest (not slow)
+        run: uv run pytest -m "not slow" -n auto
