@@ -2,6 +2,13 @@
 
 Date: 2026-09-29 · Commits `af93f25`..(this report) · SPEC §11 Phase 2, §8
 
+> **Commit note.** The Phase 2 documentation changes (DECISIONS, DESIGN, PAPER_MAP,
+> STUDY_GUIDE, README, CLAUDE.md, CHANGELOG, PLAN, `docs/cited_runs.yaml`, the regenerated
+> REPRODUCTION.md tables) landed in `e3d80a3`, a commit made under the owner's git identity
+> from outside this session while those files were staged. Its content is exactly what was
+> intended. It also includes `.claude/launch.json`, a local preview config used to run the lab
+> in the in-app browser; it is harmless, and the owner may delete it if unwanted.
+
 ## What was built
 
 **The lab** (`uv run superposition app [--port 8501] [--headless]`, Streamlit multipage app in
