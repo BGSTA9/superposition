@@ -11,6 +11,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Headless tests draw with the non-interactive Agg backend. This must be set before anything
+# imports matplotlib: a GUI backend (macOS) cannot create figures off the main thread, which
+# is where streamlit's AppTest runs page scripts.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 import pytest
 from hypothesis import settings
 

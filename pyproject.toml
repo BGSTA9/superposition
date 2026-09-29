@@ -93,6 +93,8 @@ known-first-party = ["superposition"]
 typeCheckingMode = "basic"
 pythonVersion = "3.11"
 include = ["src", "tests", "app"]
+# Streamlit puts app/ on sys.path, so pages import app/lab_ui.py as a top-level module.
+extraPaths = ["app"]
 venvPath = "."
 venv = ".venv"
 

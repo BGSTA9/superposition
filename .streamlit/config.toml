@@ -1,0 +1,12 @@
+# Streamlit settings for the lab (`superposition app` runs Streamlit from the repo root).
+[browser]
+# Do not send usage statistics to Streamlit.
+gatherUsageStats = false
+
+[theme]
+# The paper-style figures are drawn on a light surface; keep the app light to match.
+base = "light"
+primaryColor = "#2a78d6"
+
+[server]
+runOnSave = false

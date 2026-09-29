@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from typing import Annotated
 
 import typer
 
@@ -96,20 +97,53 @@ def figures(
 
 
 @app.command()
-def report() -> None:
-    """Regenerate the tables in docs/REPRODUCTION.md from the latest runs."""
-    from superposition.report import update_reproduction
+def report(
+    pin: Annotated[
+        list[str] | None,
+        typer.Option("--pin", help="Cite this experiment's latest complete run (repeatable)."),
+    ] = None,
+    pin_all: bool = typer.Option(
+        False, "--pin-all", help="Cite the latest run of every experiment."
+    ),
+    allow_dirty: bool = typer.Option(
+        False, "--allow-dirty", help="Allow citing a run made from a dirty working tree."
+    ),
+) -> None:
+    """Regenerate the tables in docs/REPRODUCTION.md from the cited runs."""
+    from superposition.experiments import REGISTRY
+    from superposition.experiments.runner import get_experiment
+    from superposition.report import pin_run, update_reproduction
 
-    typer.echo(f"updated {update_reproduction()}")
+    names = list(REGISTRY) if pin_all else [get_experiment(p).name for p in pin or []]
+    for name in names:
+        try:
+            citation = pin_run(name, allow_dirty=allow_dirty)
+        except (FileNotFoundError, ValueError) as error:
+            typer.echo(f"cannot pin {name}: {error}", err=True)
+            raise typer.Exit(1) from error
+        typer.echo(f"cited {name}: {citation.run_id} ({citation.overall})")
+    for note in update_reproduction():
+        typer.echo(note)
+    typer.echo("updated docs/REPRODUCTION.md")
 
 
 @app.command("app")
-def launch_app() -> None:
+def launch_app(
+    port: int = typer.Option(8501, "--port", help="Port to serve the lab on."),
+    headless: bool = typer.Option(False, "--headless", help="Do not open a browser tab."),
+) -> None:
     """Launch the Streamlit lab (app/Home.py)."""
-    home = project_root() / "app" / "Home.py"
+    root = project_root()
+    home = root / "app" / "Home.py"
     if not home.is_file():
-        typer.echo(
-            "The lab is built in Phase 2 (see PLAN.md); app/Home.py does not exist yet.", err=True
-        )
+        typer.echo(f"app/Home.py not found under {root}; run from a repository checkout.", err=True)
         raise typer.Exit(1)
-    raise typer.Exit(subprocess.call([sys.executable, "-m", "streamlit", "run", str(home)]))
+    command = [
+        sys.executable, "-m", "streamlit", "run", str(home),
+        "--server.port", str(port), "--server.headless", str(headless).lower(),
+    ]  # fmt: skip
+    raise typer.Exit(subprocess.call(command, cwd=root))
+
+
+if __name__ == "__main__":
+    app()
