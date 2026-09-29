@@ -93,7 +93,13 @@ def dimensionality_over_training(
         ax_d.set_ylim(-0.02, max(0.75, float(np.nanmax(dimensionality)) + 0.03))
         ax_d.set_title(title, loc="left")
         ax_l.plot(x, loss, color=INK, linewidth=1.2)
-        ax_l.set_ylabel("loss")
+        # Zoom to the last 90% of training, as p. 26 does: the early descent is off-scale, so
+        # small drops on the plateau are visible.
+        late = loss[x >= 0.1 * x[-1]]
+        low, high = float(late.min()), float(late.max())
+        pad = 0.15 * (high - low) if high > low else 1e-3 * max(abs(low), 1.0)
+        ax_l.set_ylim(low - pad, high + pad)
+        ax_l.set_ylabel("loss (zoomed)")
         ax_l.set_xscale("log")
         ax_l.set_xlabel("training step (log scale)")
         for ax in (ax_d, ax_l):
