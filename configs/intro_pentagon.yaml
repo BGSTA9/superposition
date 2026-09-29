@@ -18,8 +18,9 @@ base:
     log_every: 100
     eval_samples: 100000   # SPEC: linear-optimum check needs ≥ 100,000 fresh samples
 profiles:
-  # quick: the SPEC §7 setup (8 restarts). ≈ 20 s on an Apple M2 (MPS), ≈ 1 min on its CPU.
+  # quick: the SPEC §7 setup (8 restarts). Measured: 62 s on an Apple M2 CPU (--device cpu),
+  # including the pentagon diagnostics.
   quick: {}
-  # full: 32 restarts for restart statistics. ≈ 1 min (MPS) / ≈ 3 min (CPU) on an Apple M2.
+  # full: 32 restarts for restart statistics. Measured: 159 s on an Apple M2 (--device mps).
   full:
     n_restarts: 32

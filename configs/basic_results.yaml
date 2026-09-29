@@ -18,11 +18,11 @@ base:
     log_every: 100
     eval_samples: 20000
 profiles:
-  # quick: the SPEC §7 setup (≥ 4 restarts, 10k steps). Measured: 474 s on an Apple M2 CPU
+  # quick: the SPEC §7 setup (≥ 4 restarts, 10k steps). Measured: 472 s on an Apple M2 CPU
   # (--device cpu), dominated by the n = 80 grids.
   quick: {}
-  # full: more restarts and 3× longer training, which also tests whether the sparsest
-  # settings are under-trained at 10k steps (docs/DECISIONS.md D-113).
+  # full: more restarts and 3× longer training (docs/DECISIONS.md D-113, D-114).
+  # Measured: 1,673 s on an Apple M2 (--device mps); expect several times longer on a CPU.
   full:
     n_restarts: 8
     train:
