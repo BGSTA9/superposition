@@ -53,6 +53,8 @@ from superposition.train import importance_weighted_loss, train_from_config
 from superposition.utils import EVAL_STREAM, derive_seed, make_generator
 
 PAGE_A = "p. 26"
+# Cap on elements of the (inst, feat, feat) intermediate when computing Dᵢ for many snapshots.
+_DIMENSIONALITY_CHUNK_ELEMENTS = 1 << 26
 PAGE_B = "p. 27"
 
 # Geometric stages of part (b), in the order the paper's trajectory visits them (p. 27).
@@ -285,7 +287,14 @@ def run_energy_levels(
     logger.info(f"    trained in {result.wall_time_s:.1f} s")
     W, b = _stack_snapshots(result.snapshots)
     n_time = W.shape[0]
-    dims = metrics.feature_dimensionality(W.reshape(n_time * k, m, n)).reshape(n_time, k, n)
+    # Dᵢ builds an (inst, feat, feat) tensor per snapshot: chunk over snapshots to bound memory.
+    chunk = max(1, _DIMENSIONALITY_CHUNK_ELEMENTS // (k * n * n))
+    dims = torch.cat(
+        [
+            metrics.feature_dimensionality(W[s : s + chunk].reshape(-1, m, n)).reshape(-1, k, n)
+            for s in range(0, n_time, chunk)
+        ]
+    )
     eval_gen = make_generator(derive_seed(config.seed, EVAL_STREAM, 1))
     x = dist.sample(setup.loss_eval_samples, eval_gen)
     loss = snapshot_losses(W, b, x, importance)
