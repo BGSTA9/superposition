@@ -6,6 +6,32 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Phase 2: lab v1 (2026-09-29)
+
+#### Added
+- Streamlit lab (`superposition app [--port] [--headless]`):
+  - **Home:** reproduction status (cited run vs latest local run), latest figures, lab pages,
+    and a searchable paper map parsed from docs/PAPER_MAP.md.
+  - **Playground:** live training of the linear / ReLU output / ReLU hidden models with the
+    SPEC §8 controls and paper presets; loss, WᵀW + bias, feature bars, Dᵢ table, 2D arrows /
+    3D plot / W matrix, training curves, and a probe panel (h, readout, + bias, output vs
+    truth). Default n = 5, m = 2 trains in ≈ 3.6 s on a laptop CPU.
+- `superposition.lab`: Playground jobs, per-feature table, probe, paper map, status table.
+- `plotting/interactive.py` (plotly): 3D feature vectors, loss curves, probe and hidden bars;
+  `arrows_figure`, `weight_matrix_figure`.
+- `docs/cited_runs.yaml` and `superposition report --pin EXP | --pin-all [--allow-dirty]`:
+  the docs' tables come from pinned runs (D-202).
+- Tests: AppTest page tests (fast tier); slow tests for app launch and the ≤ 10 s target.
+- Docs: DECISIONS D-201–D-206, DESIGN (lab, cited runs), README lab section, STUDY_GUIDE lab
+  steps, PAPER_MAP lab pages, CLAUDE.md.
+
+#### Changed
+- `superposition report` regenerates tables from cited runs, not the latest run; unpinned
+  experiments are marked "(uncited)". The status table gains a profile · device column.
+- `weights_grid` has a minimum width (single-model figures); lab colors follow importance
+  values. Published experiment figures regenerate byte-identical.
+- Test sessions use the Agg matplotlib backend.
+
 ### Phase 1: engine (2026-09-29)
 
 #### Added

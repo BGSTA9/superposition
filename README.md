@@ -14,7 +14,8 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** Phase 1 of 6 complete (engine, E00, E01, notebooks 00–02). Build progress is
+> **Status:** Phase 2 of 6 complete (engine, E00, E01, notebooks 00–02, lab Home and
+> Playground). Build progress is
 > tracked in [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
 
 ## Quickstart
@@ -28,7 +29,7 @@ uv run superposition list                     # list experiments
 uv run superposition run intro_pentagon       # reproduce the paper's first figure (p. 2), ~1 min
 uv run superposition figures intro_pentagon   # redraw its figures from the saved run
 uv run superposition report                   # refresh the tables in docs/REPRODUCTION.md
-uv run superposition app                      # launch the lab (Phase 2)
+uv run superposition app                      # launch the lab in your browser
 ```
 
 Developer commands: `make lint`, `make test` (fast tier), `make test-slow` (replication and
@@ -46,6 +47,24 @@ top two features throughout.
 superposition, from dense (left) to sparse (right).
 
 ![E01: n = 20, m = 5 across sparsity](docs/figures/basic_results/weights_n20_m5.png)
+
+## The lab
+
+`uv run superposition app` opens a Streamlit lab (options: `--port`, `--headless`).
+
+- **Home:** the reproduction status (the cited run of each experiment next to your latest
+  local run), the latest figures, and a searchable map from every paper section to code,
+  experiments, notebooks and lab pages.
+- **Playground:** train the linear, ReLU output or ReLU hidden model live (n ≤ 40, m ≤ 10, any
+  importance decay and sparsity, with one-click presets for the paper's settings). See the
+  loss, WᵀW with the bias, feature norms colored by superposition, a per-feature Dᵢ table, and
+  the geometry (2D arrows, a rotatable 3D plot, or W itself for the ReLU hidden model). The
+  **probe panel** sends any input you choose through the model and shows h, the readout, the
+  bias, the ReLU and the reconstruction, feature by feature. The default setting (the p. 2
+  pentagon) trains in about 4 seconds on a laptop CPU.
+
+Further pages (phase diagrams, geometry, dynamics, neurons, adversarial, SAEs) arrive with
+their experiments.
 
 ## Reproduction status
 

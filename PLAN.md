@@ -98,13 +98,22 @@ Close (SPEC §11):
 
 ## Phase 2: lab v1 (SPEC §8, §11)
 
-- [ ] App Home: paper map and live PASS/PARTIAL/FAIL table.
-- [ ] Playground: n (2–40), m (1–10), importance decay (0.5–1.0), log density slider, model
-      type, steps/restarts/seed; loss, WᵀW + bias, feature bars, Dᵢ table, 2D arrows / 3D plot.
-- [ ] Probe panel: choose active features and values; show h, readouts before/after bias and
+- [x] App Home: paper map (parsed from docs/PAPER_MAP.md) and live PASS/PARTIAL/FAIL table
+      (cited run vs latest local run), latest figures, lab page list.
+- [x] Playground: n (2–40), m (1–10), importance decay (0.5–1.0), log density slider, model
+      type, steps/restarts/seed (+ device, paper presets); loss, WᵀW + bias, feature bars, Dᵢ
+      table, 2D arrows / 3D plot (+ W matrix for ReLU hidden, training curves).
+- [x] Probe panel: choose active features and values; show h, readouts before/after bias and
       ReLU, reconstruction vs truth.
-- [x] `report` and `figures --publish` commands (done in Phase 1, D-108; extend for the app).
-- [ ] **Exit:** the app launches; Playground n = 5, m = 2 trains in ≤ 10 s on CPU.
+- [x] `report` and `figures --publish` commands (Phase 1, D-108); `report --pin` cites fixed
+      runs via docs/cited_runs.yaml (D-202, resolves Phase 1 open issue 3).
+- [x] `superposition app` launches the lab (`--port`, `--headless`); `st.cache_data` /
+      `st.cache_resource`; missing artifacts show the CLI command.
+- [x] Tests: `lab` unit tests; AppTest for both pages (fast tier); slow tests for app launch
+      and the speed target.
+- [x] **Exit:** the app launches ✔ (server healthy, pages render; checked in a browser and by
+      `tests/replication/test_lab.py`); Playground n = 5, m = 2 trains in ≤ 10 s on CPU ✔
+      (3.6 s training, 3.6 s whole uncached page).
 
 ## Phase 3: theory and geometry (SPEC §6 theory.py, §7 E02–E04)
 

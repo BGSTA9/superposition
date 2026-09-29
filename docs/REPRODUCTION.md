@@ -13,10 +13,10 @@ PDF print of the paper (see `references/README.md`).
 ## Status
 
 <!-- BEGIN AUTO:STATUS -->
-| Code | Experiment | Paper | Status | Graded criteria passed | Run ID | Profile |
+| Code | Experiment | Paper | Status | Graded criteria passed | Run ID | Profile · device |
 |---|---|---|---|---|---|---|
-| E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20260929T093651Z-5eeb804c` | quick |
-| E01 | `basic_results` | pp. 10–12 | **PASS** | 12/12 | `20260929T093755Z-2cb0bbc4` | quick |
+| E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20260929T093651Z-5eeb804c` | quick · cpu |
+| E01 | `basic_results` | pp. 10–12 | **PASS** | 12/12 | `20260929T093755Z-2cb0bbc4` | quick · cpu |
 <!-- END AUTO:STATUS -->
 
 ## E00 intro_pentagon (p. 2)

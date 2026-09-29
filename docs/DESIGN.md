@@ -25,7 +25,8 @@ superposition run <exp> ─▶ experiments/runner.run_experiment
         │              checkpoints/*.pt, metrics.parquet, features.parquet, acceptance.json
         ▼
 superposition figures <exp> [--publish] ─▶ experiments/<exp>.figures(run_dir) ─▶ plotting/
-superposition report ─▶ report.py ─▶ AUTO blocks in docs/REPRODUCTION.md
+superposition report [--pin] ─▶ report.py ─▶ docs/cited_runs.yaml + AUTO blocks in REPRODUCTION.md
+superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab.py (+ runs, plotting)
 ```
 
 | Module | Responsibility | Depends on |
@@ -41,8 +42,10 @@ superposition report ─▶ report.py ─▶ AUTO blocks in docs/REPRODUCTION.md
 | `runs` | run directories, manifests, latest-run lookup | config |
 | `plotting/` | figures from arrays; `style` holds colors and rc settings | matplotlib |
 | `experiments/` | one module per experiment + `common`, `base`, `runner`, registry | all of the above |
-| `report` | REPRODUCTION.md tables | experiments, runs |
+| `report` | cited runs (`docs/cited_runs.yaml`), REPRODUCTION.md tables | experiments, runs |
+| `lab` | Playground jobs, per-feature table, probe, paper map, status table (no Streamlit) | experiments.common, metrics, report |
 | `cli` | Typer commands | runner, report |
+| `app/` | Streamlit pages (layout only) and `lab_ui.py` helpers | lab, plotting |
 
 ## Key design choices
 
@@ -60,6 +63,29 @@ superposition report ─▶ report.py ─▶ AUTO blocks in docs/REPRODUCTION.md
   status, paper page). Thresholds live in config dataclasses, never inline.
 - **Provenance.** A run's manifest records the git commit and whether the tree was dirty;
   published figures carry a `SOURCE.txt` with the run ID and commit.
+
+## The lab (`app/`, Phase 2+)
+
+- **Pages are thin.** `app/Home.py` and `app/pages/N_Name.py` arrange widgets; every number
+  comes from `superposition.lab` and every figure from `superposition.plotting`, so the lab's
+  figures match the experiments' and the logic is unit-tested without a browser.
+- **What is live and what is loaded.** The Playground trains small models live
+  (`lab.train_playground`, the experiments' own grid trainer). Everything else is loaded from
+  `results/` through `runs.py`; when something is missing the page shows the exact CLI
+  command that creates it (`lab_ui.missing_artifact`).
+- **Caching.** `st.cache_data` caches training by (config, device), so revisiting a setting is
+  instant; `st.cache_resource` caches the rebuilt model the probe panel uses.
+- **Adding a page** (Phases 3–5): write the computation as functions in `superposition.lab`
+  (or the experiment module) with tests, add `app/pages/N_Name.py`, reuse plotting functions,
+  and add an AppTest in `tests/unit/test_app.py`.
+
+## Cited runs
+
+`docs/cited_runs.yaml` records, per experiment, the run REPRODUCTION.md is written from, with
+its profile, device, seed, commit, dirty flag and status summary. `superposition report`
+rebuilds the tables from those runs (never from whatever ran last), and the lab's Home page
+shows the cited status next to the latest local run. The workflow for a new result is:
+commit → run → write the narrative → `superposition report --pin <exp>` → commit the docs.
 
 ## Extension points
 

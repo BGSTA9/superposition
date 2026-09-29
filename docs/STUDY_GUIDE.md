@@ -13,7 +13,8 @@ open questions (pp. 45–46) is written in Phase 6.
 
 - **Read:** `README.md`, `CLAUDE.md` ("§3 pitfalls"), `docs/DESIGN.md` ("Layers").
 - **Notebook:** `notebooks/00_orientation.ipynb`.
-- **App:** Home (Phase 2).
+- **App:** `uv run superposition app` → **Home**: the status table and the paper map. Filter the
+  map for a page number you are reading.
 - **Explain it back:**
   1. What does the leading `inst` dimension of every tensor mean, and why can a whole sparsity
      sweep train as one model?
@@ -24,6 +25,11 @@ open questions (pp. 45–46) is written in Phase 6.
 
 - **Read:** pp. 1–8, slowly. Keep `docs/GLOSSARY.md` open.
 - **Notebook:** `notebooks/01_features_directions_superposition.ipynb`.
+- **App:** **Playground**, preset "p. 2 · pentagon". In the probe panel, activate feature 0
+  alone and note which features receive a positive readout: those are its neighbours in the 2D
+  view (features 2 and 3 in the default model; a trained pentagon need not be in index order).
+  Then activate those two neighbours together and watch their interference compound into a
+  spurious output for feature 0.
 - **Explain it back:**
   1. What is a linear representation? Give the formula for the hidden vector of an input with
      several active features.
@@ -39,7 +45,10 @@ open questions (pp. 45–46) is written in Phase 6.
 - **Notebook:** `notebooks/02_demonstrating_superposition.ipynb` (runs E00; trains E01's
   n = 20 model).
 - **Results:** `docs/REPRODUCTION.md`, sections E00 and E01; figures in `docs/figures/`.
-- **App:** Playground (Phase 2).
+- **App:** **Playground**. Step through the four p. 2 presets, then "p. 11 · n = 20, m = 5".
+  Before each Train, predict the number of represented features; afterwards read the Dᵢ table.
+  Switch the model to Linear at the same setting and compare the loss with the closed-form
+  optimum shown in the metrics row.
 - **Explain it back:**
   1. Describe the data, the two models and the loss of pp. 9–10 from memory.
   2. What does the linear model learn at every sparsity, and why is its optimal loss

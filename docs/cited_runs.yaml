@@ -1,0 +1,24 @@
+# Runs cited by docs/REPRODUCTION.md, one per experiment (written by
+# `superposition report --pin <experiment>`; do not edit by hand).
+basic_results:
+  run_id: 20260929T093755Z-2cb0bbc4
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 340f825d57d1147e6325c21982ac9b042ee15867
+  dirty: false
+  overall: PASS
+  n_passed: 12
+  n_graded: 12
+  wall_clock_s: 472.425
+intro_pentagon:
+  run_id: 20260929T093651Z-5eeb804c
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 340f825d57d1147e6325c21982ac9b042ee15867
+  dirty: false
+  overall: PASS
+  n_passed: 11
+  n_graded: 11
+  wall_clock_s: 61.905

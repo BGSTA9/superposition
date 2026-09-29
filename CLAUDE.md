@@ -14,8 +14,8 @@ make test-slow                             # replication tests + notebook smoke 
 uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish
-uv run superposition report                # regenerate tables in docs/REPRODUCTION.md
-uv run superposition app                   # Streamlit lab (Phase 2+)
+uv run superposition report [--pin EXP | --pin-all]   # cite runs; regenerate REPRODUCTION tables
+uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Playground)
 ```
 
 ## Layout
@@ -48,11 +48,13 @@ uv run superposition app                   # Streamlit lab (Phase 2+)
 - Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`), one logical
   change each. Published figures ≤ 500 KB.
 - Cite only runs made from a clean, committed tree (`manifest.json` → `git.dirty: false`):
-  commit code first, then run, then write docs. `superposition report` cites the *latest*
-  complete run, so run the profile you want cited last.
+  commit code → run → write the narrative → `superposition report --pin <exp>` (records the run
+  in `docs/cited_runs.yaml`; refuses dirty runs) → commit docs. Unpinned experiments fall back
+  to their latest run, marked "(uncited)".
 - Tests never write to `results/`: the root `conftest.py` points `SUPERPOSITION_RESULTS` at a temp
   dir and registers a `python3` kernel for this interpreter (a user-level `python3` kernelspec
-  would otherwise shadow the project env in nbmake).
+  would otherwise shadow the project env in nbmake). It also sets `MPLBACKEND=Agg`: AppTest runs
+  pages off the main thread, where macOS's GUI backend cannot draw.
 
 ## Research integrity (SPEC §2, non-negotiable)
 

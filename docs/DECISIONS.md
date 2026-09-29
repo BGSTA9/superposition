@@ -226,3 +226,84 @@ n = 80, m = 20).
   (30,000 steps, 8 restarts) independently shows the counts are stable in training length
   (12/20 and 68/80). See docs/REPRODUCTION.md (E01).
 - **Paper:** pp. 11–12.
+
+---
+
+## Phase 2: lab v1
+
+### D-201 · 2026-09-29 · Playground defaults and control ranges
+- **Decision:** defaults n = 5, m = 2, Iᵢ = 0.9ⁱ, 1 − S = 0.1, ReLU output, **5,000 steps ×
+  4 restarts**, seed 0, batch 1024, lr 1e-3, 20,000 evaluation samples, CPU. Controls span the
+  SPEC §8 ranges (n 2–40, m 1–10, decay 0.5–1.0); density is a log-scale select slider over
+  the 1-2-3-5-7 series from 0.001 to 1 (so S = 0, 0.8 and 0.9 are all reachable); steps
+  500–20,000; restarts 1–16; device `cpu` (default) or `auto`.
+- **Rationale:** the defaults are E00's pentagon setting, so the first thing a learner sees is
+  the p. 2 result. On an Apple M2 CPU, 4 restarts × 5,000 steps train in 3.6 s and already
+  reach the pentagon (both measured by `tests/replication/test_lab.py`), leaving a wide margin
+  under the SPEC's 10-second target on slower laptops; training time is linear in steps, so
+  10,000 steps take about twice as long. Paper presets (p. 2 ×4, p. 11, p. 32, a 3D example)
+  set the controls in one click.
+- **Paper:** pp. 2, 10–11, 31–32.
+- **Alternatives:** 10,000 steps by default (tighter margin); training on every slider change
+  (a form with a Train button avoids surprise multi-second retrains).
+
+### D-202 · 2026-09-29 · Cited runs are pinned in `docs/cited_runs.yaml`
+- **Decision:** `superposition report --pin <exp>` (or `--pin-all`) records the run that
+  docs/REPRODUCTION.md is written from, with its profile, device, seed, commit, dirty flag and
+  status summary. `report` regenerates tables from cited runs; an experiment without a pin
+  falls back to its latest local run, marked "(uncited)". Pinning refuses runs from a dirty
+  tree unless `--allow-dirty`.
+- **Rationale:** resolves Phase 1 open issue 3. The narrative quotes numbers from specific runs,
+  so a later notebook run (other device, maybe a dirty tree) must not silently swap the tables
+  underneath it. Storing the summary in the pin keeps the status table correct on a fresh clone
+  with no `results/`, where criteria blocks are left untouched.
+- **Alternatives:** "latest clean quick-profile run" as a selection rule (still changes under a
+  new notebook run); a manual run-ID list in the markdown (not machine-checked).
+
+### D-203 · 2026-09-29 · Lab architecture
+- **Decision:** all lab computation lives in `superposition.lab` (training jobs, per-feature
+  table, probe, paper-map parsing, status table) and in `superposition.plotting`; Streamlit
+  pages in `app/` only arrange widgets and figures. Pages use the classic `app/pages/`
+  multipage layout; shared UI helpers are in `app/lab_ui.py` (Streamlit puts `app/` on
+  `sys.path`; pyright gets `extraPaths = ["app"]`). The Home page's paper map is parsed from
+  docs/PAPER_MAP.md (one source of truth). Results are cached with `st.cache_data` (training,
+  keyed by config and device; status with a 10 s TTL) and `st.cache_resource` (the best model
+  for the probe).
+- **Rationale:** SPEC §5 separates computation from plotting and §8 requires reusing the
+  plotting module; keeping pages thin makes the logic unit-testable without a browser.
+- **Alternatives:** `st.navigation` with page objects (more code for two pages); computing in
+  the pages (untestable).
+
+### D-204 · 2026-09-29 · Streamlit settings
+- **Decision:** `.streamlit/config.toml` turns off usage statistics, uses the light theme with
+  the palette's blue as the primary color, and disables run-on-save. `superposition app` runs
+  `streamlit run app/Home.py` from the repository root with `--port` (8501) and `--headless`
+  options.
+- **Rationale:** privacy by default; the paper-style figures are drawn on a light surface, so
+  a light app keeps them from appearing as bright cards on a dark page.
+
+### D-205 · 2026-09-29 · Testing the lab
+- **Decision:** `streamlit.testing.v1.AppTest` runs both pages headlessly in the fast tier (tiny
+  training via pre-set widget state). The slow tier checks the Phase 2 exit criteria directly:
+  the default n = 5, m = 2 Playground trains in ≤ 10 s on CPU; the whole uncached page runs in
+  ≤ 10 s; and `superposition app` starts a server that answers `/_stcore/health` and serves
+  `/`. The test session sets `MPLBACKEND=Agg`.
+- **Rationale:** AppTest runs page scripts in a worker thread; on macOS the default GUI
+  backend cannot create figures off the main thread, so once any test imported matplotlib first
+  the page tests failed. `streamlit run` already uses Agg, so this only affects tests.
+
+### D-206 · 2026-09-29 · Probe panel and Playground views
+- **Decision:** the probe takes a multiselect of active features plus a 0–1 slider per active
+  feature, and shows h (with Wx before the ReLU for the ReLU hidden model), then per feature:
+  truth x, readout Wᵀh, readout + b, and the output after the activation (labelled "no ReLU"
+  for the linear model), as grouped bars and as a table. The geometry view is canonicalized
+  2D arrows for m = 2, a rotatable 3D plot for m = 3, a signed bar chart for m = 1, and a note
+  for m ≥ 4; the ReLU hidden model also shows W directly (p. 31). Lab colors follow the actual
+  importance values (equal importances share a color); the experiments' published figures keep
+  their index-based colors and regenerate byte-identical.
+- **Rationale:** these are exactly the stages of x′ = act(Wᵀ act(Wx) + b), so a learner can see
+  where interference enters (readout), where the bias trims it, and where the ReLU removes it
+  (pp. 7, 13).
+- **Caveat surfaced by the lab:** "nearest fraction" labels are hints only: 2/5 and 3/8 are
+  0.025 apart, and in the importance-weighted pentagon the least important feature has
+  Dᵢ ≈ 0.387, nearer 3/8. The Playground says so under its table.
