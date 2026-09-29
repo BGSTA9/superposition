@@ -3,6 +3,10 @@
 Date: 2026-09-29 · Commits `fd60e7c`..(this report) · SPEC §11 Phase 4, §7 E05–E08, §8 pages
 6–8, §9 notebooks 06–08
 
+> **Commit note.** An unfinished draft of this report, with two unfilled placeholders, was
+> committed as `7bde9b1` under the owner's git identity from outside this session while I was
+> writing it. It was left in place; the commit that follows it holds the finished report.
+
 > **Phase 3 is not finished, and this phase was built beside it.** At the start,
 > `docs/progress/phase-3.md` did not exist and PLAN.md's Phase 3 items were unchecked. The
 > repository held committed but unintegrated Phase 3 code (`theory.py` additions, E02–E04
@@ -56,8 +60,9 @@ Loaders live in `superposition.lab`.
 
 **Notebooks:** `06_learning_dynamics`, `07_adversarial` (an attack computed by hand first),
 `08_neurons_and_computation`. Each reuses your latest quick run if there is one, asks for
-predictions, computes every number the reproduction report quotes beyond the acceptance
-records, and ends with 4 exercises.
+predictions, and ends with 4 exercises. They also compute the tables behind the reproduction
+report's narrative that go beyond the acceptance records: the plateau counts and
+collapsed-stage statistics (06) and the extended sweep's biases (07).
 
 **Docs:** DECISIONS D-401–D-409; REPRODUCTION sections E05–E08; STUDY_GUIDE stops 6–8;
 GLOSSARY (4 terms); PAPER_MAP, DESIGN, README (status, gallery, lab), CHANGELOG, PLAN,
@@ -111,8 +116,8 @@ Cited runs: quick profile, CPU, seed 0, clean commit `5a825d0`.
 | E07 | ReLU sidestepping documented | with a hidden bias: 5/5 biases positive, ReLU clips 0.06–0.21% (vs 34.6–53.8% without) | INFO |
 | E08 | (a) one positive- and one negative-side neuron per feature | exact (±1 / 1, b = 0) | PASS |
 | E08 | (a) per-feature loss < 5% of mean baseline | 0, 0, 0 | PASS |
-| E08 | (b) dense: every neuron monosemantic | 39/40 (all 40 at 1 − S = 0.3) | FAIL |
-| E08 | (b) sparse: > m/2 = 20 features computed well | 3 at 1 − S = 0.001 (max over sparsities: 19) | FAIL |
+| E08 | (b) dense: every neuron monosemantic | 39/40 (all 40 at 1 − S = 0.3; full profile: 40/40) | FAIL |
+| E08 | (b) sparse: > m/2 = 20 features computed well | 3 at 1 − S = 0.001 (max over sparsities: 19; full profile: 11) | FAIL |
 
 Overall: **E05 PASS (2/2), E06 PARTIAL (2/4), E07 PASS (3/3), E08 PARTIAL (2/4).** Quick-profile
 wall-clock on an Apple M2 CPU: 516 s, 401 s, 419 s, 369 s (SPEC §5: ≤ 10 minutes each).
@@ -153,10 +158,14 @@ wall-clock on an Apple M2 CPU: 516 s, 401 s, 419 s, 369 s (SPEC §5: ≤ 10 minu
    receives gradient when features are sparse: 0 of 89 such sides are learned at 0.001, against
    23 of 111 alive ones. Starting the bias at +0.1 halves the loss and lifts the count to 14,
    still short of 20. Before fixing the profile I also tried 4 restarts, 30,000 steps,
-   learning rate 3e-3 and batch 4,096 (8–16 features). **Your decision:** SPEC §2 now allows
-   consulting the reference implementations to diagnose this; I did not, so that the choice
-   stays yours. Other next steps: a bias-init or warm-up variant, and the full profile.
-   E08_FULL_NOTE
+   learning rate 3e-3 and batch 4,096 (8–16 features). The full profile (8 restarts × 30,000
+   steps, MPS, clean tree, run `20260929T180008Z-db58449f`, 981 s) fixes the dense criterion
+   (40/40 monosemantic; PARTIAL 3/4) but still computes only 11 features well at
+   1 − S = 0.001, with the same dead-side pattern (1 of 90 dead sides learned); there the
+   bias-init variant helps less (loss −29%, 11 → 13 features). So dead sides explain part of
+   the gap, not all of it. **Your decision:** SPEC §2 now allows consulting the reference
+   implementations to diagnose this; I did not, so that the choice stays yours. Another next
+   step is a bias-init or warm-up variant.
 2. **E06 n = 20, m = 5 fails**, because this model barely enters superposition in the paper's
    range (1/D* ≤ 1.8). Grading it was my choice (SPEC names it as an example), made before
    seeing results, so it stays graded. The paper's own setup passes strongly (8.5×, ρ = 1.0).
@@ -167,9 +176,9 @@ wall-clock on an Apple M2 CPU: 516 s, 401 s, 419 s, 369 s (SPEC §5: ≤ 10 minu
 4. **E07 at 1 − S = 0.12** shows two monosemantic neurons where p. 33 shows one; only 5–8% of
    restarts reach the best configuration there. The paper's 1,000 restarts (the full profile)
    may change it.
-5. **Full profiles were not run**, except E08's, which I started on MPS from a clean worktree
-   late in the phase (see issue 1). E07's full profile (1,000 restarts × 15 sparsities) needs
-   hours on a CPU; use a GPU.
+5. **Full profiles of E05–E07 were not run** (their runtimes in the configs are estimates
+   scaled from the quick runs). E08's was run on MPS from a clean worktree (issue 1). E07's
+   full profile (1,000 restarts × 15 sparsities) needs about 2 hours on a CPU; use a GPU.
 6. **The slow tier is now long.** Replication tests for E05–E08 add ≈ 30 minutes, and notebooks
    06–08 add ≈ 25 minutes when no runs exist. Consider a nightly slow workflow only.
 7. **Phase 3** (D-401) still needs finishing: registry, configs, tests, notebooks 03–05, app
@@ -185,10 +194,11 @@ Open `docs/figures/learning_dynamics/energy_levels.png` next to p. 26, then scru
 on the lab's **Dynamics** page: the loss sits flat for tens of thousands of steps with one
 dimension badly used, until two features take it over together. Then run notebook 07's first
 section: a two-feature antipodal pair is exactly twice as vulnerable as a model without
-superposition, and the uniform sweep turns that into the 8.7× of p. 29. Finally, read E08's
-side diagnostic in notebook 08. It is a small, concrete example of how an optimization detail
-(a zero bias under a ReLU) can masquerade as a limit of a representation, and why the repo
-reports it as PARTIAL instead of tuning it away.
+superposition, and the uniform sweep turns that into 8.7× at 1/(1 − S) = 10 (compare the p. 29
+curve and the p. 30 scatter). Finally, read E08's side diagnostic in notebook 08. It is a
+small, concrete example of how an optimization detail (a zero bias under a ReLU) can look like
+a limit of what a representation can do, and why the repo reports E08 as PARTIAL instead of
+tuning the setup until the criterion passes.
 
 Three questions:
 
