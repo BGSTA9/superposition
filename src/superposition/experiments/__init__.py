@@ -10,8 +10,11 @@ from superposition.experiments import (
     adversarial,
     basic_results,
     intro_pentagon,
+    l1_removes_superposition,
     learning_dynamics,
+    mech_interp_abs,
     privileged_basis,
+    sae_recovery,
 )
 from superposition.experiments.base import Experiment
 
@@ -24,6 +27,9 @@ REGISTRY: dict[str, Experiment] = {
         adversarial.EXPERIMENT,
         privileged_basis.EXPERIMENT,
         abs_computation.EXPERIMENT,
+        mech_interp_abs.EXPERIMENT,
+        sae_recovery.EXPERIMENT,
+        l1_removes_superposition.EXPERIMENT,
     )
 }
 

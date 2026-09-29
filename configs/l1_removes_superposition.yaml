@@ -1,0 +1,51 @@
+# E11 l1_removes_superposition (Paper: p. 42). SPEC §7 E11; decision D-505.
+# ReLU output model with λ E‖h‖₁ added to the loss, λ swept (0 first, increasing); the grid
+# is finer where the last features die (0.5–0.8; D-505).
+# Setups are in superposition at λ = 0: the E00 pentagon and E01's n = 20, m = 5 at 1 − S = 0.01.
+experiment: l1_removes_superposition
+base:
+  seed: 0
+  device: auto
+  lambdas: [0.0, 0.003, 0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8]
+  setups:
+    - label: pentagon
+      source: "E00, p. 2"
+      n_features: 5
+      n_hidden: 2
+      importance_decay: 0.9
+      feature_probability: 0.1
+      n_restarts: 16
+      figure_lambdas: [0.0, 0.1, 0.3, 0.55, 0.65]
+    - label: n20_m5
+      source: "E01, p. 11"
+      n_features: 20
+      n_hidden: 5
+      importance_decay: 0.7
+      feature_probability: 0.01
+      n_restarts: 8
+      figure_lambdas: [0.0, 0.03, 0.1, 0.2, 0.4]
+  thresholds:
+    represented_norm: 0.5
+    superposition_score: 0.05
+    count_tolerance: 1
+    loss_tolerance: 0.02
+    eval_samples: 200000
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000   # training's own estimate; E11 re-scores on shared samples
+profiles:
+  # quick: the setups above.
+  quick: {}
+  # full: more restarts and longer training.
+  full:
+    setups:
+      - {label: pentagon, source: "E00, p. 2", n_features: 5, n_hidden: 2, importance_decay: 0.9,
+         feature_probability: 0.1, n_restarts: 64, figure_lambdas: [0.0, 0.1, 0.3, 0.55, 0.65]}
+      - {label: n20_m5, source: "E01, p. 11", n_features: 20, n_hidden: 5, importance_decay: 0.7,
+         feature_probability: 0.01, n_restarts: 32, figure_lambdas: [0.0, 0.03, 0.1, 0.2, 0.4]}
+    train:
+      steps: 30000

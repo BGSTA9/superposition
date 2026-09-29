@@ -1,0 +1,85 @@
+# E10 sae_recovery (Paper: pp. 42–44). SPEC §7 E10; decisions D-503, D-504.
+# Toy models (ReLU output model, best restart) from E00, E01 and E03; on each, a sweep of
+# sparse autoencoders: dictionary size × L1 coefficient × resampling on/off, plus TopK.
+# feature_probability is 1 − S.
+experiment: sae_recovery
+base:
+  seed: 0
+  device: auto
+  represented_threshold: 0.5
+  toy_models:
+    - label: pentagon
+      source: "E00, p. 2"
+      n_features: 5
+      n_hidden: 2
+      importance_decay: 0.9
+      feature_probability: 0.1
+      n_restarts: 8
+      batch_size: 1024
+      graded: true
+      cos_threshold: 0.95
+      min_fraction: 1.0
+      min_represented: 5
+      sweep: {dictionary_sizes: [5, 10, 20], l1_values: [0.03, 0.1, 0.3, 1.0],
+              resample: [false, true], topk_values: [1]}
+    - label: n20_m5_p0.01
+      source: "E01, p. 11"
+      n_features: 20
+      n_hidden: 5
+      importance_decay: 0.7
+      feature_probability: 0.01
+      n_restarts: 4
+      batch_size: 1024
+      graded: true
+      cos_threshold: 0.9
+      min_fraction: 0.9
+      sweep: {dictionary_sizes: [20, 40], l1_values: [0.03, 0.1, 0.3, 1.0],
+              resample: [false, true], topk_values: [1]}
+    - label: n20_m5_p0.001
+      source: "E01, p. 11"
+      n_features: 20
+      n_hidden: 5
+      importance_decay: 0.7
+      feature_probability: 0.001
+      n_restarts: 4
+      batch_size: 1024
+      graded: true
+      cos_threshold: 0.9
+      min_fraction: 0.9
+      sweep: {dictionary_sizes: [20, 40], l1_values: [0.03, 0.1, 0.3, 1.0],
+              resample: [false, true], topk_values: [1]}
+    - label: n400_m30_p0.1
+      source: "E03, p. 17"
+      n_features: 400
+      n_hidden: 30
+      importance_decay: 1.0
+      feature_probability: 0.1
+      n_restarts: 2
+      batch_size: 256
+      graded: false
+      cos_threshold: 0.9
+      min_fraction: 0.9
+      sweep: {dictionary_sizes: [256], l1_values: [0.3, 1.0], resample: [true],
+              topk_values: [8, 16]}
+  train:            # the toy models (E00/E01/E03 settings; batch size per toy model)
+    steps: 10000
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000
+  sae:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    resample_every: 2000
+    resample_until: 0.6
+    resample_scale: 0.2
+    eval_samples: 100000
+    log_every: 100
+profiles:
+  # quick: the sweeps above, 10,000 SAE steps.
+  quick: {}
+  # full: larger sweeps and 2× longer SAE training.
+  full:
+    sae:
+      steps: 20000
