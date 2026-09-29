@@ -43,6 +43,7 @@ MONO_SHADE = "#ece6f3"  # light lavender, as on p. 33
 POLY_SHADE = "#fbf1c7"  # light yellow
 DEAD_SHADE = "#f1f0ec"
 MIN_BLOCK = 0.02  # display only: weights smaller than this are not drawn (slivers)
+WEIGHT_COLOR_PERCENTILE = 98.0  # W heatmaps saturate beyond this percentile of |W|
 
 
 @dataclass
@@ -144,7 +145,16 @@ def neuron_rows(
     """
     k = len(panels)
     n_hidden = panels[0].W.shape[0]
-    limit = max(1.0, max(float(np.abs(p.W).max()) for p in panels))
+    # Color scale: a robust maximum, so one outlier weight does not wash out every panel
+    # (larger weights saturate; display only).
+    limit = max(
+        1.0,
+        float(
+            np.percentile(
+                np.abs(np.concatenate([p.W.ravel() for p in panels])), WEIGHT_COLOR_PERCENTILE
+            )
+        ),
+    )
     stack_top = max(float(np.clip(p.W, 0, None).sum(axis=1).max()) for p in panels)
     stack_bottom = min(float(np.clip(p.W, None, 0).sum(axis=1).min()) for p in panels)
     if absolute:
@@ -164,7 +174,10 @@ def neuron_rows(
             plot_stack(
                 ax_s, panel.W, panel.superposition, panel.polysemantic, panel.order, absolute
             )
-            ax_s.set_ylim(stack_bottom * 1.08 - 0.05, stack_top * 1.08 + 0.05)
+            if absolute:  # |W| stacks differ by an order of magnitude across sparsities
+                ax_s.set_ylim(0.0, float(np.abs(panel.W).sum(axis=1).max()) * 1.08 + 0.05)
+            else:
+                ax_s.set_ylim(stack_bottom * 1.08 - 0.05, stack_top * 1.08 + 0.05)
             ax_s.tick_params(axis="y", labelsize=7)
             n_mono = int((panel.polysemantic == 1).sum())
             n_poly = int((panel.polysemantic >= 2).sum())
