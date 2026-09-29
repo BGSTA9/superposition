@@ -39,6 +39,10 @@ PANEL = "#f4f3ef"
 
 # Categorical slots, fixed order (validated palette: blue, orange, aqua).
 SERIES = ("#2a78d6", "#eb6834", "#1baf7a")
+# The same palette's full eight-slot order, for feature identity in stacked bars (E09). The
+# order is validated for adjacent pairs (stacks, bars); figures that use it also label or
+# legend every feature, so identity never rests on color alone.
+CATEGORICAL = (*SERIES, "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948")
 MODEL_COLORS = {"linear": SERIES[0], "relu_output": SERIES[1], "relu_hidden": SERIES[2]}
 MODEL_LABELS = {"linear": "Linear", "relu_output": "ReLU output", "relu_hidden": "ReLU hidden"}
 

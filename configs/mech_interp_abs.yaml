@@ -1,0 +1,44 @@
+# E09 mech_interp_abs (Paper: pp. 38–39). SPEC §7 E09; decisions D-501, D-502.
+# Absolute-value models with m = 2n − 2 neurons (the p. 39 model: 6 features, 10 neurons).
+# Graded: the limited-superposition densities (1 − S); context densities are only reported.
+# Inputs are 0 w.p. S, else U[−1, 1]; target |x|; Iᵢ = 1.
+experiment: mech_interp_abs
+base:
+  seed: 0
+  device: auto
+  shapes:
+    - {n_features: 4, n_hidden: 6}
+    - {n_features: 5, n_hidden: 8}
+    - {n_features: 6, n_hidden: 10}
+  feature_probabilities: [0.3, 0.2]
+  context_probabilities: [0.5, 0.1]
+  importance_decay: 1.0
+  n_restarts: 20
+  showcase: {n_features: 6, n_hidden: 10}
+  roles:
+    dead_gain: 0.05
+    self_gain: 0.1
+    clean: 0.25
+    magnitude_ratio: 2.0
+    inhibition_dominance: 1.0
+    cancel: 0.5
+    ablation_rise: 0.05
+  thresholds:
+    named_fraction_min: 0.9
+    agreement_fraction_min: 0.9
+    analysis_samples: 20000
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000
+profiles:
+  # quick: 20 restarts per density.
+  quick: {}
+  # full: more restarts (a denser motif census) and longer training.
+  full:
+    n_restarts: 64
+    train:
+      steps: 30000
