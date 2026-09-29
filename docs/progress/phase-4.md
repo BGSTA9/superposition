@@ -3,9 +3,10 @@
 Date: 2026-09-29 · Commits `fd60e7c`..(this report) · SPEC §11 Phase 4, §7 E05–E08, §8 pages
 6–8, §9 notebooks 06–08
 
-> **Commit note.** An unfinished draft of this report, with two unfilled placeholders, was
-> committed as `7bde9b1` under the owner's git identity from outside this session while I was
-> writing it. It was left in place; the commit that follows it holds the finished report.
+> **Commit note.** While I was writing this report, two intermediate drafts of it were committed
+> under the owner's git identity from outside this session: `7bde9b1` (with two unfilled
+> placeholders) and `7ac6491`. Only this file was involved. They were left in place; the
+> finished report is `56d59df` plus this note.
 
 > **Phase 3 is not finished, and this phase was built beside it.** At the start,
 > `docs/progress/phase-3.md` did not exist and PLAN.md's Phase 3 items were unchecked. The
