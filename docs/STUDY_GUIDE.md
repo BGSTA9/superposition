@@ -113,3 +113,42 @@ open questions (pp. 45–46) is written in Phase 6.
      15's rescaling leave unchanged?
   5. What is a "dead side" in the absolute-value model, and why does it matter only when
      features are sparse?
+
+## Stop 9 · Mechanistic interpretability of a toy model (pp. 38–39)
+
+- **Read:** pp. 38–39 (the motif figures) and footnote 15 again.
+- **Notebook:** `notebooks/09_mech_interp.ipynb` (hand-built models first, then E09's trained
+  ones).
+- **Results:** `docs/REPRODUCTION.md`, section E09.
+- **App:** **Neurons** → E09 tab. Pick the n = 6, m = 10 model, find the two shaded motif
+  neurons, and predict from the weights which feature's loss rises most when you zero each
+  inhibitor; then check the ablation matrix. Switch to a context model at 1 − S = 0.1 and
+  count the unexplained neurons.
+- **Explain it back:**
+  1. What is a path gain, and why is it the right quantity to read a neuron by when features
+     are sparse?
+  2. Why do reciprocal output weights make asymmetric superposition cheap for one feature and
+     expensive for the other?
+  3. How does an inhibitor turn positive interference into (nearly) nothing, and why does it
+     have to read the heavy feature on the same side as the asymmetric neuron?
+  4. What does an ablation test that reading the weights cannot? What does the rebuild test
+     that ablations cannot?
+
+## Stop 10 · Solving superposition: SAEs and L1 (pp. 40–44)
+
+- **Read:** pp. 40–44 ("The Strategic Picture of Superposition") and footnotes 20–21.
+- **Notebook:** `notebooks/10_sparse_autoencoders.ipynb` (an SAE on the pentagon by hand, then
+  E10 and E11).
+- **Results:** `docs/REPRODUCTION.md`, sections E10 and E11.
+- **App:** **SAE lab**. On the live tab, train a 5-latent and then a 20-latent SAE on the
+  pentagon and compare the 2D views; switch to TopK k = 1. On the E10 tab, find an SAE that
+  reconstructs well but misses the features. On the E11 tab, drag λ and watch the pentagon lose
+  features.
+- **Explain it back:**
+  1. Write the SAE's encoder, decoder and loss. What is each constraint (unit-norm decoder,
+     L1 or TopK, resampling) for?
+  2. Why can an SAE reconstruct h well without finding the features? Give a 2D example.
+  3. Why does "solving superposition" in the paper's sense amount to being able to enumerate
+     features (p. 41)?
+  4. Why does an L1 penalty on h remove superposition mostly by killing features, and why does
+     it not penalize an antipodal pair along a basis axis?

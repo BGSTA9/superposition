@@ -21,6 +21,9 @@ PDF print of the paper (see `references/README.md`).
 | E06 | `adversarial` | pp. 29–30 | **PARTIAL** | 2/4 | `20260929T173800Z-e84cec26` | quick · cpu |
 | E07 | `privileged_basis` | pp. 31–34 | **PASS** | 3/3 | `20260929T174443Z-d54df07e` | quick · cpu |
 | E08 | `abs_computation` | pp. 34–39 | **PARTIAL** | 2/4 | `20260929T175145Z-5a0a35cf` | quick · cpu |
+| E09 | `mech_interp_abs` | pp. 38–39 | **PASS** | 3/3 | `20260929T211826Z-3fdd1d10` | quick · cpu |
+| E10 | `sae_recovery` | pp. 42–44 | **PASS** | 3/3 | `20260929T212259Z-fa564b17` | quick · cpu |
+| E11 | `l1_removes_superposition` | p. 42 | **PASS** | 8/8 | `20260929T212948Z-027b0327` | quick · cpu |
 <!-- END AUTO:STATUS -->
 
 ## E00 intro_pentagon (p. 2)
@@ -486,3 +489,282 @@ learning rate (3e-3) and larger batches (4,096) did not reach 20 either (D-409).
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T175145Z-5a0a35cf`
 (369 s wall-clock). Full profile (MPS, commit `24ec2e9`): `20260929T180008Z-db58449f` (981 s).
+
+## E09 mech_interp_abs (pp. 38–39)
+
+**Paper's claims.** A small absolute-value model "only doing a limited amount of superposition"
+(the p. 39 figure: 6 features, 10 neurons) can be understood almost completely: "many of the
+weights can be understood as simply implementing absolute value in the expected way", and the
+remaining neurons implement "two instances of asymmetric superposition and inhibition". One
+neuron stores two features with unequal input weights and reciprocal output weights, so one
+feature "heavily interfere[s] with the other, but avoid[s] the other interfering with the
+first"; a second neuron reads "a small amount" of the heavy feature and uses it "to massively
+inhibit" the victim, which "essentially converts positive interference … into negative
+interference". A few other weights are "effectively small conditional biases" (p. 39).
+
+**What we test** (SPEC §7 E09, D-501, D-502): absolute-value models with m = 2n − 2 neurons
+((n, m) = (4, 6), (5, 8), (6, 10); Iᵢ = 1; 20 restarts), graded at 1 − S = 0.3 and 0.2 and
+reported at 0.5 and 0.1. `interp.py` names every neuron of each best model from its path gains
+|W₁[h,i]|·W₂[j,h], zero- and mean-ablates it, searches every restart for the motif, and
+rebuilds an idealized model by hand from the roles.
+
+**Our figures** (quick profile): the best n = 6, m = 10 model drawn like p. 39 (input weights
+above, output weights below, colored by feature, each neuron labeled with its role, the motif's
+neurons shaded; large output weights are cut and marked with their value), its ablation
+matrices, the rebuild test for every setting, and the role census.
+
+![E09 motif model](figures/mech_interp_abs/motif_model.png)
+
+![E09 ablations](figures/mech_interp_abs/ablations.png)
+
+![E09 rebuild](figures/mech_interp_abs/rebuild.png)
+
+![E09 role census](figures/mech_interp_abs/role_census.png)
+
+**Status: PASS (3/3 graded criteria).** In all six graded models every live neuron receives a
+named role (48/48; all 48 with one of SPEC's four roles; no dead neurons), and for every one of
+them both the zero and the mean ablation raise exactly the losses the role predicts (48/48).
+The motif is found in 134 of the 240 trained models, in every graded configuration (11–18 of
+20 restarts) and never at 1 − S = 0.5.
+
+*The trained models reproduce the p. 39 structure, not just the motif.* Every graded best model
+has exactly two asymmetric-superposition neurons that share one victim feature (each supplies
+one of the victim's two sides), two inhibitors of that victim whose secondary roles are the two
+sides of one other feature, and plain side neurons for the rest. At n = 6, m = 10 the counts
+match the p. 39 figure feature for feature: two features with both sides, one feature whose
+two sides live in the inhibitors (light blue on p. 39), two heavy features with one side neuron
+plus a share of an asymmetric neuron (light orange and green), and the victim with no neuron of
+its own (red). In the graded models the asymmetric neurons flip sizes by 3.4–4.2× on the input
+side and 2.8–4.0× on the output side (the paper's example: 4× each way).
+
+*Rebuild.* The model built by hand from the roles (side neurons ±1 → 1, asymmetric neurons
+with reciprocal outputs, inhibitors with their trained strength and triggers, nothing else)
+recovers 90–97% of the trained models' loss reduction over predicting the mean in the graded
+settings (0.90, 0.92 at n = 4; 0.91, 0.95 at n = 5; 0.93, 0.97 at n = 6; for 1 − S = 0.3, 0.2),
+and 89–97% with the trained biases. The missing few percent are the "small conditional biases"
+of p. 39: small weights no role names.
+
+*Where the regime ends (INFO).* At 1 − S = 0.5 the models do no superposition at all: they drop
+one feature and compute the others with clean side neurons, every neuron is named, and the
+rebuild recovers 100%. At 0.1 the picture depends on the size: n = 5 is still fully named
+(8/8, rebuild 0.92), while n = 4 has 2 and n = 6 has 6 unexplained neurons and the rebuild
+recovers 0.63 and 0.17. The motif still occurs there (12–17 of 20 restarts), but next to
+neurons that fit no role.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E09 -->
+Run `20260929T211826Z-3fdd1d10` · profile `quick` · seed 0 · device `cpu` · commit `dbe87c8b18` · wall-clock 270.704 s · overall **PASS** (3/3)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| — | ≥ 90% of live neurons receive a named role (best model of each of n=4/m=6, n=5/m=8, n=6/m=10 at 1 − S ∈ {0.3, 0.2}) | pp. 38–39 | PASS | {"fraction": 1.0, "named": 48, "live": 48, "dead": 0, "fraction_spec_roles_only": 1.0, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2… | ≥ 0.9 |
+| — | Ablation effects agree with the assigned roles: for ≥ 90% of named neurons, zeroing and mean-ablating each raise the lo… | pp. 38–39 | PASS | {"fraction": 1.0, "agree": 48, "named": 48, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2": "6/6", "n5_m8 1-S=0.3": "8/8", "n5_m8 1-… | ≥ 0.9 |
+| — | The asymmetric superposition + inhibition motif is found in at least one model (searched in every restart); restarts wi… | pp. 38–39 | PASS | {"models_with_motif": 134, "per_configuration": {"n4_m6 1-S=0.3": "11/20", "n4_m6 1-S=0.2": "17/20", "n4_m6 1-S=0.5": "0/20", "n4_m6 1-S=0.… | ≥ 1 model |
+| — | Rebuild test: share of the trained model's loss reduction (vs predicting the mean) recovered by the model rebuilt by ha… | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": {"recovered": 0.8975, "recovered_trained_bias": 0.8941}, "n4_m6 1-S=0.2": {"recovered": 0.9179, "recovered_trained_bias":… | — |
+| — | Motifs in the best models: input and output size ratios, the positive interference, the inhibition, and the net 1-spars… | pp. 38–39 | INFO | {"motifs_in_best_models": 18, "net_interference_negative": "6/18", "all_restarts_net_negative": "111/292", "examples": [{"model": "n4_m6 1-… | — |
+| — | Outside the graded regime (reported only): named roles, ablation agreement, motifs and rebuild of the best model at the… | pp. 38–39 | INFO | {"n4_m6 1-S=0.5": {"named": "6/6", "agree": "6/6", "motifs": 0, "restarts_with_motif": "0/20", "rebuild_recovered": 1.0001, "roles": ["nega… | — |
+| — | Role of every neuron in the graded models (best restart) | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": ["inhibitor(1) + negative-side(3)", "inhibitor(1) + positive-side(3)", "positive-side(0)", "positive-side(2)", "asymmetri… | — |
+<!-- END AUTO:E09 -->
+
+**Discrepancies and notes.**
+- **Cancellation rather than conversion.** In the 18 motifs of the 12 best models the inhibition
+  matches the positive interference almost exactly (e.g. 4.03 vs −4.08, 3.30 vs −3.30), so the
+  net 1-sparse pre-activation of the victim, including its bias, lies between −0.08 and +0.08: 6 of
+  18 are negative (111 of 292 over all restarts). The paper describes the interference as
+  "converted into negative interference"; our models cancel it to about zero, which the output
+  ReLU makes equally harmless. Whether the paper's model overshoots is not visible in its
+  figure.
+- The regime (m = 2n − 2, 1 − S ∈ {0.3, 0.2}, Iᵢ = 1) was chosen from an uncited pilot because
+  the paper gives no density or importance for its p. 39 model (D-502); the context densities
+  show where it ends.
+- Roles and motifs are defined on path gains, which describe 1-sparse inputs; the ablations
+  use the full input distribution, which is why both are reported.
+- *superposition(i, j)* (normal superposition) and *dead* extend SPEC's role list (D-501); no
+  graded model uses either.
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `dbe87c8`): `20260929T211826Z-3fdd1d10` (271 s
+wall-clock).
+
+## E10 sae_recovery (pp. 42–44)
+
+**Paper's claims.** Approach 2 to "solving superposition" is to "take a regular model, which has
+superposition, and find an overcomplete basis describing how features are embedded after the
+fact", "a relatively standard sparse coding problem" (p. 43; footnote 20: H ≈ AB with A
+sparse). The toy models are where this can be checked, because "we do know what the features
+are!" (p. 44). The paper does not run it; SPEC §7 E10 asks whether sparse autoencoders (the
+modern form of this sparse coding) recover the known feature directions.
+
+**What we test** (D-503, D-504): toy models (ReLU output model, best restart) with E00's, E01's
+and E03's settings, frozen; SAEs trained on their hidden activations h = Wx, over dictionary
+size × λ × resampling off/on plus TopK. A feature counts as recovered when some *live* decoder
+column has cosine > 0.95 (pentagon) or > 0.9 (others) with +Wᵢ; only represented features
+(‖Wᵢ‖ > 0.5) are scored. Graded: the best SAE of each sweep, chosen by ground truth; the run
+reports how many settings pass.
+
+**Our figures** (quick profile): the pentagon's true features with the decoder directions of
+its best SAE and of its worst 5-latent SAE; recovery for every SAE setting; reconstruction
+error against recovery for every SAE.
+
+![E10 pentagon dictionary](figures/sae_recovery/pentagon_dictionary.png)
+
+![E10 recovery sweep](figures/sae_recovery/recovery_sweep.png)
+
+![E10 reconstruction vs recovery](figures/sae_recovery/reconstruction_vs_recovery.png)
+
+**Status: PASS (3/3 graded criteria).**
+
+*Pentagon (n = 5, m = 2, 1 − S = 0.1).* The toy model represents all 5 features. The best SAE
+(20 latents, TopK k = 1) recovers all 5 at cos > 0.95 (mean max cosine 1.000), and so do 10 of
+the 27 settings: 7 of 9 with 20 latents, 2 of 9 with 10, and 1 of 9 with exactly 5 (λ = 1, with
+resampling). With exactly as many latents as features, an SAE usually misses some: the 2D
+activations can be reconstructed nearly perfectly without finding the features (right panel of
+the first figure).
+
+*n = 20, m = 5 (E01 settings).* At 1 − S = 0.01 the toy model represents 11 features and 16 of
+the 18 SAE settings recover at least 90% of them at cos > 0.9 (the best, TopK k = 1, all 11 at
+cos ≈ 1.000). At 1 − S = 0.001 it represents 13, and only 6 of 18 settings reach 90%: ReLU + L1
+SAEs need λ = 0.3 there (100% in 3 of its 4 settings), while λ ≤ 0.1 gives denser codes (L0
+0.05–0.08 against a true 0.013) and recovers 46–85%. TopK k = 1 recovers everything at both sparsities, since nearly every nonzero
+input has exactly one active feature.
+
+*E03 model (n = 400, m = 30, 1 − S = 0.1; INFO).* 134 of 400 features are represented, and an
+input activates 13.4 of them on average. ReLU + L1 SAEs with 256 latents recover almost none
+(4.5% at λ = 0.3, with 47.5 latents active per input; 29% at λ = 1, with 52% of the variance
+unexplained). TopK with k = 8 recovers all 134 at cos > 0.95 (mean max cosine 0.999), while
+TopK with k = 16 recovers 2.2%, although it reconstructs better (FVU 0.057 vs 0.176) and 68%
+of its latents are dead.
+
+*Reconstruction is not recovery (INFO).* Of the SAEs with less than 10% of the variance
+unexplained, 7 of 20 recover the pentagon's features, 10 of 12 and 2 of 10 the n = 20 models'
+(1 − S = 0.01, 0.001), and 0 of 1 the E03 model's.
+
+*Resampling (INFO).* With the frequency rule of D-503, resampling fired for 43 latents of the
+ReLU + L1 SAEs at 1 − S = 0.001 (none at the other settings) and for 2–56 latents of TopK SAEs.
+It changed little: best recovery is 100% with and without it everywhere, mean recovery moves by
+initialization noise (pentagon 0.72 → 0.85 with nothing resampled; 1 − S = 0.001: 0.80 → 0.76),
+and the final dead fractions are similar, because overcomplete dictionaries shed their surplus
+latents after the last check (60% of training); with 5 latents for 5 features only one of the
+nine SAEs loses a latent.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E10 -->
+Run `20260929T212259Z-fa564b17` · profile `quick` · seed 0 · device `cpu` · commit `dbe87c8b18` · wall-clock 405.936 s · overall **PASS** (3/3)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| pentagon | pentagon (E00, p. 2, n = 5, m = 2, 1 − S = 0.1): ≥ 100% of the represented features recovered at cos > 0.95 by the best… | pp. 42–44 | PASS | {"represented": 5, "best_setting": "20 latents, TopK k=1, resample on", "best_recovered": 1.0, "best_mean_max_cos": 1.0, "best_fvu": 0.0045… | ≥ 1.0 |
+| n20_m5_p0.01 | n20_m5_p0.01 (E01, p. 11, n = 20, m = 5, 1 − S = 0.01): ≥ 90% of the represented features recovered at cos > 0.9 by the… | pp. 42–44 | PASS | {"represented": 11, "best_setting": "40 latents, TopK k=1, resample on", "best_recovered": 1.0, "best_mean_max_cos": 1.0, "best_fvu": 0.012… | ≥ 0.9 |
+| n20_m5_p0.001 | n20_m5_p0.001 (E01, p. 11, n = 20, m = 5, 1 − S = 0.001): ≥ 90% of the represented features recovered at cos > 0.9 by t… | pp. 42–44 | PASS | {"represented": 13, "best_setting": "40 latents, TopK k=1, resample on", "best_recovered": 1.0, "best_mean_max_cos": 0.9999, "best_fvu": 0.… | ≥ 0.9 |
+| — | Toy models reported without grading (E03 setup): best SAE of the sweep | pp. 42–44 | INFO | {"n400_m30_p0.1": {"represented": 134, "best_setting": "256 latents, TopK k=8, resample on", "best_recovered": 1.0, "best_mean_max_cos": 0.… | — |
+| — | With and without dead-latent resampling (ReLU + L1 SAEs): best and mean recovery, mean dead-latent fraction on held-out… | pp. 42–44 | INFO | {"pentagon": {"resample_off": {"best_recovered": 1.0, "mean_recovered": 0.7167, "mean_dead_fraction": 0.1292, "latents_resampled": 0}, "res… | — |
+| — | TopK SAEs (λ = 0, resampling on) against the best ReLU + L1 SAE: share recovered | pp. 42–44 | INFO | {"pentagon": {"l1_best": 1.0, "topk_1_5": 0.6, "topk_1_10": 0.6, "topk_1_20": 1.0}, "n20_m5_p0.01": {"l1_best": 1.0, "topk_1_20": 1.0, "top… | — |
+| — | Low reconstruction error does not imply recovery: SAEs with FVU < 0.1 and how many of them recover the features; true L… | pp. 42–44 | INFO | {"pentagon": {"settings_with_fvu_below_0.1": 20, "of_which_recover": 7, "true_l0": 0.5}, "n20_m5_p0.01": {"settings_with_fvu_below_0.1": 12… | — |
+<!-- END AUTO:E10 -->
+
+**Discrepancies and notes.**
+- **Selection by ground truth.** The graded SAE is the sweep's best by recovery, which a
+  practitioner could not choose; the counts of passing settings (10/27, 16/18, 6/18) are the
+  fairer summary, and they show that the choice of λ matters most at the sparsest setting.
+- **TopK k against the true L0.** On the E03 model TopK works with k = 8 but fails with
+  k = 16, above the true 13.4 active features per input. A hypothesis, not tested here: with
+  more slots than active features, the extra slots are filled by latents that fit
+  combinations of features (which reconstruct well), and most latents die. How recovery
+  depends on k is worth a finer sweep (full profile or an extension).
+- The toy models are retrained with their experiments' settings rather than loaded, so they
+  differ in detail from the E01 cited run (11 and 13 represented features here, 12 and 14
+  there, at 1 − S = 0.01 and 0.001).
+- TopK SAEs keep exactly k latents active on every input, including the all-zero input, so
+  their L0 equals k by construction.
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `dbe87c8`): `20260929T212259Z-fa564b17` (406 s
+wall-clock).
+
+## E11 l1_removes_superposition (p. 42)
+
+**Paper's claim.** "It's actually quite easy to get rid of superposition in the toy models
+described in this paper, albeit at the cost of a higher loss. Simply apply an L1 regularization
+term to the hidden layer activations (i.e. add λ‖h‖₁ to the loss). This actually has a nice
+interpretation in terms of killing features below a certain importance threshold, especially if
+they're not basis aligned" (p. 42). Footnote 21 adds that a little L1 should reduce
+superposition "with essentially no effect on performance". The paper shows no experiment.
+
+**What we test** (D-505): the ReLU output model with λ E‖h‖₁ added to its loss, on the E00
+pentagon (n = 5, m = 2, 1 − S = 0.1, 16 restarts) and E01's n = 20, m = 5 at 1 − S = 0.01 (8
+restarts), over 15 values of λ from 0 to 0.8. Per λ we keep the restart with the lowest
+training objective and score every model on the same 200,000 samples: the reconstruction loss
+without the penalty (comparable across λ: same task, footnote 17), represented features
+(‖Wᵢ‖ > 0.5), superposed ones (superposition score > 0.05), and the formal test (WᵀW singular on
+the represented features, p. 8).
+
+**Our figures** (quick profile): loss and feature counts against λ (shaded: no superposition),
+the trade-off curve, the pentagon's weights at five values of λ (in the raw hidden basis, which
+the penalty makes privileged), and the n = 20 model's WᵀW.
+
+![E11 sweep](figures/l1_removes_superposition/l1_sweep.png)
+
+![E11 trade-off](figures/l1_removes_superposition/l1_tradeoff.png)
+
+![E11 pentagon](figures/l1_removes_superposition/pentagon_arrows.png)
+
+![E11 n = 20 weights](figures/l1_removes_superposition/n20_m5_weights.png)
+
+**Status: PASS (8/8 graded criteria).** In both setups superposition only falls as λ grows, and
+reaches none while the loss rises; but the two setups get there differently.
+
+*n = 20, m = 5 (1 − S = 0.01): the claim as stated.* The unregularized model superposes 13
+features. As λ grows the least important superposed features go first (13 → 10 → 6 → 4
+superposed at λ = 0.003, 0.03, 0.1) and at λ = 0.2 the model keeps the four most important
+features, orthogonal and with no superposition, at 8.4× the loss (0.00033 → 0.00277). Larger
+λ kills more features (2 at 0.4, 1 at 0.55, none at 0.8). The first steps are nearly free, as
+footnote 21 predicts: at λ = 0.003 three superposed features disappear and the loss rises by
+6%.
+
+*Pentagon (n = 5, m = 2, 1 − S = 0.1): superposition goes only with the features.* The pentagon
+survives small λ (up to 0.03, loss +0.5%), then becomes two antipodal pairs aligned with the
+hidden axes (λ = 0.05–0.4; loss +23% to +46%), then one pair plus one feature (0.5–0.55), then
+one pair (0.6). It is free of superposition only at λ = 0.65, where **a single feature**
+(feature 0) is left, at 4.7× the loss (0.0211 → 0.0986); at 0.7 every feature is gone. At no λ
+does it keep two orthogonal features. The reason is in the penalty: for an antipodal pair on
+one axis, h = w(x₀ − x₁), and |x₀ − x₁| ≤ x₀ + x₁, so the pair costs *less* L1 than two
+orthogonal features whenever both are active. In a development run's checkpoints (D-505) the
+antipodal pair, the orthogonal pair and feature 0 alone had training objectives within 0.4% of
+each other at λ = 0.6, the pair lowest. An L1 penalty on h privileges the basis, which removes
+pentagon-like superposition, but it does not remove antipodal superposition along a basis axis;
+only killing features does.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E11 -->
+Run `20260929T212948Z-027b0327` · profile `quick` · seed 0 · device `cpu` · commit `dbe87c8b18` · wall-clock 533.046 s · overall **PASS** (8/8)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| pentagon | pentagon (E00, p. 2, n = 5, m = 2, 1 − S = 0.1): at λ = 0 the model is in superposition (more than m features represent… | p. 42 | PASS | {"represented": 5, "superposed": 5} | > 2 represented, formal test true |
+| pentagon | pentagon (E00, p. 2, n = 5, m = 2, 1 − S = 0.1): the number of superposed features never increases with λ by more than 1 | p. 42 | PASS | {"λ=0": 5, "λ=0.003": 5, "λ=0.01": 5, "λ=0.03": 5, "λ=0.05": 4, "λ=0.1": 4, "λ=0.2": 4, "λ=0.3": 4, "λ=0.4": 4, "λ=0.5": 2, "λ=0.55": 2, "λ… | rises ≤ 1 |
+| pentagon | pentagon (E00, p. 2, n = 5, m = 2, 1 − S = 0.1): some λ gives a model with no superposition (no superposed feature, WᵀW… | p. 42 | PASS | {"first_lambda": 0.65, "represented": 1, "features": [0], "free_lambdas": [0.65]} | exists |
+| pentagon | pentagon (E00, p. 2, n = 5, m = 2, 1 − S = 0.1): the reconstruction loss rises with λ (no drop larger than 2% between c… | p. 42 | PASS | {"loss_at_zero": 0.021053, "loss_when_free": 0.098584, "largest_relative_drop": 0.0028, "drops": [[0.01, 0.0028]], "loss_up_to_first_free":… | drops ≤ 0.02; loss(free) > loss(0) |
+| n20_m5 | n20_m5 (E01, p. 11, n = 20, m = 5, 1 − S = 0.01): at λ = 0 the model is in superposition (more than m features represen… | p. 42 | PASS | {"represented": 13, "superposed": 13} | > 5 represented, formal test true |
+| n20_m5 | n20_m5 (E01, p. 11, n = 20, m = 5, 1 − S = 0.01): the number of superposed features never increases with λ by more than… | p. 42 | PASS | {"λ=0": 13, "λ=0.003": 10, "λ=0.01": 10, "λ=0.03": 6, "λ=0.05": 6, "λ=0.1": 4, "λ=0.2": 0, "λ=0.3": 0, "λ=0.4": 0, "λ=0.5": 0, "λ=0.55": 0,… | rises ≤ 1 |
+| n20_m5 | n20_m5 (E01, p. 11, n = 20, m = 5, 1 − S = 0.01): some λ gives a model with no superposition (no superposed feature, Wᵀ… | p. 42 | PASS | {"first_lambda": 0.2, "represented": 4, "features": [0, 1, 2, 3], "free_lambdas": [0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7]} | exists |
+| n20_m5 | n20_m5 (E01, p. 11, n = 20, m = 5, 1 − S = 0.01): the reconstruction loss rises with λ (no drop larger than 2% between … | p. 42 | PASS | {"loss_at_zero": 0.000328, "loss_when_free": 0.00277, "largest_relative_drop": 0.0, "drops": [], "loss_up_to_first_free": [0.000328, 0.0003… | drops ≤ 0.02; loss(free) > loss(0) |
+| — | The trade-off per setup: λ → reconstruction loss (no penalty), features represented and superposed, D* (best restart by… | p. 42 | INFO | {"pentagon": [{"lambda": 0.0, "loss": 0.021053, "represented": 5, "superposed": 5, "dims_per_feature": 0.334}, {"lambda": 0.003, "loss": 0.… | — |
+<!-- END AUTO:E11 -->
+
+**Discrepancies and notes.**
+- The pentagon's pass rests on one λ value (0.65) with one feature left. The λ grid was refined
+  between 0.5 and 0.8 after a development run with a coarser grid (…, 0.6, 0.8, 1) found no
+  superposition-free λ with a feature alive; the diagnosis above predicted the window
+  (λ ≈ 0.61–0.67) before the cited run. The criteria were not changed; D-505 records both
+  development runs.
+- "Killing features below a certain importance threshold" holds in both setups (the survivors
+  are always the most important features: {0, 1, 2, 3} at λ = 0.2 for n = 20, {0} at 0.65 for
+  the pentagon), but for the pentagon "especially if they're not basis aligned" understates the
+  role of antipodal pairs, which are basis aligned and survive until the end.
+- Evaluation uses common random numbers and restarts are chosen by training objective; with
+  independent samples and fewer restarts a first development run showed spurious non-monotone
+  losses (D-505).
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `dbe87c8`): `20260929T212948Z-027b0327` (533 s
+wall-clock).

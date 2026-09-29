@@ -155,13 +155,25 @@ Close (SPEC §11):
 
 ## Phase 5: mechanistic interpretability (SPEC §6 interp.py, sae.py, §7 E09–E11)
 
-- [ ] `interp.py`: neuron roles, ablation matrix, motif detector, rebuild test.
-- [ ] `sae.py`: ReLU and TopK SAEs, unit-norm decoder, resampling, ground-truth metrics.
-- [ ] **E09 mech_interp_abs**: ≥ 90% neurons named; ablations agree; motif found; rebuild
+- [x] `interp.py`: path gains, neuron roles, ablation matrix (zero and mean), motif detector,
+      rebuild test (D-501).
+- [x] `sae.py`: ReLU and TopK SAEs, unit-norm decoder, resampling, ground-truth metrics (D-503).
+- [x] **E09 mech_interp_abs**: ≥ 90% neurons named; ablations agree; motif found; rebuild
       reported.
-- [ ] **E10 sae_recovery**: pentagon 5/5 at cos > 0.95; n = 20, m = 5 ≥ 90% at cos > 0.9.
-- [ ] **E11 l1_removes_superposition**: superposition → none as λ grows; trade-off curve.
-- [ ] Notebooks 09–10, app pages Neurons (roles), SAE lab.
+  - **Result: PASS 3/3** (quick, CPU, run `20260929T211826Z-3fdd1d10`): 48/48 live neurons
+    named, 48/48 ablations agree, the motif in 134 of 240 models; rebuild recovers 90–97%.
+- [x] **E10 sae_recovery**: pentagon 5/5 at cos > 0.95; n = 20, m = 5 ≥ 90% at cos > 0.9.
+  - **Result: PASS 3/3** (run `20260929T212259Z-fa564b17`): best SAEs recover every
+    represented feature; 10/27, 16/18 and 6/18 settings pass; on the E03 model TopK 8
+    recovers 100% and TopK 16 2% (INFO).
+- [x] **E11 l1_removes_superposition**: superposition → none as λ grows; trade-off curve.
+  - **Result: PASS 8/8** (run `20260929T212948Z-027b0327`): n = 20 keeps 4 orthogonal
+    features at λ = 0.2 (8.4× the loss); the pentagon is free of superposition only with one
+    feature left (λ = 0.65).
+- [x] Notebooks 09–10, app pages Neurons (roles), SAE lab.
+- [x] **Exit:** interp.py, sae.py and E09–E11 implemented with notebooks and app pages; quick
+      profiles run from a clean tree (each ≤ 10 min on CPU) and reported; lint and unit tier
+      green.
 
 ## Phase 6: extensions, review, polish (SPEC §7 E12, §10, §11, §12)
 

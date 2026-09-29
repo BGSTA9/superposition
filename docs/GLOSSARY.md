@@ -84,3 +84,36 @@ The toy models provide the ground-truth feature directions to score it against (
 **Dictionary learning / sparse coding** (pp. 42–43, footnote 20). Factorizing activations
 H ≈ A·B with A sparse, where the rows of B form an overcomplete dictionary of feature
 directions.
+
+**Side neuron** (p. 36). In the absolute-value model, a neuron computing ReLU(xᵢ) (the positive
+side of feature i) or ReLU(−xᵢ) (the negative side); |xᵢ| is the sum of the two, so computing
+|x| without superposition needs two neurons per feature.
+
+**Path gain** (pp. 38–39). For the absolute-value model, G_h[i, j] = |W₁[h, i]|·W₂[j, h]: how
+much output j moves per unit of feature i through neuron h when only feature i is active (on
+the side h reads). It does not change under the footnote-15 rescaling; E09 names neurons from it.
+
+**Asymmetric superposition** (p. 39). One neuron stores two features with unequal input weights
+and reciprocal output weights (e.g. W₁ = [2, −½], W₂ = [½, 2]): each is read out with gain 1,
+but the *heavy* feature (large input weight) interferes strongly with the *victim* and not the
+reverse.
+
+**Inhibition** (p. 39). A second neuron reads a little of the heavy feature (on the same side)
+and writes strongly negative to the victim, cancelling the positive interference, which the
+output ReLU would otherwise pass. With asymmetric superposition it forms the **asymmetric
+superposition motif** ("motif" in the circuits sense: a recurring pattern of connections, p. 38).
+
+**Ablation** (zero / mean). Replacing a neuron's activation by 0, or by its average over the
+data, and measuring how each feature's loss changes. If a neuron's role is right, the losses
+that rise are the ones the role predicts (E09).
+
+**Rebuild test** (SPEC §6). Building a model by hand from the inferred roles and comparing its
+loss with the trained model's: the share of the trained model's loss reduction (over predicting
+the mean) that the rebuild recovers measures how much of the model the explanation covers.
+
+**Dead latent, resampling** (pp. 42–44 context). An SAE latent that (almost) never fires gets no
+gradient and never recovers. Resampling re-initializes it toward inputs the SAE reconstructs
+badly.
+
+**TopK SAE.** A sparse autoencoder that keeps only the k largest latent activations per input
+instead of paying an L1 penalty (E10 compares both).

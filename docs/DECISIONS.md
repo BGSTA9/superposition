@@ -462,3 +462,143 @@ n = 80, m = 20).
   replication default.
 - **Not done:** the reference implementations were not consulted. SPEC §2 allows it now (an
   honest attempt failed); it is left to the owner as the next diagnostic step (open issue).
+
+---
+
+## Phase 5: mechanistic interpretability
+
+### D-501 · 2026-09-30 · Neuron roles from path gains, and the role taxonomy
+- **Decision:** `interp.py` reads each neuron of the absolute-value model through its path
+  gains G_h[i, j] = |W₁[h, i]|·W₂[j, h]: the output j receives per unit of feature i, on the
+  side of feature i the neuron fires for. Roles: *dead* (every |G| < 0.05); *inhibitor(j)*
+  (−minᵢ G[i, j] ≥ 0.1 and at least the largest positive gain; its *triggers* are the features
+  it reads only to inhibit j, and the rest of the neuron is its secondary role);
+  *positive-/negative-side(i)* (computes only i, i.e. G[i, i] ≥ 0.1, every other |G| < 25% of
+  it); *asymmetric-superposition(i, j)* (computes exactly i and j, nothing else ≥ 25%, and
+  "sizes flipped": |W₁[h, i]| ≥ 2 |W₁[h, j]| while W₂[j, h] ≥ 2 W₂[i, h]); *superposition(i, j)*
+  (the same without the flip); *unexplained* otherwise. The motif detector checks the flip on
+  the weights directly and pairs it with a neuron that reads i with the same sign and has
+  G[i, j] ≤ −0.5 G_asym[i, j] (cancels at least half the interference).
+- **Rationale:** path gains are exactly what the loss sees on 1-sparse inputs (which dominate
+  when sparse, p. 13), are invariant to the footnote-15 rescaling, and turn the p. 39 panels
+  ("orange × red ≫ 1") into numbers. SPEC §6 lists positive-side, negative-side,
+  asymmetric-superposition, inhibitor and unexplained; *superposition* is added because p. 39
+  names normal superposition (W₁ = [1, −1], W₂ = [1, 1]) as the contrast, and *dead* because a
+  neuron with no effect is neither named nor unexplained. The 25% rule is D-408's; the factor 2
+  flip is weaker than the paper's example (4 each way), and trained motifs have ≈ 3–4.
+  *Triggers* were added after a pilot (uncited): without them an inhibitor's small read of the
+  heavy feature (p. 39's "small amount of orange") leaked into its main side's output, so the
+  secondary side was labeled unexplained and dropped from the rebuild (which then recovered
+  51–84% instead of 94–97%). This does not affect naming: the inhibitor role was assigned
+  either way.
+- **Grading choices (fixed before the cited run):** "named" is graded over *live* neurons with
+  any role other than unexplained (the stricter reading: dead neurons count in neither
+  numerator nor denominator), and the share using SPEC's four roles only is reported next to
+  it. Ablation agreement: for each named live neuron, zeroing it and mean-ablating it must each
+  raise the loss of every feature it computes or inhibits by ≥ 5% of that feature's
+  mean-prediction loss, with the largest relative rise on one of those features; threshold
+  ≥ 90% of named neurons (the same bar as naming).
+- **Rebuild:** side neurons ±1 in and 1 out; superposition ±1 in, 1 out; asymmetric neurons
+  keep their trained input magnitudes with reciprocal outputs (own gains exactly 1); inhibitors
+  keep their trained inhibition weight and trigger weights plus their idealized secondary role;
+  everything else zero. Biases: 0 where a neuron writes, the mean p/2 elsewhere (a variant
+  keeps the trained biases). Reported as the share of the trained model's loss reduction over
+  predicting the mean (importance-weighted), overall and per feature.
+- **Paper:** pp. 36, 38–39; footnote 15.
+- **Alternatives:** thresholds on raw W₁/W₂ (not rescaling-invariant); roles from activation
+  statistics (needs a dataset-dependent definition of "fires"); fitting the rebuild's free
+  numbers (would hide what the roles fail to explain).
+
+### D-502 · 2026-09-30 · E09: the models analyzed
+- **Decision:** absolute-value models with m = 2n − 2 neurons, (n, m) ∈ {(4, 6), (5, 8),
+  (6, 10)}, Iᵢ = 1, graded at 1 − S ∈ {0.3, 0.2}; 1 − S ∈ {0.5, 0.1} are trained and analyzed
+  the same way but only reported. 20 restarts per setting, 10,000 steps (E08's settings); the
+  best restart of each setting is analyzed and the motif is searched in every restart. The
+  figure shows the best n = 6, m = 10 graded model with the most motifs.
+- **Rationale:** the p. 39 model has 6 features and 10 neurons (counted from the figure), two
+  fewer than computing |x| without superposition needs, and the paper calls it "only doing a
+  limited amount of superposition"; it gives no density or importance. A pilot (uncited,
+  m = 2n − 2 at 1 − S ∈ {0.5, 0.3, 0.2, 0.1}, 16 restarts) showed clean side neurons and no
+  superposition at 0.5, the motif in most restarts with every neuron named at 0.3 and 0.2, and
+  many unexplained neurons at 0.1. SPEC asks for "the regime that produces limited
+  superposition", so the graded densities are the middle ones, chosen from that pilot; the
+  edges are run and reported so that the choice stays visible.
+- **Alternatives:** the p. 37 model (n = 100, m = 40; too large to name by hand, and E08 shows
+  it computes few features); a single configuration (the motif's frequency across sizes would
+  not be visible).
+
+### D-503 · 2026-09-30 · SAEs: architecture and training
+- **Decision:** f = ReLU(W_enc(h − b_dec) + b_enc), ĥ = W_dec f + b_dec, decoder columns
+  renormalized to unit norm after every step, loss = ‖h − ĥ‖² (summed over dims, mean over
+  batch) + λ‖f‖₁; TopK keeps the k largest activations (λ = 0). Initialization: W_dec with
+  random unit columns, W_enc = W_decᵀ, biases 0. Adam, lr 1e-3, batch 1024, 10,000 steps. Dead
+  latents are resampled every 2,000 steps until 60% of training: a latent that fired on fewer
+  than 1e-5 of the samples since the last check gets the direction of an input drawn with
+  probability ∝ its squared reconstruction error (decoder column), the same direction scaled
+  to 0.2 × the mean live encoder-row norm (encoder row), encoder bias 0 and fresh Adam moments.
+  SAEs train on h = Wx of the frozen toy model, with x from the toy model's own distribution.
+- **Rationale:** the standard SAE of the dictionary-learning literature, which realizes the
+  paper's Approach 2 (footnote 20: H ≈ AB with A sparse). The frequency rule: a development
+  run (uncited) with the strict rule "never fired since the last check" resampled nothing for
+  any ReLU + L1 SAE, although 13–28% of latents then fired on none of 100,000 held-out samples;
+  such latents fire once in millions of inputs and are useless. 1e-5 is 50× rarer than the
+  rarest true feature fires at 1 − S = 0.001, so no feature latent qualifies.
+- **Paper:** pp. 42–44, footnote 20.
+- **Alternatives:** removing the gradient parallel to decoder columns (common, not needed with
+  renormalization for these sizes); ghost grads; resampling at a fixed schedule regardless of
+  firing.
+
+### D-504 · 2026-09-30 · E10: toy models, sweeps and how recovery is graded
+- **Decision:** toy models (ReLU output model, best restart, their experiments' settings): the
+  E00 pentagon (1 − S = 0.1, 8 restarts); E01's n = 20, m = 5 at 1 − S ∈ {0.01, 0.001} (4
+  restarts; 12 and 14 features represented in E01's cited run); one E03 model, n = 400,
+  m = 30, 1 − S = 0.1 (2 restarts, batch 256), reported only. Sweeps: dictionary sizes
+  {5, 10, 20} (pentagon) and {20, 40} (n = 20), λ ∈ {0.03, 0.1, 0.3, 1}, resampling off/on,
+  plus TopK k = 1 for each size; the E03 model gets 256 latents with λ ∈ {0.3, 1} and TopK
+  k ∈ {8, 16}. A feature is recovered when a live decoder column has cosine > 0.95 (pentagon)
+  or > 0.9 (others) with +Wᵢ; only represented features (‖Wᵢ‖ > 0.5) are scored.
+- **Grading:** the best SAE of each sweep, chosen *by ground truth*, must recover 5/5 pentagon
+  features at cos > 0.95 (and the toy model must represent all 5) and ≥ 90% of each n = 20
+  model's represented features at cos > 0.9. Both sparse n = 20 models are graded. Because the
+  selection uses the ground truth, the run also reports how many settings pass, and how many
+  SAEs reconstruct well (FVU < 0.1) without recovering the features.
+- **Rationale:** SPEC asks whether SAEs recover the features in a sweep; a practitioner could
+  not pick by ground truth, so the robustness counts are reported next to the best. The E03
+  grid is small because a 256-latent SAE on 30 dimensions costs ≈ 2 minutes of the 10-minute
+  quick budget; a pilot (uncited, 5,000 steps) found ReLU + L1 SAEs at λ ∈ {0.1, 0.3, 1}
+  recovering 0–9%, TopK 8 recovering 100% and TopK 16 0% (with lower reconstruction error),
+  so λ ∈ {0.3, 1} and k ∈ {8, 16} are the informative settings.
+- **Alternatives:** an unsupervised selection rule (e.g. the sparsest SAE below a
+  reconstruction-error target; the dense ±e₁, ±e₂ code makes such rules pick non-feature
+  dictionaries in 2D); loading the toy models from E00/E01 runs (couples experiments).
+
+### D-505 · 2026-09-30 · E11: setups, λ grid and criteria
+- **Decision:** the ReLU output model with λ E‖h‖₁ added to the loss, on the E00 pentagon
+  (1 − S = 0.1, 16 restarts) and E01's n = 20, m = 5 at 1 − S = 0.01 (8 restarts), λ ∈ {0,
+  0.003, 0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.8}. Per λ the
+  restart with the lowest training objective (loss + λ E‖h‖₁) is kept, and every instance is
+  scored on the same 200,000 samples (common random numbers). Superposed feature: represented
+  (‖Wᵢ‖ > 0.5) with superposition score > 0.05 (E01's orthogonality bar). Criteria per setup:
+  (1) at λ = 0, more than m features represented and WᵀW singular on them; (2) the number of
+  superposed features never rises by more than 1 between consecutive λ (E01's tolerance);
+  (3) some λ > 0 gives a model with at least one represented feature, none superposed and WᵀW
+  invertible on them; (4) no loss drop larger than 2% between consecutive λ, and the loss at
+  the first superposition-free λ above the loss at λ = 0.
+- **History (disclosed):** criteria (1)–(4) were fixed before any run and not changed. A first
+  development run (uncited; 8/4 restarts, λ grid {0, 0.001, 0.003, 0.01, 0.03, 0.05, 0.1,
+  0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1}, losses on independent samples) gave PARTIAL 5/8:
+  a pentagon restart stuck in a worse state at λ = 0.4 (a 30% loss "drop" to λ = 0.5), 2–3%
+  loss wobble at small λ between restarts, and a pair of n = 20 features reappearing at
+  λ = 0.2. Following SPEC §2 (implementation, then restarts): restarts were doubled and
+  evaluation moved to shared samples. A second development run passed every n = 20 criterion
+  but not the pentagon's "falls to none": its last two survivors formed an antipodal pair up
+  to λ = 0.6 and all features were gone at 0.8. Diagnosis from its checkpoints: at λ = 0.6 the
+  antipodal pair, the orthogonal pair and feature 0 alone have training objectives within
+  0.4% (0.1234, 0.1236, 0.1238); the pair wins because the penalty is *smaller* for it
+  (|x₀ − x₁| ≤ x₀ + x₁ when both are active), and from those numbers the single-feature state
+  should be optimal only in a window near λ ≈ 0.61–0.67 that the grid skipped. The grid was
+  therefore refined where the last features die (0.55, 0.65, 0.7 added; 0.15 and 1 dropped to
+  keep the quick profile under 10 minutes). The cited run uses this final grid.
+- **Paper:** p. 42; footnote 17 (losses at one sparsity are comparable across λ); footnote 21.
+- **Alternatives:** selecting restarts by reconstruction loss alone (not what training
+  minimizes); a much finer grid everywhere (over the time budget).

@@ -6,6 +6,46 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Phase 5: mechanistic interpretability (2026-09-30)
+
+#### Added
+- `superposition.interp` (pp. 38–39): path gains |W₁[h,i]|·W₂[j,h] (invariant to footnote 15's
+  rescaling); neuron roles (positive/negative side, superposition, asymmetric superposition,
+  inhibitor with triggers, dead, unexplained); the asymmetric superposition + inhibition motif
+  detector; zero- and mean-ablation matrices on shared samples; the rebuild test.
+- `superposition.sae` (pp. 42–44): multi-instance sparse autoencoders (ReLU + L1, unit-norm
+  decoder renormalized every step, TopK, per-instance latent masks for several dictionary
+  sizes, dead-latent resampling) and ground-truth metrics (max cosine with live latents,
+  recovered fractions, L0, MSE, FVU, dead fraction).
+- **E09 mech_interp_abs** (pp. 38–39): m = 2n − 2 absolute-value models reverse-engineered
+  neuron by neuron. PASS 3/3: every live neuron named (48/48), ablations agree (48/48), the
+  p. 39 motif in 134 of 240 models, the rebuild recovers 90–97% of the loss reduction.
+- **E10 sae_recovery** (pp. 42–44): SAE sweeps on the E00 pentagon, sparse E01 models and an
+  E03 model, scored against the true features. PASS 3/3 (best SAE of each sweep); reports how many
+  settings pass and that low reconstruction error need not mean recovery (TopK 8 vs 16 on the
+  E03 model).
+- **E11 l1_removes_superposition** (p. 42): λ‖h‖₁ on the ReLU output model swept over λ. PASS
+  8/8; the pentagon loses superposition only when one feature is left (antipodal pairs survive
+  the penalty). The E09–E11 quick profiles take 271, 406 and 533 s on a laptop CPU.
+- Plotting: `plotting/interp.py` (the p. 39 view with roles, ablation matrices, rebuild, role
+  census), `plotting/sae.py` (2D dictionaries, recovery sweeps, reconstruction vs recovery),
+  `plotting/l1.py` (loss and superposition against λ, the trade-off curve);
+  `style.CATEGORICAL` (the validated eight-slot palette order).
+- Lab: the **Neurons** page's E09 tab (roles, ablations, motifs, rebuild) and a new **SAE lab**
+  page (train an SAE live on the pentagon or a sparse E01 model; E10 sweeps; E11 trade-off).
+- Notebooks `09_mech_interp` and `10_sparse_autoencoders`.
+- Tests: known-answer tests for roles, motifs, ablations (p/6 and the mean-ablation closed
+  form) and the rebuild; SAE tests (unit-norm decoder, TopK, masks, signed-cosine recovery,
+  resampling, instance independence); E09–E11 criteria on synthetic inputs; AppTest for the new
+  tab and page; slow replication tests for E09–E11.
+- Docs: DECISIONS D-501–D-505; REPRODUCTION sections E09–E11; STUDY_GUIDE stops 9–10;
+  GLOSSARY (side neuron, path gain, asymmetric superposition, inhibition, ablation, rebuild
+  test, dead latent, TopK SAE); PAPER_MAP and DESIGN rows.
+
+#### Changed
+- `metrics.per_feature_loss(..., shared_samples=True)` scores every instance on the same
+  inputs (common random numbers); the default path is unchanged (same random draws).
+
 ### Phase 4: dynamics, robustness, neurons (2026-09-29)
 
 #### Added

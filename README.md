@@ -14,9 +14,9 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** Phases 0–2 and 4 of 6 complete (engine; E00, E01, E05–E08; notebooks 00–02 and
-> 06–08; lab Home, Playground, Dynamics, Neurons, Adversarial). Phase 3 (theory and geometry,
-> E02–E04) is in progress. Build progress is tracked in [PLAN.md](PLAN.md) and
+> **Status:** Phases 0–2, 4 and 5 of 6 complete (engine; E00, E01, E05–E11; notebooks 00–02
+> and 06–10; lab Home, Playground, Dynamics, Neurons, Adversarial, SAE lab). Phase 3 (theory and
+> geometry, E02–E04) is in progress. Build progress is tracked in [PLAN.md](PLAN.md) and
 > [docs/progress/](docs/progress/).
 
 ## Quickstart
@@ -65,6 +65,25 @@ go from monosemantic to polysemantic as features get sparser.
 
 ![E07: W and neuron stack plots across sparsity](docs/figures/privileged_basis/neurons.png)
 
+**E09 · reverse-engineering a model (p. 39).** Every neuron of a small |x| model named from its
+weights and checked by ablation. Two neurons store a heavy and a victim feature with flipped
+input and output sizes (asymmetric superposition), and two inhibitors cancel the resulting
+interference: the p. 39 motif, found by gradient descent in most restarts.
+
+![E09: an absolute-value model with every neuron's role](docs/figures/mech_interp_abs/motif_model.png)
+
+**E10 · sparse autoencoders against ground truth (pp. 42–44).** Which SAE settings recover the
+true feature directions of toy models in superposition, and how often a low reconstruction
+error hides a failure to find them.
+
+![E10: recovery across SAE settings](docs/figures/sae_recovery/recovery_sweep.png)
+
+**E11 · removing superposition with L1 (p. 42).** A penalty λ‖h‖₁ removes superposition by
+killing the least important features, at a price in loss; antipodal pairs along the hidden axes
+survive until almost nothing is left.
+
+![E11: loss and superposition against λ](docs/figures/l1_removes_superposition/l1_sweep.png)
+
 ## The lab
 
 `uv run superposition app` opens a Streamlit lab (options: `--port`, `--headless`).
@@ -83,10 +102,14 @@ go from monosemantic to polysemantic as features get sparser.
 - **Dynamics:** feature dimensionalities over training with a step scrubber (E05), and
   rotatable 3D trajectories of a model learning an octahedron.
 - **Neurons:** W and neuron stack plots across sparsity for the ReLU hidden layer model (E07)
-  and the absolute-value model (E08), with the ReLU-sidestepping table.
+  and the absolute-value model (E08), with the ReLU-sidestepping table; E09's role tables,
+  ablation matrices, motifs and rebuild test for every analyzed model.
 - **Adversarial:** vulnerability against sparsity and features per dimension (E06).
+- **SAE lab:** train a sparse autoencoder live on the pentagon or a sparse n = 20 model and
+  compare its decoder with the true features (2D view, per-feature cosines); E10's sweeps and
+  E11's λ trade-off with a λ slider.
 
-Further pages (phase diagrams, geometry, non-uniform, SAEs) arrive with their experiments.
+Further pages (phase diagrams, geometry, non-uniform) arrive with their experiments.
 
 ## Reproduction status
 

@@ -1,0 +1,6 @@
+experiment: mech_interp_abs
+run_id: 20260929T211826Z-3fdd1d10
+profile: quick
+git_commit: dbe87c8b183a3c9d857cd69265bded3783b9c31c
+git_dirty: False
+figures: motif_model.png, ablations.png, rebuild.png, role_census.png

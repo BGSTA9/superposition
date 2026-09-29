@@ -39,6 +39,8 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
 | `metrics` | pure metric functions of W; `loss_by_num_active` and `per_feature_loss` also run a model on sampled inputs | torch, networkx, data |
 | `theory` | closed forms (Phase 1: linear optimum; Phase 3: decompositions, phase diagrams) | torch |
 | `adversarial` | analytic L2 attacks, no-superposition reference, vulnerability (p. 29) | models |
+| `interp` | path gains, neuron roles, motif detector, zero/mean ablations, rebuild test for the absolute-value model (pp. 38–39) | metrics, models, theory |
+| `sae` | multi-instance sparse autoencoders (L1, TopK, resampling) and ground-truth recovery metrics (pp. 42–44) | utils |
 | `acceptance` | criteria, statuses, `acceptance.json` payload | — |
 | `runs` | run directories, manifests, latest-run lookup | config |
 | `plotting/` | figures from arrays; `style` holds colors and rc settings | matplotlib |
@@ -49,6 +51,11 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
 | `app/` | Streamlit pages (layout only) and `lab_ui.py` helpers | lab, plotting |
 
 ## Key design choices
+
+- **SAEs share the toy models' conventions.** A `SparseAutoencoder` has a leading instance
+  dimension too, so a whole sweep (λ, TopK k, resampling, and dictionary sizes via a latent
+  mask) trains in one vectorized model; comparisons between variants of one model (E09's
+  ablations, E11's λ values) are scored on shared samples (common random numbers).
 
 - **The instance dimension.** Every parameter and batch carries a leading `inst` axis, and
   instances never interact: each instance's parameters appear only in its own loss term, the
@@ -71,7 +78,8 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
   comes from `superposition.lab` and every figure from `superposition.plotting`, so the lab's
   figures match the experiments' and the logic is unit-tested without a browser.
 - **What is live and what is loaded.** The Playground trains small models live
-  (`lab.train_playground`, the experiments' own grid trainer). Everything else is loaded from
+  (`lab.train_playground`, the experiments' own grid trainer), and the SAE lab trains one SAE
+  live on such a model (`lab.train_live_sae`). Everything else is loaded from
   `results/` through `runs.py`; when something is missing the page shows the exact CLI
   command that creates it (`lab_ui.missing_artifact`).
 - **Caching.** `st.cache_data` caches training by (config, device), so revisiting a setting is
@@ -97,6 +105,11 @@ commit → run → write the narrative → `superposition report --pin <exp>` �
   `Composite` concatenates distributions along the feature axis.
 - **A new metric:** add a pure function of `W` (and `b`) to `metrics.py`, with a known-answer
   test.
+- **A new neuron role or motif:** extend the rules in `interp.neuron_roles` /
+  `interp.find_motifs` (they work on path gains), give the role a `predicted_rise` so the
+  ablation check covers it, and a placement in `interp.rebuild_weights`.
+- **A new dictionary-learning method:** anything that yields decoder directions and live
+  latents can be scored with `sae.recovery` against a toy model's true Wᵢ.
 - **Variants of an experiment:** add fields to its config dataclass with the paper-faithful
   value as default, and override them in a new YAML profile or via `overrides` — never by
   changing a replication default (SPEC §2).
