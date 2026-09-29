@@ -214,3 +214,15 @@ n = 80, m = 20).
   profiles stay paper-faithful to SPEC §7 and are what the acceptance status is based on.
 - **Alternatives:** larger batches instead of more steps (same number of feature activations,
   but fewer optimizer updates); a learning-rate schedule (changes the E00-verified defaults).
+
+### D-114 · 2026-09-29 · Correction to D-113's rationale (no sparse-count discrepancy)
+- **Decision:** keep the E01 full profile as defined in D-113, but withdraw its motivating
+  premise.
+- **What changed:** D-113 said the quick profile represents fewer features at 1 − S = 0.001
+  than pp. 11–12 suggest. That came from reading low-resolution renders of the figures. At
+  300 dpi (approximate readings by eye), the p. 11 panel shows about 12 features at full norm
+  plus about 4 near ‖Wᵢ‖ ≈ 0.5 (ours: 14 with ‖Wᵢ‖ > 0.5), and the p. 12 panel about 50 at full
+  norm plus a partial tail (ours: 67). There is no shortfall. The full-profile run
+  (30,000 steps, 8 restarts) independently shows the counts are stable in training length
+  (12/20 and 68/80). See docs/REPRODUCTION.md (E01).
+- **Paper:** pp. 11–12.
