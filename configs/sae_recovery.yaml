@@ -77,9 +77,10 @@ base:
     eval_samples: 100000
     log_every: 100
 profiles:
-  # quick: the sweeps above, 10,000 SAE steps.
+  # quick: the sweeps above, 10,000 SAE steps. Measured: 406 s on an Apple M2 CPU
+  # (--device cpu).
   quick: {}
-  # full: larger sweeps and 2× longer SAE training.
+  # full: 2× longer SAE training. Estimated ≈ 12 minutes on a laptop CPU; not yet measured.
   full:
     sae:
       steps: 20000

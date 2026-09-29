@@ -35,9 +35,10 @@ base:
     log_every: 100
     eval_samples: 20000
 profiles:
-  # quick: 20 restarts per density.
+  # quick: 20 restarts per density. Measured: 271 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: more restarts (a denser motif census) and longer training.
+  # full: more restarts (a denser motif census) and longer training. Estimated ≈ 10× the quick
+  # profile (≈ 45 minutes on a laptop CPU); not yet measured.
   full:
     n_restarts: 64
     train:
