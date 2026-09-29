@@ -43,6 +43,12 @@ in SPEC.md §11 until a first release.
 - `superposition list` and the Home status table include E05–E08; the CLI test compares the
   listing with the registry instead of a fixed list.
 
+#### Fixed
+- E05 computes feature dimensionalities in chunks of snapshots (the full profile would have
+  built a 7.7 GB intermediate); results are bitwise identical.
+- Figures: the energy-level loss panel zooms to the plateau (as on p. 26); W heatmaps saturate
+  at a robust maximum and |W₁| stack plots scale each row on its own.
+
 ### Phase 2: lab v1 (2026-09-29)
 
 #### Added

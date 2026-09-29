@@ -41,7 +41,7 @@ profiles:
   # quick: 4 restarts per sparsity, plus the bias-init diagnostic variant (D-409).
   # Measured: 369 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: more restarts and longer training.
+  # full: more restarts and longer training. Measured: 981 s on an Apple M2 (--device mps).
   full:
     sweep:
       n_restarts: 8

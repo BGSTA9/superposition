@@ -448,6 +448,15 @@ Run `20260929T175145Z-5a0a35cf` · profile `quick` · seed 0 · device `cpu` · 
 | b_n100_m40 | (b) Diagnostic variant, not the replication: output bias initialized to 0.1 instead of 0 (2 restarts), against the defa… | pp. 36–38 | INFO | {"1-S=0.01": {"loss_b0=0": 0.00747, "loss_b0=0.1": 0.003363, "computed_well_b0=0": 9, "computed_well_b0=0.1": 10, "both_sides_b0=0.1": 9, "… | — |
 <!-- END AUTO:E08 -->
 
+**Robustness: the full profile** (8 restarts × 30,000 steps, MPS, clean commit `24ec2e9`,
+same E08 code, run `20260929T180008Z-db58449f`, 981 s; not cited) gives PARTIAL 3/4. The dense
+criterion now passes (40/40 monosemantic neurons at 1 − S = 1), so the quick run's one
+polysemantic neuron was an optimization shortfall. The sparse criterion still fails: 11
+features computed well at 1 − S = 0.001 (17, 20, 19, 15, 9, 10, 11 from dense to sparse; the
+no-superposition capacity m/2 = 20 is reached only at 0.3). Its side diagnostic shows the same
+pattern (1 of 90 dead sides learned at 0.001, against 31 of 110 alive ones), and its bias-init
+variant improves less (loss 0.00068 → 0.00048, features computed well 11 → 13 at 0.001).
+
 **Why computation fails here: an optimization problem, not a capacity result.** At very
 sparse settings almost every input has one active feature, so each side of feature i
 (xᵢ > 0 or xᵢ < 0) is trained only by its own examples. With the output bias starting at 0
@@ -468,11 +477,12 @@ learning rate (3e-3) and larger batches (4,096) did not reach 20 either (D-409).
   is SPEC's operationalization. A one-sided feature (ReLU(xᵢ) only) has a loss ratio just
   above 0.5, on the criterion's boundary; many of our sparse features are one-sided (21 of the
   23 computed sides at 0.001 belong to one-sided features).
-- *Hypotheses for the gap:* initialization (the bias-init variant helps a lot), training
-  length or schedule, or details of the paper's setup it does not state (footnote 16 notes the
-  model "learns more easily when there are more neurons"). Next step: consult the reference
-  implementations (allowed by SPEC §2 after this attempt) and run the full profile; see the
+- *Hypotheses for the gap:* initialization (the bias-init variant lowers the loss by 29–55%
+  but leaves the count below 20), training length or schedule (the full profile helps the
+  dense models, not the sparsest), or details of the paper's setup it does not state
+  (footnote 16 notes the model "learns more easily when there are more neurons"). Next step:
+  consult the reference implementations (allowed by SPEC §2 after this attempt); see the
   Phase 4 report.
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T175145Z-5a0a35cf`
-(369 s wall-clock).
+(369 s wall-clock). Full profile (MPS, commit `24ec2e9`): `20260929T180008Z-db58449f` (981 s).
