@@ -47,6 +47,12 @@ uv run superposition app                   # Streamlit lab (Phase 2+)
   alternatives).
 - Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`), one logical
   change each. Published figures ≤ 500 KB.
+- Cite only runs made from a clean, committed tree (`manifest.json` → `git.dirty: false`):
+  commit code first, then run, then write docs. `superposition report` cites the *latest*
+  complete run, so run the profile you want cited last.
+- Tests never write to `results/`: the root `conftest.py` points `SUPERPOSITION_RESULTS` at a temp
+  dir and registers a `python3` kernel for this interpreter (a user-level `python3` kernelspec
+  would otherwise shadow the project env in nbmake).
 
 ## Research integrity (SPEC §2, non-negotiable)
 

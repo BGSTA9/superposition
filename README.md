@@ -14,8 +14,8 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** under construction. Build progress is tracked in [PLAN.md](PLAN.md) and
-> [docs/progress/](docs/progress/).
+> **Status:** Phase 1 of 6 complete (engine, E00, E01, notebooks 00–02). Build progress is
+> tracked in [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
 
 ## Quickstart
 
@@ -25,8 +25,10 @@ uses CUDA or Apple MPS when available.
 ```bash
 uv sync                                       # create the environment from uv.lock
 uv run superposition list                     # list experiments
-uv run superposition run intro_pentagon       # reproduce the paper's first figure (p. 2)
-uv run superposition app                      # launch the lab
+uv run superposition run intro_pentagon       # reproduce the paper's first figure (p. 2), ~1 min
+uv run superposition figures intro_pentagon   # redraw its figures from the saved run
+uv run superposition report                   # refresh the tables in docs/REPRODUCTION.md
+uv run superposition app                      # launch the lab (Phase 2)
 ```
 
 Developer commands: `make lint`, `make test` (fast tier), `make test-slow` (replication and
@@ -34,7 +36,16 @@ notebook tests). See [CLAUDE.md](CLAUDE.md) for the full list and conventions.
 
 ## Results gallery
 
-Filled in as experiments land.
+**E00 · five features in two dimensions (p. 2).** As sparsity rises, the ReLU output model goes
+from two dedicated dimensions, to two antipodal pairs, to a pentagon; the linear model keeps the
+top two features throughout.
+
+![E00: feature directions of the best restart at S = 0, 0.8, 0.9](docs/figures/intro_pentagon/pentagon_arrows.png)
+
+**E01 · twenty features in five dimensions (p. 11).** WᵀW with the bias, and ‖Wᵢ‖ colored by
+superposition, from dense (left) to sparse (right).
+
+![E01: n = 20, m = 5 across sparsity](docs/figures/basic_results/weights_n20_m5.png)
 
 ## Reproduction status
 

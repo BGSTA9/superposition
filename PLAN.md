@@ -29,44 +29,46 @@ Status legend: `[x]` done and verified · `[ ]` not done · `[~]` done with an o
 ## Phase 1: engine (SPEC §6, §7 E00–E01, §9 notebooks 00–02)
 
 Library (SPEC §6):
-- [ ] `config.py`: typed dataclass configs, strict YAML IO, `quick`/`full` profiles (SPEC §5).
-- [ ] `utils.py`: `seed_everything`, per-instance seed derivation, device resolution
+- [x] `config.py`: typed dataclass configs, strict YAML IO, `quick`/`full` profiles (SPEC §5).
+- [x] `utils.py`: `seed_everything`, per-instance seed derivation, device resolution
       (`auto` = CUDA → MPS → CPU) (SPEC §3 initialization, §5 compute).
-- [ ] `data.py`: `FeatureDistribution` protocol; `IndependentSparse` (per-instance and
+- [x] `data.py`: `FeatureDistribution` protocol; `IndependentSparse` (per-instance and
       per-feature probabilities, configurable value range), `CorrelatedSets`,
       `AnticorrelatedSets`, `Composite` (SPEC §3 data, §6).
-  - [ ] Tests: density within 3 SE; nonzero range and mean; correlated sets switch together;
+  - [x] Tests: density within 3 SE; nonzero range and mean; correlated sets switch together;
         anticorrelated sets never have two members active.
-- [ ] `models.py`: `TiedModel` (linear / ReLU output / ReLU hidden, `W: (inst, hidden, feat)`,
+- [x] `models.py`: `TiedModel` (linear / ReLU output / ReLU hidden, `W: (inst, hidden, feat)`,
       `b: (inst, feat)`, `forward`, `hidden`, `gram`), `AbsModel`, activation registry
       (relu, gelu, silu, softplus, leaky_relu, sigmoid, identity); per-instance Xavier-normal
       init depending only on (seed, instance index) (SPEC §3 models/initialization, §6).
-- [ ] `train.py`: `train(...) -> TrainResult` (Adam, lr 1e-3, batch 1024, 10k steps, constant /
+- [x] `train.py`: `train(...) -> TrainResult` (Adam, lr 1e-3, batch 1024, 10k steps, constant /
       cosine / warmup_cosine, `l1_hidden`, snapshots, final loss on ≥ 20,000 fresh samples);
       loss = sum over features → mean over batch → sum over instances; `select_best`
       (SPEC §3 loss, §6).
-  - [ ] Tests: instances are independent; loss/eval code reproduces the closed-form linear
+  - [x] Tests: instances are independent; loss/eval code reproduces the closed-form linear
         optimum Σ_{i≥m} Iᵢ(p/3 − p²/4) (SPEC §7 E00).
-- [ ] `metrics.py`: `feature_norms`, `superposition_score`, `feature_dimensionality`,
+- [x] `metrics.py`: `feature_norms`, `superposition_score`, `feature_dimensionality`,
       `dims_per_feature`, `represented_mask`, `gram`, `is_superposition`, `angles_2d`,
       `canonicalize_2d`, `geometry_graph` (+ tegum components), `classify_fraction`,
       `neuron_polysemanticity`, `loss_by_num_active` (SPEC §3 metrics, §6).
-  - [ ] Known-answer tests: pentagon (Dᵢ = 2/5, D* = 0.4), antipodal pair (1/2), triangle
+  - [x] Known-answer tests: pentagon (Dᵢ = 2/5, D* = 0.4), antipodal pair (1/2), triangle
         (2/3), tetrahedron (3/4), orthonormal basis (1), zero column (0), regular simplex
         ((n − 1)/n).
-  - [ ] Property tests (hypothesis): unit-norm tight frames give Dᵢ = m/n and ΣDᵢ = m;
+  - [x] Property tests (hypothesis): unit-norm tight frames give Dᵢ = m/n and ΣDᵢ = m;
         every metric is invariant under orthogonal rotation of W.
-- [ ] `runs.py`: `results/<exp>/<run_id>/` with `config.yaml`, `manifest.json`,
+- [x] `runs.py`: `results/<exp>/<run_id>/` with `config.yaml`, `manifest.json`,
       `metrics.parquet`, `acceptance.json`, checkpoints, figures, `log.txt`; latest-run lookup
       (SPEC §5 run artifacts).
-- [ ] `cli.py`: `list`, `run <exp> --profile --seed --device`, `figures <exp> --run --publish`
-      (SPEC §5 CLI). `report` pulled forward from Phase 2 (see DECISIONS.md).
-- [ ] `plotting/`: shared style; WᵀW heatmap with bias (p. 10); feature-norm bars colored by
+- [x] `cli.py`: `list`, `run <exp> --profile --seed --device`, `figures <exp> --run --publish`
+      (SPEC §5 CLI). `report` and `--publish` pulled forward from Phase 2 (D-108).
+- [x] `plotting/`: shared style; WᵀW heatmap with bias (p. 10); feature-norm bars colored by
       superposition score (p. 11); canonicalized 2D arrows colored by importance (p. 2).
-- [ ] `experiments/`: registry + base experiment protocol.
+- [x] `experiments/`: registry, `base.Experiment`, `common` (sparsity-grid trainer, tables),
+      `runner` (run, figures, publish).
+- [x] `acceptance.py`: criteria with value/threshold/status; overall PASS/PARTIAL/FAIL.
 
 Experiments (SPEC §7):
-- [ ] **E00 intro_pentagon (p. 2)**: n = 5, m = 2, Iᵢ = 0.9ⁱ, S ∈ {0, 0.8, 0.9}, 8 restarts,
+- [x] **E00 intro_pentagon (p. 2)**: n = 5, m = 2, Iᵢ = 0.9ⁱ, S ∈ {0, 0.8, 0.9}, 8 restarts,
       ReLU output and linear. Accept (ReLU, best restart per S):
   - S = 0: exactly {0, 1} represented, |cos| < 0.1.
   - S = 0.8: exactly {0, 1, 2, 3} represented as two antipodal pairs (partner cos < −0.95).
@@ -74,23 +76,25 @@ Experiments (SPEC §7):
   - Linear: exactly {0, 1} represented and orthogonal at every S.
   - Both: every feature with ‖Wᵢ‖ < 0.05 has bias within 0.02 of (1 − S)/2 (p. 10).
   - Linear exact: best loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) on ≥ 100,000 samples.
-- [ ] **E01 basic_results (pp. 10–12)**: n = 20, m = 5, Iᵢ = 0.7ⁱ, 1 − S ∈ {1, 0.3, 0.1, 0.03,
+  - **Result: PASS 11/11** (quick, CPU, run `20260929T093651Z-5eeb804c`; full/MPS also 11/11).
+- [x] **E01 basic_results (pp. 10–12)**: n = 20, m = 5, Iᵢ = 0.7ⁱ, 1 − S ∈ {1, 0.3, 0.1, 0.03,
       0.01, 0.003, 0.001}, linear vs ReLU output, ≥ 4 restarts; plus n = 80, m = 20, Iᵢ = 0.9ⁱ.
       Figures: WᵀW with bias + feature bars per sparsity (p. 11 layout). Accept:
   - Linear: exactly the top-m features represented, superposition score < 0.05, every S.
   - ReLU: matches linear at 1 − S = 1; represented count non-decreasing with sparsity
     (tolerance 1) and > m at the sparsest setting; superposition appears first among the less
     important features; antipodal pairs at intermediate sparsity (report where).
-- [ ] Replication tests (`tests/replication/`, `@pytest.mark.slow`) for E00 and E01.
+  - **Result: PASS 12/12** (quick, CPU, run `20260929T093755Z-2cb0bbc4`; full/MPS also 12/12).
+- [x] Replication tests (`tests/replication/`, `@pytest.mark.slow`) for E00 and E01.
 
 Notebooks (SPEC §9):
-- [ ] `00_orientation`, `01_features_directions_superposition` (pp. 1–8),
+- [x] `00_orientation`, `01_features_directions_superposition` (pp. 1–8),
       `02_demonstrating_superposition` (E00, E01); nbmake smoke tests marked slow.
 
 Close (SPEC §11):
-- [ ] `make lint test`; quick profiles of E00 and E01; publish figures; REPRODUCTION.md,
+- [x] `make lint test`; quick profiles of E00 and E01; publish figures; REPRODUCTION.md,
       CHANGELOG.md, this file; commit; `docs/progress/phase-1.md`.
-- [ ] **Exit:** unit tier green, E00 passes, E01 reported.
+- [x] **Exit:** unit tier green, E00 passes, E01 reported.
 
 ## Phase 2: lab v1 (SPEC §8, §11)
 
@@ -99,7 +103,7 @@ Close (SPEC §11):
       type, steps/restarts/seed; loss, WᵀW + bias, feature bars, Dᵢ table, 2D arrows / 3D plot.
 - [ ] Probe panel: choose active features and values; show h, readouts before/after bias and
       ReLU, reconstruction vs truth.
-- [ ] `report` and `figures --publish` commands (if not already complete from Phase 1).
+- [x] `report` and `figures --publish` commands (done in Phase 1, D-108; extend for the app).
 - [ ] **Exit:** the app launches; Playground n = 5, m = 2 trains in ≤ 10 s on CPU.
 
 ## Phase 3: theory and geometry (SPEC §6 theory.py, §7 E02–E04)
