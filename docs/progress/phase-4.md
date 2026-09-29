@@ -74,7 +74,7 @@ CLAUDE.md (a new gotcha, below).
 |---|---|---|
 | Lint | `make lint` (ruff check, ruff format --check, pyright basic) | clean; pyright 0 errors |
 | Unit + property (CI tier) | `make test` | **143 passed** in 12–18 s (103 before + 40 new) |
-| Slow: new replication tests | `pytest -m slow tests/replication/test_{learning_dynamics,adversarial,privileged_basis,abs_computation}.py` | SLOW_RESULT |
+| Slow: new replication tests | `pytest -m slow tests/replication/test_{learning_dynamics,adversarial,privileged_basis,abs_computation}.py` | **4 passed in 32 min** (each re-runs its quick profile from scratch on CPU, so the cited outcomes reproduce; E05 and E07 pass every criterion, E06's uniform setup and E08's part (a) pass as pinned) |
 | Slow: notebooks 06–08 | `pytest --nbmake notebooks/0{6,7,8}_*.ipynb` with `SUPERPOSITION_RESULTS=results/` | **3 passed** (they reuse the cited quick runs; without runs they train quick profiles, ≈ 25 min) |
 | Slow: app launch | `tests/replication/test_lab.py::test_superposition_app_launches` | passed |
 
@@ -179,8 +179,9 @@ wall-clock on an Apple M2 CPU: 516 s, 401 s, 419 s, 369 s (SPEC §5: ≤ 10 minu
 5. **Full profiles of E05–E07 were not run** (their runtimes in the configs are estimates
    scaled from the quick runs). E08's was run on MPS from a clean worktree (issue 1). E07's
    full profile (1,000 restarts × 15 sparsities) needs about 2 hours on a CPU; use a GPU.
-6. **The slow tier is now long.** Replication tests for E05–E08 add ≈ 30 minutes, and notebooks
-   06–08 add ≈ 25 minutes when no runs exist. Consider a nightly slow workflow only.
+6. **The slow tier is now long.** Replication tests for E05–E08 took 32 minutes, and notebooks
+   06–08 add ≈ 25 minutes when no runs exist. Consider running the slow tier only in the
+   scheduled workflow.
 7. **Phase 3** (D-401) still needs finishing: registry, configs, tests, notebooks 03–05, app
    pages, runs, its DECISIONS entries and its phase report.
 8. **Workflow gotcha, now in CLAUDE.md:** a run records `git.dirty` when it *starts*, so
