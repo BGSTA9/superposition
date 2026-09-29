@@ -391,6 +391,7 @@ def per_feature_loss(
     low: float = 0.0,
     high: float = 1.0,
     features_per_chunk: int = 8,
+    shared_samples: bool = False,
 ) -> Float[Tensor, "inst feat"]:
     """Expected squared error of each output feature, E[(targetᵢ − x′ᵢ)²] (no importance).
 
@@ -403,6 +404,11 @@ def per_feature_loss(
 
     The model must expose ``n_features``, ``n_inst`` and ``target(x)``; features are
     independent with probability ``feature_probability`` per instance.
+
+    With ``shared_samples`` every instance sees the *same* inputs (common random numbers), so
+    differences between instances, e.g. variants of one model with a neuron ablated
+    (:mod:`superposition.interp`), carry no sampling noise from the inputs themselves. It
+    requires one feature probability shared by all instances.
     """
     n_features = int(model.n_features)  # type: ignore[arg-type]
     n_inst = int(model.n_inst)  # type: ignore[arg-type]
@@ -410,15 +416,22 @@ def per_feature_loss(
     target_fn: Callable[[Tensor], Tensor] = model.target  # type: ignore[assignment]
     dist = IndependentSparse(feature_probability, n_inst, n_features, low, high)
     p = dist.feature_probability.to(device)
+    draw_inst = n_inst
+    if shared_samples:
+        if not bool((dist.feature_probability == dist.feature_probability[:1]).all()):
+            raise ValueError("shared_samples needs one feature probability for all instances")
+        dist = IndependentSparse(dist.feature_probability[:1], 1, n_features, low, high)
+        draw_inst = 1
     active = torch.zeros(n_inst, n_features, device=device)
     inactive = torch.zeros(n_inst, n_features, device=device)
     for start in range(0, n_features, features_per_chunk):
         chunk = torch.arange(start, min(start + features_per_chunk, n_features), device=device)
         k = len(chunk)
-        x = dist.sample(n_samples, generator)[:, None].expand(-1, k, -1, -1).clone()
+        x = dist.sample(n_samples, generator)[:, None].expand(-1, k, n_inst, -1).clone()
         forced = low + (high - low) * torch.rand(
-            (n_samples, k, n_inst), generator=generator, device=device
+            (n_samples, k, draw_inst), generator=generator, device=device
         )
+        forced = forced.expand(-1, -1, n_inst)
         onehot = F.one_hot(chunk, n_features).bool()[None, :, None, :]  # (1, k, 1, feat)
         for value, out_sum in ((forced[..., None], active), (torch.zeros(()), inactive)):
             xs = torch.where(onehot, value.to(device), x)
