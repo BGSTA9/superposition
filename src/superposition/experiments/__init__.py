@@ -6,10 +6,12 @@ to them. Run one with ``superposition run <name>`` or
 """
 
 from superposition.experiments import (
+    abs_computation,
     adversarial,
     basic_results,
     intro_pentagon,
     learning_dynamics,
+    privileged_basis,
 )
 from superposition.experiments.base import Experiment
 
@@ -20,6 +22,8 @@ REGISTRY: dict[str, Experiment] = {
         basic_results.EXPERIMENT,
         learning_dynamics.EXPERIMENT,
         adversarial.EXPERIMENT,
+        privileged_basis.EXPERIMENT,
+        abs_computation.EXPERIMENT,
     )
 }
 

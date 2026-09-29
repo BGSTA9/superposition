@@ -4,12 +4,13 @@ Paper: Summary: A Hierarchy of Feature Properties, p. 8 (formal superposition); 
 Results, p. 11 (‖Wᵢ‖ and the superposition score); Mathematical Understanding, p. 13
 (k-sparse loss terms); Uniform Superposition, p. 17 (D*); Feature Dimensionality, pp. 18–20
 (Dᵢ, characteristic fractions, feature geometry graphs, tegum factors); Non-Uniform
-Superposition, p. 22 (canonicalizing 2D solutions).
+Superposition, p. 22 (canonicalizing 2D solutions); Superposition in a Privileged Basis and
+Computation in Superposition, pp. 31–38 and footnote 15 (neurons, per-feature loss).
 
 Every function takes ``W`` shaped ``(inst, hidden, feat)`` (column ``W[k, :, i]`` is feature
 i's direction Wᵢ in instance k) and returns per-instance or per-feature tensors. Nothing here
-mutates its inputs or depends on global state, except :func:`loss_by_num_active`, which runs
-a model on sampled inputs from an explicit generator.
+mutates its inputs or depends on global state, except :func:`loss_by_num_active` and
+:func:`per_feature_loss`, which run a model on sampled inputs from an explicit generator.
 """
 
 from __future__ import annotations
@@ -21,8 +22,11 @@ import einops
 import networkx as nx
 import numpy as np
 import torch
+import torch.nn.functional as F
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
+
+from superposition.data import IndependentSparse
 
 # Norms below this count as exactly zero when normalizing (Ŵᵢ = Wᵢ/‖Wᵢ‖).
 _ZERO_NORM = 1e-12
@@ -323,6 +327,20 @@ def neuron_polysemanticity(
     return torch.where(largest[..., 0] >= abs_threshold, counts, torch.zeros_like(counts))
 
 
+def normalize_hidden_units(
+    W1: Float[Tensor, "inst hidden feat"], W2: Float[Tensor, "inst feat hidden"]
+) -> tuple[Float[Tensor, "inst hidden feat"], Float[Tensor, "inst feat hidden"]]:
+    """Rescale every hidden unit so its largest-magnitude W₁ weight has magnitude 1.
+
+    Paper: footnote 15 (p. 56). Scaling neuron h's row of W₁ by α > 0 and its column of W₂ by
+    α⁻¹ leaves ReLU(W₂ ReLU(W₁x) + b) unchanged (ReLU is positively homogeneous), so this only
+    fixes a degree of freedom for visualization and comparison. Dead units (all-zero rows) are
+    left at zero.
+    """
+    scale = W1.abs().amax(dim=-1).clamp_min(_ZERO_NORM)  # (inst, hidden)
+    return W1 / scale[..., None], W2 * scale[:, None, :]
+
+
 def loss_by_num_active(
     model: torch.nn.Module,
     k: int,
@@ -362,3 +380,51 @@ def loss_by_num_active(
         out = model(x)
         per_sample = (importance.to(device) * (target_fn(x) - out) ** 2).sum(dim=-1)
     return math.comb(n_features, k) * per_sample.mean(dim=0)
+
+
+@torch.no_grad()
+def per_feature_loss(
+    model: torch.nn.Module,
+    feature_probability: Float[Tensor, " inst"],
+    n_samples: int,
+    generator: torch.Generator,
+    low: float = 0.0,
+    high: float = 1.0,
+    features_per_chunk: int = 8,
+) -> Float[Tensor, "inst feat"]:
+    """Expected squared error of each output feature, E[(targetᵢ − x′ᵢ)²] (no importance).
+
+    Paper: Computation in Superposition, pp. 36–37 (which features the model computes well).
+    Plain Monte Carlo is too noisy for very sparse features (at 1 − S = 0.001 a feature is
+    active once per thousand samples), so we condition on feature i's own activity, which is
+    exact: E[ℓᵢ] = pᵢ E[ℓᵢ | xᵢ ≠ 0] + (1 − pᵢ) E[ℓᵢ | xᵢ = 0]. Both conditional terms are
+    estimated on ``n_samples`` draws of the other features, with xᵢ forced to a fresh U[low,
+    high] value or to 0.
+
+    The model must expose ``n_features``, ``n_inst`` and ``target(x)``; features are
+    independent with probability ``feature_probability`` per instance.
+    """
+    n_features = int(model.n_features)  # type: ignore[arg-type]
+    n_inst = int(model.n_inst)  # type: ignore[arg-type]
+    device = generator.device
+    target_fn: Callable[[Tensor], Tensor] = model.target  # type: ignore[assignment]
+    dist = IndependentSparse(feature_probability, n_inst, n_features, low, high)
+    p = dist.feature_probability.to(device)
+    active = torch.zeros(n_inst, n_features, device=device)
+    inactive = torch.zeros(n_inst, n_features, device=device)
+    for start in range(0, n_features, features_per_chunk):
+        chunk = torch.arange(start, min(start + features_per_chunk, n_features), device=device)
+        k = len(chunk)
+        x = dist.sample(n_samples, generator)[:, None].expand(-1, k, -1, -1).clone()
+        forced = low + (high - low) * torch.rand(
+            (n_samples, k, n_inst), generator=generator, device=device
+        )
+        onehot = F.one_hot(chunk, n_features).bool()[None, :, None, :]  # (1, k, 1, feat)
+        for value, out_sum in ((forced[..., None], active), (torch.zeros(()), inactive)):
+            xs = torch.where(onehot, value.to(device), x)
+            flat = xs.reshape(n_samples * k, n_inst, n_features)
+            err = (target_fn(flat) - model(flat)) ** 2
+            err = err.reshape(n_samples, k, n_inst, n_features)
+            own = err[:, torch.arange(k), :, chunk]  # (k, batch, inst)
+            out_sum[:, chunk] = own.mean(dim=1).T
+    return p * active + (1 - p) * inactive

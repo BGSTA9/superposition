@@ -1,0 +1,41 @@
+# E07 privileged_basis (Paper: pp. 31–34). SPEC §7 E07; decision D-407.
+# ReLU hidden layer model, n = 10, m = 5, Iᵢ = 0.75ⁱ; feature_probabilities are 1 − S, densest
+# first, chosen to hit each regime named on p. 33. The paper keeps the best of 1,000 models per
+# setting; quick keeps the best of 100 (SPEC).
+experiment: privileged_basis
+base:
+  seed: 0
+  device: auto
+  n_features: 10
+  n_hidden: 5
+  importance_decay: 0.75
+  feature_probabilities: [1.0, 0.5, 0.3, 0.2, 0.15, 0.12, 0.07, 0.03]
+  n_restarts: 100
+  figure_probabilities: [1.0, 0.3, 0.15, 0.12, 0.07, 0.03]
+  hidden_bias:
+    enabled: true
+    feature_probabilities: [1.0, 0.1, 0.03]
+    n_restarts: 20
+  thresholds:
+    rel_threshold: 0.25
+    abs_threshold: 0.05
+    count_tolerance: 1
+    represented_norm: 0.5
+    superposition_score: 0.05
+    activity_samples: 20000
+  train:
+    steps: 10000
+    batch_size: 256
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 500
+    eval_samples: 20000
+profiles:
+  # quick: 8 sparsities × 100 restarts (800 models) at batch 256.
+  quick: {}
+  # full: the paper's 1,000 models per setting on a finer grid (hours on a CPU; use a GPU).
+  full:
+    feature_probabilities: [1.0, 0.7, 0.5, 0.3, 0.2, 0.15, 0.12, 0.1, 0.08, 0.07, 0.05, 0.04, 0.03, 0.02, 0.01]
+    n_restarts: 1000
+    hidden_bias:
+      n_restarts: 100

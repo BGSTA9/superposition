@@ -1,0 +1,48 @@
+# E08 abs_computation (Paper: pp. 34–39). SPEC §7 E08; decision D-408.
+# (a) n = 3, m = 6, dense, equal importance; (b) n = 100, m = 40, Iᵢ = 0.8ⁱ over the p. 37
+# sparsities (1 − S, densest first). Inputs are 0 w.p. S, else U[−1, 1]; target |x|.
+experiment: abs_computation
+base:
+  seed: 0
+  device: auto
+  no_superposition:
+    n_features: 3
+    n_hidden: 6
+    importance_decay: 1.0
+    feature_probability: 1.0
+    n_restarts: 8
+  sweep:
+    n_features: 100
+    n_hidden: 40
+    importance_decay: 0.8
+    feature_probabilities: [1.0, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
+    n_restarts: 4
+  bias_variant:
+    enabled: true
+    bias_init: 0.1
+    feature_probabilities: [0.01, 0.001]
+    n_restarts: 2
+  thresholds:
+    per_feature_loss_max: 0.05
+    computed_well: 0.5
+    rel_threshold: 0.25
+    dead_output: 0.05
+    primary_ratio: 2.0
+    side_computed_max: 0.25
+    loss_samples: 20000
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000
+profiles:
+  # quick: 4 restarts per sparsity, plus the bias-init diagnostic variant (D-409).
+  quick: {}
+  # full: more restarts and longer training.
+  full:
+    sweep:
+      n_restarts: 8
+    train:
+      steps: 30000
