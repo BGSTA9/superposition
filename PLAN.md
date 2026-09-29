@@ -131,16 +131,27 @@ Close (SPEC §11):
 
 ## Phase 4: dynamics, robustness, neurons (SPEC §7 E05–E08)
 
-- [ ] **E05 learning_dynamics (pp. 26–28)**: energy-level jump coinciding with a loss drop;
+- [x] **E05 learning_dynamics (pp. 26–28)**: energy-level jump coinciding with a loss drop;
       n = 6, m = 3 octahedron final state in ≥ 1 restart; trajectory types reported.
-- [ ] `adversarial.py` + **E06 adversarial (pp. 29–30)**: vulnerability rises > 2× (report
+  - **Result: PASS 2/2** (quick, CPU, run `20260929T172920Z-2fae0fc5`): every restart jumps
+    late (a 30th digon forms) with a 0.04–0.05 loss drop; 48/48 runs end as octahedra.
+- [~] `adversarial.py` + **E06 adversarial (pp. 29–30)**: vulnerability rises > 2× (report
       actual); Spearman ≥ 0.8 with 1/D*.
-- [ ] **E07 privileged_basis (pp. 31–34)**: dense → monosemantic; polysemantic count
+  - **Result: PARTIAL 2/4** (run `20260929T173800Z-e84cec26`): uniform setup 8.5×, ρ = 1.0;
+    n = 20, m = 5 1.5×, ρ = 0.78 (little superposition in the paper's range).
+- [x] **E07 privileged_basis (pp. 31–34)**: dense → monosemantic; polysemantic count
       non-decreasing (tol. 1), > 0 at sparsest; document ReLU sidestepping.
-- [ ] **E08 abs_computation (pp. 34–39)**: (a) n = 3, m = 6 positive/negative-side neurons,
+  - **Result: PASS 3/3** (run `20260929T174443Z-d54df07e`); with a hidden bias all biases go
+    positive and the ReLU clips < 0.3% of the time.
+- [~] **E08 abs_computation (pp. 34–39)**: (a) n = 3, m = 6 positive/negative-side neurons,
       per-feature loss < 5% of mean baseline; (b) n = 100, m = 40 stack plots, features
       computed well > m/2 when sparse.
-- [ ] Notebooks 06–08, app pages Dynamics, Neurons, Adversarial.
+  - **Result: PARTIAL 2/4** (run `20260929T175145Z-5a0a35cf`): (a) exact; (b) 39/40
+    monosemantic when dense; 3 features computed well at 1 − S = 0.001 (dead output sides at
+    initialization; D-409).
+- [x] Notebooks 06–08, app pages Dynamics, Neurons, Adversarial.
+- [x] **Exit:** E05–E08 implemented with notebooks and app pages; quick profiles run from a
+      clean tree (each ≤ 10 min on CPU) and reported honestly; lint and unit tier green.
 
 ## Phase 5: mechanistic interpretability (SPEC §6 interp.py, sae.py, §7 E09–E11)
 

@@ -1,0 +1,6 @@
+experiment: abs_computation
+run_id: 20260929T175145Z-5a0a35cf
+profile: quick
+git_commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+git_dirty: False
+figures: abs_n3_m6.png, abs_stack_plots.png, abs_capacity.png

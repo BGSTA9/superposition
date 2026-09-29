@@ -1,0 +1,6 @@
+experiment: privileged_basis
+run_id: 20260929T174443Z-d54df07e
+profile: quick
+git_commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+git_dirty: False
+figures: neurons.png, neuron_counts.png

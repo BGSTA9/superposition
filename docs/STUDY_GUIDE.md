@@ -59,3 +59,57 @@ open questions (pp. 45–46) is written in Phase 6.
      interference remains?
   5. Read one column of the p. 11 figure: what do the WᵀW heatmap, the bias column and the bar
      colors each tell you?
+
+> Stops 3–5 (the math, phase changes, geometry; notebooks 03–05) arrive with Phase 3.
+
+## Stop 6 · Learning dynamics (pp. 26–28)
+
+- **Read:** pp. 26–28; revisit p. 17 (the D* plateau) and pp. 18–19 (Dᵢ) first.
+- **Notebook:** `notebooks/06_learning_dynamics.ipynb` (runs E05, or reuses your latest quick
+  run).
+- **Results:** `docs/REPRODUCTION.md`, section E05.
+- **App:** **Dynamics**. On the first tab, pick a restart and drag the step slider across the
+  orange jump: watch Σᵢ Dᵢ and the loss change together. On the second tab, choose 1 − S = 0.01
+  and scrub a run from step 0 to the end; name each stage before the label tells you.
+- **Explain it back:**
+  1. What is an "energy level" of a feature, and why do features in the uniform setup end at
+     Dᵢ ≈ 1/2 or 0 at 1/(1 − S) = 3?
+  2. Why can a model sit on a loss plateau for tens of thousands of steps with one dimension
+     badly used, and what happens to the loss when it fixes it?
+  3. Why do antipodal pairs in the final octahedron always join features from *different*
+     correlated sets?
+  4. What is the "collapsed" stage, and why is it the solution a linear model would learn?
+
+## Stop 7 · Superposition and adversarial examples (pp. 28–30)
+
+- **Read:** pp. 28–30.
+- **Notebook:** `notebooks/07_adversarial.ipynb` (computes an attack by hand, then runs E06).
+- **Results:** `docs/REPRODUCTION.md`, section E06.
+- **App:** **Adversarial**. Compare the two graded settings' curves; then open the extended
+  n = 20 setting and find where vulnerability stops tracking 1/D*.
+- **Explain it back:**
+  1. Write the paper's analytic attack for feature i. Why is it the best L2 perturbation of
+     that size for raising output i?
+  2. Why is the ratio (L′ − L)/(L′₀ − L₀), rather than L′ − L alone, the right measure across
+     sparsities?
+  3. Why does vulnerability track features per dimension, 1/D*?
+  4. Why does a fixed-fraction budget stop measuring superposition at extreme sparsity?
+
+## Stop 8 · Neurons and computation in superposition (pp. 31–39)
+
+- **Read:** pp. 31–39 and footnote 15 (p. 56).
+- **Notebook:** `notebooks/08_neurons_and_computation.ipynb` (runs E07 and E08).
+- **Results:** `docs/REPRODUCTION.md`, sections E07 and E08.
+- **App:** **Neurons**. On the E07 tab slide from dense to sparse and count monosemantic
+  neurons; read the sidestepping table. On the E08 tab compare the |W₁| stacks at 1 − S = 1 and
+  0.001, then read the capacity chart against the m/2 line. The **Playground** preset "p. 32 ·
+  ReLU hidden layer" trains an E07-sized model live.
+- **Explain it back:**
+  1. Why does a hidden ReLU make the neuron basis privileged? What does a stack plot show that
+     WᵀW cannot?
+  2. Describe the monosemantic → polysemantic transition of p. 33 in your own words.
+  3. How does the ReLU hidden layer model "sidestep" its ReLU, and why does it want to?
+  4. Why does |x| need two neurons per feature without superposition, and what does footnote
+     15's rescaling leave unchanged?
+  5. What is a "dead side" in the absolute-value model, and why does it matter only when
+     features are sparse?

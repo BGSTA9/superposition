@@ -14,9 +14,10 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** Phase 2 of 6 complete (engine, E00, E01, notebooks 00–02, lab Home and
-> Playground). Build progress is
-> tracked in [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
+> **Status:** Phases 0–2 and 4 of 6 complete (engine; E00, E01, E05–E08; notebooks 00–02 and
+> 06–08; lab Home, Playground, Dynamics, Neurons, Adversarial). Phase 3 (theory and geometry,
+> E02–E04) is in progress. Build progress is tracked in [PLAN.md](PLAN.md) and
+> [docs/progress/](docs/progress/).
 
 ## Quickstart
 
@@ -48,6 +49,22 @@ superposition, from dense (left) to sparse (right).
 
 ![E01: n = 20, m = 5 across sparsity](docs/figures/basic_results/weights_n20_m5.png)
 
+**E05 · energy-level jumps (p. 26).** 400 features in 30 dimensions settle into antipodal
+pairs; long after the loss has flattened, two features jump to Dᵢ = 1/2 to fill the last badly
+used dimension, and the loss drops at that moment.
+
+![E05: feature dimensionality and loss over training](docs/figures/learning_dynamics/energy_levels.png)
+
+**E06 · adversarial vulnerability (p. 29).** Vulnerability to small analytic attacks, relative
+to a model without superposition, tracks the number of features per dimension.
+
+![E06: vulnerability and features per dimension](docs/figures/adversarial/vulnerability.png)
+
+**E07 · superposition in a privileged basis (p. 33).** With a ReLU on the hidden layer, neurons
+go from monosemantic to polysemantic as features get sparser.
+
+![E07: W and neuron stack plots across sparsity](docs/figures/privileged_basis/neurons.png)
+
 ## The lab
 
 `uv run superposition app` opens a Streamlit lab (options: `--port`, `--headless`).
@@ -63,8 +80,13 @@ superposition, from dense (left) to sparse (right).
   bias, the ReLU and the reconstruction, feature by feature. The default setting (the p. 2
   pentagon) trains in about 4 seconds on a laptop CPU.
 
-Further pages (phase diagrams, geometry, dynamics, neurons, adversarial, SAEs) arrive with
-their experiments.
+- **Dynamics:** feature dimensionalities over training with a step scrubber (E05), and
+  rotatable 3D trajectories of a model learning an octahedron.
+- **Neurons:** W and neuron stack plots across sparsity for the ReLU hidden layer model (E07)
+  and the absolute-value model (E08), with the ReLU-sidestepping table.
+- **Adversarial:** vulnerability against sparsity and features per dimension (E06).
+
+Further pages (phase diagrams, geometry, non-uniform, SAEs) arrive with their experiments.
 
 ## Reproduction status
 

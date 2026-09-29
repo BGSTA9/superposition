@@ -15,7 +15,7 @@ uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish
 uv run superposition report [--pin EXP | --pin-all]   # cite runs; regenerate REPRODUCTION tables
-uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Playground)
+uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Playground, Dynamics, Neurons, Adversarial)
 ```
 
 ## Layout
@@ -51,6 +51,8 @@ uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Pla
   commit code → run → write the narrative → `superposition report --pin <exp>` (records the run
   in `docs/cited_runs.yaml`; refuses dirty runs) → commit docs. Unpinned experiments fall back
   to their latest run, marked "(uncited)".
+- A run records `git.dirty` when it *starts*: while runs are queued back to back, do not edit
+  tracked files (new untracked files are fine), or the later runs become uncitable.
 - Tests never write to `results/`: the root `conftest.py` points `SUPERPOSITION_RESULTS` at a temp
   dir and registers a `python3` kernel for this interpreter (a user-level `python3` kernelspec
   would otherwise shadow the project env in nbmake). It also sets `MPLBACKEND=Agg`: AppTest runs

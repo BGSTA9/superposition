@@ -61,6 +61,21 @@ interfere; in the feature geometry graph, tegum factors are the connected compon
 relative importance varies (here in the generalized sense of footnote 13): a feature switches
 between not learned, stored in superposition, and given a dedicated dimension.
 
+**Monosemantic / polysemantic neuron** (pp. 31–33). With a privileged basis, a neuron is
+monosemantic when it carries one feature and polysemantic when it carries several. In this repo
+a neuron carries feature i when |W[h, i]| is at least 25% of its largest weight (E07, E08).
+
+**Neuron stack plot** (p. 32). One column per neuron; each block is one of its weights, with
+height |weight| and a color per feature (here: the feature's superposition score); negative
+weights hang below the axis. Polysemantic neurons are the columns with more than one block.
+
+**Energy-level jump** (p. 26). During training a feature's dimensionality Dᵢ jumps from one
+level (e.g. 0) to another (e.g. 1/2) in a short window, and the loss drops at the same time.
+
+**Adversarial vulnerability** (p. 29). How much an L2 perturbation of 0.1 × the average input
+norm, built from a row of WᵀW, raises the loss, relative to a model without superposition:
+(L′ − L)/(L′₀ − L₀). It grows with features per dimension, 1/D*.
+
 **Sparse autoencoder (SAE)** (pp. 42–43, footnote 20). Not named in the paper; it is the modern
 realization of the paper's "Approach 2: finding an overcomplete basis": learn an overcomplete,
 sparse code for hidden activations so that each dictionary direction corresponds to a feature.

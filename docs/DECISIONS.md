@@ -307,3 +307,158 @@ n = 80, m = 20).
 - **Caveat surfaced by the lab:** "nearest fraction" labels are hints only: 2/5 and 3/8 are
   0.025 apart, and in the importance-weighted pentagon the least important feature has
   Dᵢ ≈ 0.387, nearer 3/8. The Playground says so under its table.
+
+## Phase 4: dynamics, robustness, neurons
+
+### D-401 · 2026-09-29 · Phase 4 built while Phase 3 is unfinished
+- **Decision:** Phase 4 was executed although `docs/progress/phase-3.md` does not exist and
+  PLAN.md's Phase 3 items are unchecked. The E02–E04 modules, `theory.py` additions and
+  `plotting/{geometry,phase}.py` committed in `4355d5d` and `acec078` were left untouched and
+  unregistered (they have no configs, tests, notebooks, app pages, runs or DECISIONS entries;
+  their docstrings cite D-306, which does not exist yet). Phase 4 uses none of that code: E05(a)
+  and E06 train their own uniform models and take the D* = 1/2 plateau from the paper's p. 17
+  reading (SPEC §7 E03), not from an E03 run.
+- **Rationale:** SPEC §11 allows experiments from Phase 3 on to be built in parallel as
+  independent units, each owning its files; shared files (registry, docs) are integrated at the
+  end of the phase. Phase 4's registry and doc edits add rows without changing Phase 3's.
+- **Alternatives:** stop and report (the request's stop condition was a failing
+  `make lint test`, which passed); finish Phase 3 first (outside the request).
+
+### D-402 · 2026-09-29 · E05(a): setup, loss curve and what counts as a jump
+- **Setup:** uniform setup of p. 17 (n = 400, m = 30, Iᵢ = 1, ReLU output) at 1/(1 − S) = 3,
+  inside the paper's 1/2 plateau (roughly [2.6, 3.7], p. 17); 4 restarts × 80,000 steps, batch
+  256, Adam 1e-3, a snapshot every 100 steps. The p. 26 figure runs to 100,000 steps; 80,000
+  keeps the quick profile under 10 minutes on a laptop CPU and, in a prototype of the same
+  setup, every restart's late jump came between 33,000 and 52,000 steps. Batch 256 (not 1024)
+  is for run time: 4 × 80,000 steps at batch 1024 would take about 20 minutes.
+- **Loss curve:** every snapshot's loss on one fixed batch of 8,192 inputs, so that differences
+  between snapshots come from the weights only. The paper's loss drops are small (≈ 0.8% on
+  p. 26; ours ≈ 0.2%), well below the training-batch noise.
+- **Jump:** the first 2,000-step window in which a feature's Dᵢ changes by more than 0.15
+  (SPEC), starting from a level held within ±0.05 for the preceding 5,000 steps. The
+  stability condition separates jumps *between levels* (p. 26: features "jump between different
+  feature dimensionalities") from the initial organization of the weights, when every Dᵢ moves
+  and the loss falls steeply.
+- **Coinciding loss drop:** L(t) − L(t + 2w) > 0 (the drop lags the start of the rise, so we
+  measure over the jump window and one more), at least 3× the background decrease over an
+  equally long stretch of the stable window, and larger than the loss's max − min during the
+  stable window (its fluctuation level).
+- **Provenance of the thresholds:** fixed from the paper's description and SPEC's 0.15 before
+  the graded run, then checked against the prototype above (not cited).
+- **Alternatives:** training-batch loss (too noisy); comparing with the window after the jump
+  (penalizes drops that last longer than one window); relative-drop thresholds (arbitrary).
+
+### D-403 · 2026-09-29 · E05(b): densities, near-zero initialization, training length
+- **Decision:** two correlated sets of three features in m = 3, Iᵢ = 1, set densities
+  1 − S ∈ {0.01, 0.03, 0.1} (the paper gives none), 16 restarts each, 30,000 steps, a snapshot
+  every 50 steps. The graded runs start from 0.1 × the Xavier init; the full profile adds the
+  plain Xavier init (scale 1) as a variant.
+- **Rationale:** p. 27 describes this figure's runs as "initially, weights are initialized
+  randomly close to zero", and its stages A → B start from there. With SPEC §3's Xavier init
+  (std √(2/9) ≈ 0.47, norms ≈ 0.75) the weights never pass through a near-zero stage. The
+  scaling keeps SPEC §3's other guarantees: instance k's init still depends only on
+  (seed, k), and biases start at 0. In prototypes, densities 0.01–0.1 end as octahedra and 0.3
+  in a different, PCA-like solution; 0.01 shows the paper's long aligned-triangle stage (C)
+  before the rotation into the antiprism (D), which took up to ~20,000 steps.
+- **Alternatives:** one density (loses the density dependence of the trajectory types);
+  Xavier init only (misses stage A).
+
+### D-404 · 2026-09-29 · E05(b): geometric stages and trajectory types
+- **Decision:** each snapshot is classified by rotation-invariant tests, in this order:
+  *small* (mean ‖Wᵢ‖ < 0.3); *octahedron* (all ‖Wᵢ‖ > 0.5, every feature has a partner in the
+  other set with cos < −0.95, and all within-set |cos| < 0.1); *collapsed* (mean within-set
+  cos ≥ 0.8 in both sets); *prism* (set centroids opposed, cos ≤ −0.9); otherwise
+  *transition*. A trajectory type is the ordered list of stages lasting ≥ 1,000 steps (the
+  final stage always counts).
+- **Rationale:** these are the paper's A–D stages (p. 27) written as tests. In an aligned pair
+  of triangles on opposite sides, cross-set partners sit at cos −1/3 or −2/3; after the 60°
+  rotation into the antiprism they are exactly antipodal, which is the octahedron test. The
+  1,000-step minimum keeps transient flickers out of the type while keeping the paper's
+  plateaus (hundreds to thousands of steps).
+- **Alternatives:** clustering trajectories (opaque); classifying by loss plateaus (the loss
+  alone cannot name the geometry).
+
+### D-405 · 2026-09-29 · E06: the attack and the vulnerability measure
+- **Budget:** ε = 0.1 × the mean L2 norm of inputs drawn at that sparsity, zeros included
+  (p. 29: "0.1 of the average input norm").
+- **Candidates:** δᵢ = ε (WᵀW)ᵢ/‖(WᵀW)ᵢ‖₂ for every feature with a nonzero row, in the positive
+  direction as written on p. 29 (it raises output i's pre-activation by the most any budget-ε
+  perturbation can). δ = 0 is also allowed, since the budget is a maximum.
+- **Choice:** per input, the most harmful candidate (a per-example worst case: an adversarial
+  example is chosen for its input). The paper's "taking the one of these attacks which most
+  harms model performance" could also mean one attack per model; per-example is the standard
+  notion and never weaker.
+- **Loss:** the output on x + δ against the *clean* target x.
+- **Reference:** the no-superposition model W = [Iₘ | 0], b = 0, attacked with the same inputs
+  and budget; its damage is exactly maxᵢ<ₘ Iᵢ ε² (unit-tested). Vulnerability = (L′ − L) /
+  (L′₀ − L₀), as on the p. 29 axis. The paper does not say which model it used; any model
+  without superposition that represents the top features perfectly gives the same damage.
+- **Rise:** V(sparsest)/V(densest) > 2 (SPEC; paper > 3×); Spearman ρ(V, 1/D*) ≥ 0.8.
+- **Not done:** gradient attacks and adversarial training (SPEC: optional).
+- **Alternatives:** a single universal attack per model; the linear model or the densest
+  trained model as reference (both ≈ the same damage; the explicit model makes the ratio exactly
+  1 without superposition).
+
+### D-406 · 2026-09-29 · E06: which models to attack
+- **Decision:** the graded sweep is the uniform setup of p. 17 (n = 400, m = 30, Iᵢ = 1) over
+  1/(1 − S) ∈ [1, 10], 12 log-spaced points × 2 restarts, 10,000 steps at batch 256. SPEC's
+  example n = 20, m = 5 (Iᵢ = 0.7ⁱ) is graded over the same range (10 points × 4 restarts,
+  batch 1024) and also swept over [10, 1000] (7 points), reported without grading.
+- **Rationale:** the p. 29 figure plots 1/(1 − S) from 1 to 10 with 1/D* rising to about 5,
+  which only the uniform setup does (n = 20, m = 5 cannot exceed 1/D* = 4 and is near 1.5 at
+  1/(1 − S) = 10). Disclosure: a prototype of n = 20, m = 5 over [1, 1000] showed vulnerability
+  rising to ≈ 2 by 1/(1 − S) ≈ 12 and then falling, because ε shrinks with the input norm until
+  the models' negative biases absorb the whole push. The graded range follows the paper's
+  figure; the extended range is reported so that this behavior stays visible.
+- **Alternatives:** n = 20, m = 5 only (does not match the figure); grading the extended range
+  (outside the paper's claim).
+
+### D-407 · 2026-09-29 · E07: grid, restarts, polysemanticity, sidestepping
+- **Decision:** 1 − S ∈ {1, 0.5, 0.3, 0.2, 0.15, 0.12, 0.07, 0.03}, one or more points in each
+  regime p. 33 names; best of 100 restarts per setting (SPEC quick; the paper used 1,000),
+  10,000 steps at batch 256. A neuron carries feature i when |W[h, i]| ≥ 25% of its largest
+  |weight| (the D-110 default of `neuron_polysemanticity`); dead below 0.05; monosemantic = one
+  feature. "Dense" is 1 − S = 1. The count criterion uses E01's tolerance rule.
+- **Sidestepping (p. 34):** a variant with a hidden bias, h = ReLU(Wx + c), trained at
+  1 − S ∈ {1, 0.1, 0.03} (20 restarts); we report the share of positive cᵢ and how often the
+  hidden ReLU clips (negative pre-activation on inputs with an active feature), against the
+  replication model at the same sparsity. Never the replication default.
+- **Rationale:** batch 256 because 800 instances at batch 1024 would take ≈ 25 minutes on a
+  CPU; restarts compensate for the noisier optimization. The paper's second sidestepping route
+  ("simulate a bias by averaging over many features") is not tested.
+
+### D-408 · 2026-09-29 · E08: setups and how the criteria are measured
+- **(a)** n = 3, m = 6, dense (1 − S = 1), Iᵢ = 1, 8 restarts (the paper gives neither
+  density nor importance). A neuron is *positive-side(i)* / *negative-side(i)* when, after
+  footnote-15 normalization, its W₁ row reads only feature i (other weights < 25% of the
+  largest) and its W₂ column writes positively, mainly to output i.
+- **(b)** the p. 37 sparsities, 4 restarts × 10,000 steps, batch 1024.
+- **Per-feature loss:** E[(|xᵢ| − y′ᵢ)²] from `metrics.per_feature_loss`, which conditions on
+  feature i's own activity (exact decomposition; 20,000 samples per term), divided by the loss
+  of predicting the mean, Var(|xᵢ|) = p/3 − p²/4. Plain Monte Carlo would see a feature active
+  only once per thousand samples at 1 − S = 0.001.
+- **Computed well:** ratio < 0.5 (SPEC). A feature computed on one side only (ReLU(xᵢ) but not
+  ReLU(−xᵢ)) has a ratio just above 0.5, so it sits on this boundary; the precise estimator
+  keeps it from crossing by noise, and the side diagnostic reports one-sided features
+  separately.
+- **Neurons:** counted on footnote-15-normalized W₁ with the 25% rule; a neuron whose
+  normalized W₂ column is below 0.05 everywhere is dead. *Primary + secondary* (p. 38): a
+  polysemantic neuron whose largest |W₁| is ≥ 2× the next.
+
+### D-409 · 2026-09-29 · E08(b): sparse training attempts and the dead-side diagnostic
+- **What was tried** (prototypes before fixing the quick profile, not cited; features computed
+  well at 1 − S = 0.001, best restart): 2 restarts × 10,000 steps: 16 (with a noisier
+  4,000-sample estimate); 4 restarts × 10,000: 11; 2 × 30,000 steps: 8; learning rate 3e-3: 8;
+  batch 4,096: 11. More restarts or steps did not approach m/2 = 20, and longer training did
+  not help at all.
+- **Diagnosis:** at very sparse settings nearly every input has one active feature, so each
+  *side* of feature i (xᵢ > 0 or < 0) is trained only by its own examples. With b = 0 at
+  initialization (SPEC §3), a side whose gain Σₕ W₂[i,h] ReLU(±W₁[h,i]) is negative gives a
+  negative pre-activation, the output ReLU clips it, and no gradient reaches it. The run reports
+  (INFO `b_side_diagnostics`) how many sides were alive at initialization and how many of the
+  alive and of the dead ones end up computed.
+- **Variant:** INFO `b_bias_init_variant` retrains 1 − S ∈ {0.01, 0.001} with the output bias
+  starting at +0.1 (no side starts dead). It is a diagnostic; SPEC §3's zero init stays the
+  replication default.
+- **Not done:** the reference implementations were not consulted. SPEC §2 allows it now (an
+  honest attempt failed); it is left to the owner as the next diagnostic step (open issue).

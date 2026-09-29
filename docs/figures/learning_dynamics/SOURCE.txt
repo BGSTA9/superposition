@@ -1,0 +1,6 @@
+experiment: learning_dynamics
+run_id: 20260929T172920Z-2fae0fc5
+profile: quick
+git_commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+git_dirty: False
+figures: energy_levels.png, energy_levels_restart1.png, energy_levels_restart2.png, energy_levels_restart3.png, stage_raster.png, trajectories.png

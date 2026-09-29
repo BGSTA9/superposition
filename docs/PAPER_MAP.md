@@ -23,10 +23,10 @@ parsed from this file, so edit it here).
 | ↳ Feature Dimensionality; Why These Geometric Structures? | 18–20 | `metrics.feature_dimensionality`, `metrics.geometry_graph` | E03 | 05 | Geometry |
 | ↳ Aside: Polytopes and Low-Rank Matrices | 20–21 | `metrics` (simplex test) | — | 05 | — |
 | The Geometry of Superposition: Non-Uniform Superposition | 21–26 | `data.CorrelatedSets`, `data.AnticorrelatedSets` | E04 nonuniform_geometry | 05 | Non-uniform |
-| Superposition and Learning Dynamics | 26–28 | `train` (snapshots) | E05 learning_dynamics | 06 | Dynamics |
-| Relationship to Adversarial Robustness | 28–30 | planned (Phase 4): `adversarial` | E06 adversarial | 07 | Adversarial |
-| Superposition in a Privileged Basis | 31–34 | `models.TiedModel(hidden_act="relu")` | E07 privileged_basis | 08 | Playground (ReLU hidden, W view); Neurons |
-| Computation in Superposition | 34–39 | `models.AbsModel` | E08 abs_computation | 08 | Neurons |
+| Superposition and Learning Dynamics | 26–28 | `train` (snapshots), `experiments.learning_dynamics` (jump detector, geometric stages), `plotting.dynamics` | E05 learning_dynamics | 06 | Dynamics |
+| Relationship to Adversarial Robustness | 28–30 | `adversarial` (analytic attacks, vulnerability), `plotting.adversarial` | E06 adversarial | 07 | Adversarial |
+| Superposition in a Privileged Basis | 31–34 | `models.TiedModel(hidden_act="relu")`, `metrics.neuron_polysemanticity`, `plotting.neurons` (stack plots) | E07 privileged_basis | 08 | Playground (ReLU hidden, W view); Neurons |
+| Computation in Superposition | 34–39 | `models.AbsModel`, `metrics.normalize_hidden_units`, `metrics.per_feature_loss` | E08 abs_computation | 08 | Neurons |
 | ↳ The Asymmetric Superposition Motif | 38–39 | planned (Phase 5): `interp` | E09 mech_interp_abs | 09 | Neurons |
 | The Strategic Picture of Superposition | 40–44 | — | — | 10 | — |
 | ↳ Approach 1: models without superposition (L1) | 42 | `train(l1_hidden=…)` | E11 l1_removes_superposition | 10 | SAE lab |
@@ -36,6 +36,6 @@ parsed from this file, so edit it here).
 | Related Work | 47–50 | — | — | — | — |
 | Comments & Replications (Redwood, McGrath, OpenAI) | 51–53 | `models` activation registry; `theory` confused family | E12 activation_functions; E02 | 04, 11 | Phase diagrams |
 | Citation information | 55 | `references/README.md`, `CITATION.cff` | — | — | — |
-| Footnotes (1: importance; 15: abs rescaling; 17: losses not comparable) | 56–57 | `train` loss; `plotting` (Phase 4) | — | — | — |
+| Footnotes (1: importance; 15: abs rescaling; 17: losses not comparable) | 56–57 | `train` loss; `metrics.normalize_hidden_units` (15) | E08 (15) | 08 | Neurons |
 | Appendix: Nonlinear Compression | 60 | — | — | — | — |
 | Appendix: Compressed sensing lower bounds | 61–62 | — | — | — | — |

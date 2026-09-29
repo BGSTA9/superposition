@@ -1,0 +1,6 @@
+experiment: adversarial
+run_id: 20260929T173800Z-e84cec26
+profile: quick
+git_commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+git_dirty: False
+figures: vulnerability.png, vulnerability_vs_features_per_dimension.png

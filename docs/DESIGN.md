@@ -36,14 +36,15 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
 | `data` | feature distributions returning `(batch, inst, feat)` | torch |
 | `models` | `TiedModel`, `AbsModel`, activation registry, per-instance init | utils |
 | `train` | trainer, evaluation, `select_best` | config, data |
-| `metrics` | pure metric functions | torch, networkx |
+| `metrics` | pure metric functions of W; `loss_by_num_active` and `per_feature_loss` also run a model on sampled inputs | torch, networkx, data |
 | `theory` | closed forms (Phase 1: linear optimum; Phase 3: decompositions, phase diagrams) | torch |
+| `adversarial` | analytic L2 attacks, no-superposition reference, vulnerability (p. 29) | models |
 | `acceptance` | criteria, statuses, `acceptance.json` payload | — |
 | `runs` | run directories, manifests, latest-run lookup | config |
 | `plotting/` | figures from arrays; `style` holds colors and rc settings | matplotlib |
 | `experiments/` | one module per experiment + `common`, `base`, `runner`, registry | all of the above |
 | `report` | cited runs (`docs/cited_runs.yaml`), REPRODUCTION.md tables | experiments, runs |
-| `lab` | Playground jobs, per-feature table, probe, paper map, status table (no Streamlit) | experiments.common, metrics, report |
+| `lab` | Playground jobs, per-feature table, probe, paper map, status table, loaders for the results pages (no Streamlit) | experiments, metrics, report, plotting |
 | `cli` | Typer commands | runner, report |
 | `app/` | Streamlit pages (layout only) and `lab_ui.py` helpers | lab, plotting |
 

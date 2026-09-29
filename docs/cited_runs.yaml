@@ -1,5 +1,27 @@
 # Runs cited by docs/REPRODUCTION.md, one per experiment (written by
 # `superposition report --pin <experiment>`; do not edit by hand).
+abs_computation:
+  run_id: 20260929T175145Z-5a0a35cf
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  dirty: false
+  overall: PARTIAL
+  n_passed: 2
+  n_graded: 4
+  wall_clock_s: 369.381
+adversarial:
+  run_id: 20260929T173800Z-e84cec26
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  dirty: false
+  overall: PARTIAL
+  n_passed: 2
+  n_graded: 4
+  wall_clock_s: 400.746
 basic_results:
   run_id: 20260929T093755Z-2cb0bbc4
   profile: quick
@@ -22,3 +44,25 @@ intro_pentagon:
   n_passed: 11
   n_graded: 11
   wall_clock_s: 61.905
+learning_dynamics:
+  run_id: 20260929T172920Z-2fae0fc5
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  dirty: false
+  overall: PASS
+  n_passed: 2
+  n_graded: 2
+  wall_clock_s: 516.428
+privileged_basis:
+  run_id: 20260929T174443Z-d54df07e
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  dirty: false
+  overall: PASS
+  n_passed: 3
+  n_graded: 3
+  wall_clock_s: 418.544

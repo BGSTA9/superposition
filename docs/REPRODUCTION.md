@@ -17,6 +17,10 @@ PDF print of the paper (see `references/README.md`).
 |---|---|---|---|---|---|---|
 | E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20260929T093651Z-5eeb804c` | quick · cpu |
 | E01 | `basic_results` | pp. 10–12 | **PASS** | 12/12 | `20260929T093755Z-2cb0bbc4` | quick · cpu |
+| E05 | `learning_dynamics` | pp. 26–28 | **PASS** | 2/2 | `20260929T172920Z-2fae0fc5` | quick · cpu |
+| E06 | `adversarial` | pp. 29–30 | **PARTIAL** | 2/4 | `20260929T173800Z-e84cec26` | quick · cpu |
+| E07 | `privileged_basis` | pp. 31–34 | **PASS** | 3/3 | `20260929T174443Z-d54df07e` | quick · cpu |
+| E08 | `abs_computation` | pp. 34–39 | **PARTIAL** | 2/4 | `20260929T175145Z-5a0a35cf` | quick · cpu |
 <!-- END AUTO:STATUS -->
 
 ## E00 intro_pentagon (p. 2)
@@ -178,3 +182,297 @@ under-represents features came from reading low-resolution figures (DECISIONS.md
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `340f825`): `20260929T093755Z-2cb0bbc4`
 (472 s wall-clock). Full profile (MPS): `20260929T090856Z-6d287488` (1,673 s).
+
+## E05 learning_dynamics (pp. 26–28)
+
+**Paper's claims.** (a) In the uniform setup (many features of equal importance and sparsity,
+p. 17), training is "dominated by 'energy level jumps' where features jump between different
+feature dimensionalities", and the loss drops suddenly when they do (p. 26). (b) Six features
+in m = 3, as two correlated sets of three, learn through a sequence of geometric
+transformations visible as regimes of the loss curve: weights near zero (A), the sets push
+apart (B), each set expands into a triangle (C), the triangles rotate into an antiprism, an
+octahedron with antipodal pairs joining the two sets (D); other trajectories exist, varying at
+step C (p. 27).
+
+**Our figures** (quick profile): (a) Dᵢ of all 400 features and the loss over training, for
+the restart with the largest coinciding loss drop (the other restarts are in
+`docs/figures/learning_dynamics/`); (b) one run's weight trajectories at stages A–D above its
+loss curve, and the stage of every run over training.
+
+![E05(a) energy levels](figures/learning_dynamics/energy_levels.png)
+
+![E05(b) trajectories](figures/learning_dynamics/trajectories.png)
+
+![E05(b) stages of every run](figures/learning_dynamics/stage_raster.png)
+
+**Status: PASS (2/2 graded criteria).**
+
+*(a) Energy levels.* All four restarts (n = 400, m = 30, 1/(1 − S) = 3) organize within about
+5,000 steps into 58 features at Dᵢ ≈ 1/2 and 342 at 0, with Σᵢ Dᵢ ≈ 29.87: 29 clean digons,
+and one dimension shared by a few weak features. They then sit on a plateau (the loss changes
+by at most 0.015 between steps 10,000 and 25,000; its fluctuations are ≈ 0.011) until two of
+the weak features win that dimension. Their Dᵢ jumps from ≈ 0.05 towards 1/2 (by > 0.15 within 2,000 steps; one
+overshoots to ≈ 0.6 before settling) and the loss drops by 0.043–0.055 within ≈ 4,000 steps,
+between steps 29,200 and 52,100 depending on the restart. The detector found exactly these
+two features in every restart (8 jumps, all with a coinciding loss drop) and nothing else.
+Every restart ends with 60 features at 1/2 and Σᵢ Dᵢ = 29.994 (D* ≈ 0.491, inside the p. 17
+plateau). This is the p. 26 picture: a long plateau with one dimension badly used, then a
+discrete jump and a sudden drop.
+
+*(b) Transformations.* All 48 runs (0.1 × Xavier init; set densities 0.01, 0.03, 0.1; 16
+each) end as the octahedron with cross-set antipodal pairs. The stages appear in the paper's
+order: every run passes through *collapsed* (each set moving as one direction) for a median
+750–1,075 steps; 38 of 48 then sit in the aligned *prism* for at least 1,000 steps (median
+3,950 steps at 1 − S = 0.01, 1,475 at 0.03, 3,300 at 0.1) before rotating into the antiprism;
+others go straight to the octahedron, as the paper notes for step C. Trajectory types (stages
+lasting ≥ 1,000 steps) are in the evidence table.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E05 -->
+Run `20260929T172920Z-2fae0fc5` · profile `quick` · seed 0 · device `cpu` · commit `5a825d0653` · wall-clock 516.428 s · overall **PASS** (2/2)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| a_energy_levels | (a) At least one jump of a feature's Dᵢ by > 0.15 within 2,000 steps, from a level held for 5,000 steps, coinciding wit… | p. 26 | PASS | {"per_restart": {"restart 0": {"jumps": 2, "with_loss_drop": 2}, "restart 1": {"jumps": 2, "with_loss_drop": 2}, "restart 2": {"jumps": 2, … | {"jump": "\|ΔDᵢ\| > 0.15 within 2000 steps", "loss_drop": "> 3.0× background an… |
+| a_energy_levels | (a) Final state per restart: D* (plateau value 1/2), Σᵢ Dᵢ (vs m) and how many features end at Dᵢ ≈ 1/2 or ≈ 0 | pp. 17, 26 | INFO | {"restart 0": {"D_star": 0.4907, "sum_D": 29.994, "at_1/2": 60, "at_0": 340, "other": 0, "loss": 29.4576}, "restart 1": {"D_star": 0.4912, … | — |
+| a_energy_levels | (a) Every detected jump (feature, steps, Dᵢ before → after, loss drop over the jump and one more window, background dro… | p. 26 | INFO | [{"restart": 0, "feature": 165, "steps": "43100–45100", "D": "0.05 → 0.23", "loss_drop": 0.0508, "background": 0.0029, "plateau_range": 0.0… | — |
+| b_transformations | (b) At least one restart ends in the octahedron: three orthogonal antipodal pairs, each joining features of different c… | p. 27 | PASS | {"octahedra_per_set_density": {"1-S=0.01": "16/16", "1-S=0.03": "16/16", "1-S=0.1": "16/16"}} | ≥ 1 restart |
+| b_transformations | (b) Trajectory types: the stages each restart passes through (stages shorter than 1,000 steps left out), counted per in… | p. 27 | INFO | {"init 0.1× · 1-S=0.01": {"collapsed → transition → prism → octahedron": 7, "transition → prism → octahedron": 5, "collapsed → transition →… | — |
+| b_transformations | (b) When the octahedron is first reached, and how long runs sit in the aligned 'prism' stage (C) before rotating into t… | p. 27 | INFO | {"init 0.1× · 1-S=0.01": {"median_first_octahedron_step": 6975, "restarts_with_prism_stage": 13, "median_prism_steps": 3950}, "init 0.1× · … | — |
+<!-- END AUTO:E05 -->
+
+**Discrepancies and notes.**
+- *Stage B.* The paper's panel B shows the two sets pushed apart along one axis. In our runs,
+  while each set is collapsed onto one direction, the two directions are close to orthogonal
+  (median cos between the set centroids ≈ −0.05), the linear two-component (PCA-like)
+  solution the paper mentions ("the toy network learns a linear PCA solution before moving to
+  a better nonlinear solution"). The sets end opposed only in the prism stage. Hypothesis: the
+  unstated density, init scale or importance of the paper's run; D-403.
+- *Initialization.* Part (b) starts from 0.1 × the Xavier init to follow p. 27 ("initially,
+  weights are initialized randomly close to zero"); SPEC §3's plain Xavier init is run as a
+  variant in the full profile (D-403).
+- *Loss size.* Our jump's loss drop is ≈ 0.2% of the loss (p. 26: ≈ 0.8%, on a differently
+  normalized loss); it is visible because every snapshot is evaluated on the same 8,192 inputs
+  (D-402).
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T172920Z-2fae0fc5`
+(516 s wall-clock).
+
+## E06 adversarial (pp. 29–30)
+
+**Paper's claim (p. 29).** With L2 attacks of at most 0.1 of the average input norm, built
+analytically from the rows of WᵀW, "vulnerability to adversarial examples sharply increases as
+superposition forms (increasing by >3x), and … closely tracks the number of features per
+dimension (the reciprocal of feature dimensionality)"; p. 30 plots vulnerability against
+1/D*.
+
+**Our figures** (quick profile; best restart per sparsity): vulnerability relative to a
+no-superposition model and 1/D* against 1/(1 − S) for each setting, and vulnerability against
+1/D*.
+
+![E06 vulnerability](figures/adversarial/vulnerability.png)
+
+![E06 vulnerability vs features per dimension](figures/adversarial/vulnerability_vs_features_per_dimension.png)
+
+**Status: PARTIAL (2/4 graded criteria).**
+
+*Uniform setup (n = 400, m = 30, Iᵢ = 1; the setting the p. 29 axes show): both criteria
+pass.* Vulnerability is 1.03× at 1/(1 − S) = 1 and 8.70× at 10, a rise of 8.5× (paper: > 3×),
+and its Spearman correlation with 1/D* across the 12 sparsities is 1.0 (1/D* rises from 1.00
+to 4.58). The curve has the paper's shape: flat while there is no superposition (V ≈ 1.03 up
+to 1/(1 − S) = 1.23), a rise as antipodal pairs form, a shoulder while 1/D* sits near 2
+(V = 2.6–2.7 at 1/(1 − S) = 2.8–3.5, the p. 17 plateau), and a second rise as features pack
+more densely. The p. 30 scatter reaches about 8× at 1/D* ≈ 5; ours reaches 8.7× at 4.58.
+
+*n = 20, m = 5 (Iᵢ = 0.7ⁱ; SPEC's example), same range: both criteria fail.* This model hardly
+enters superposition in the range (1/D* ≤ 1.82), and vulnerability rises from 0.99 to only
+1.51 (rise 1.53×; peak 1.51 at 1/(1 − S) = 10), with Spearman ρ = 0.78 (threshold 0.8): it
+tracks 1/D* up to 1/(1 − S) ≈ 3.6, then dips to 1.10 while 1/D* keeps rising slowly.
+
+*n = 20, m = 5 extended to 1/(1 − S) = 1,000 (not graded).* Vulnerability peaks at 1.98 at
+1/(1 − S) = 21.5 (1/D* ≈ 1.96), then falls to 0.38 at 1,000 although 1/D* rises to 3.15
+(Spearman −0.79 over this range).
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E06 -->
+Run `20260929T173800Z-e84cec26` · profile `quick` · seed 0 · device `cpu` · commit `5a825d0653` · wall-clock 400.746 s · overall **PARTIAL** (2/4)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| uniform_n400_m30 | Vulnerability rises as superposition forms: V(sparsest)/V(densest) > 2 over 1/(1 − S) ∈ [1, 10] (paper: > 3×) | p. 29 | PASS | {"rise": 8.469, "V_densest": 1.027, "V_sparsest": 8.695, "V_max": 8.695, "V_max_at": 10.0} | > 2 |
+| uniform_n400_m30 | Spearman ρ between vulnerability and features per dimension 1/D* ≥ 0.8 across the sweep | pp. 29–30 | PASS | 1.0 | ≥ 0.8 |
+| uniform_n400_m30 | Per sparsity: vulnerability V, features per dimension 1/D*, budget ε and the feature most often targeted by the worst-c… | p. 29 | INFO | {"1": {"V": 1.027, "1/D*": 1.002, "eps": 1.1543, "most_attacked": 141}, "1.23": {"V": 1.025, "1/D*": 1.001, "eps": 1.0397, "most_attacked":… | — |
+| n20_m5 | Vulnerability rises as superposition forms: V(sparsest)/V(densest) > 2 over 1/(1 − S) ∈ [1, 10] (paper: > 3×) | p. 29 | FAIL | {"rise": 1.532, "V_densest": 0.989, "V_sparsest": 1.514, "V_max": 1.514, "V_max_at": 10.0} | > 2 |
+| n20_m5 | Spearman ρ between vulnerability and features per dimension 1/D* ≥ 0.8 across the sweep | pp. 29–30 | FAIL | 0.7818 | ≥ 0.8 |
+| n20_m5 | Per sparsity: vulnerability V, features per dimension 1/D*, budget ε and the feature most often targeted by the worst-c… | p. 29 | INFO | {"1": {"V": 0.989, "1/D*": 1.0, "eps": 0.2572, "most_attacked": 0}, "1.29": {"V": 1.001, "1/D*": 1.001, "eps": 0.2251, "most_attacked": 0},… | — |
+| n20_m5_extended | Vulnerability and 1/D* over 1/(1 − S) ∈ [10, 1000] (not graded): rise V(sparsest)/V(densest) and Spearman ρ(V, 1/D*) | pp. 11, 29 | INFO | {"rise": 0.247, "V_densest": 1.522, "V_sparsest": 0.375, "V_max": 1.981, "V_max_at": 21.544, "spearman": -0.786, "per_sparsity": {"10": {"V… | — |
+<!-- END AUTO:E06 -->
+
+**Discrepancies and hypotheses.**
+- *Why n = 20, m = 5 fails.* The claim is that vulnerability tracks superposition; this model
+  has little superposition over the paper's range (at most 1.8 features per dimension, against
+  4.6 for the uniform model), and its importance decay concentrates the loss on the top
+  features, so the reference damage I₀ε² is large compared with what interference can add. A
+  small rise is what the claim predicts here; the failing criteria reflect our choice to grade
+  a second setting, not a contradiction of the p. 29 figure. We report it as graded because we
+  said we would before running it (D-406).
+- *Extended range.* ε = 0.1 · E‖x‖₂ shrinks with the density (0.069 at 1/(1 − S) = 10, 0.0095
+  at 100, 0.001 at 1,000). Up to 1/(1 − S) = 46 the represented features' biases are ≈ 0; from
+  100 on they are clearly negative (median −0.16 to −0.23 in the cited run's best models,
+  computed in notebook 07), 20 to 200 times larger than ε, and that is exactly where vulnerability
+  falls (1.10 at 100, 0.38 at 1,000). An attack that small cannot lift an output past its
+  threshold, so the measure stops tracking superposition. Untested prediction: a budget that
+  does not shrink with sparsity would keep tracking it (notebook 07, exercise 4).
+- *Operationalization* (D-405): per-example worst case over the n candidate attacks (and δ = 0),
+  loss against the clean target, and the no-superposition reference W = [Iₘ | 0], whose damage
+  equals max Iᵢ ε² exactly (checked in every run; see the INFO notes).
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T173800Z-e84cec26`
+(401 s wall-clock).
+
+## E07 privileged_basis (pp. 31–34)
+
+**Paper's claims.** In the ReLU hidden layer model h = ReLU(Wx), x′ = ReLU(Wᵀh + b), with
+n = 10, m = 5, Iᵢ = 0.75ⁱ (best of 1,000 models per setting), neurons shift from monosemantic to
+polysemantic as sparsity rises, in named regimes (p. 33): all monosemantic (1 − S ≥ 0.5),
+three features in two neurons (0.2–0.5), five in three with two monosemantic neurons (0.15),
+six in four (0.12), eight in five, all polysemantic (0.05–0.08), pairs of neurons per feature
+(≤ 0.04). And the model "will only use the ReLU activation function if absolutely forced": with
+a hidden bias it sets all biases positive and keeps the neurons linear (p. 34).
+
+**Our figures** (quick profile, best of 100 restarts): W (features × neurons) and the neuron
+stack plot for one sparsity per regime, and the neuron counts across sparsity.
+
+![E07 neurons](figures/privileged_basis/neurons.png)
+
+![E07 neuron counts](figures/privileged_basis/neuron_counts.png)
+
+**Status: PASS (3/3 graded criteria).** Dense (1 − S = 1): five monosemantic neurons, one per
+most important feature. The polysemantic count never falls as sparsity rises (0, 0, 2, 2, 3,
+3, 5, 5 at 1 − S = 1, 0.5, 0.3, 0.2, 0.15, 0.12, 0.07, 0.03) and all five neurons are
+polysemantic at the sparsest setting. The regimes match p. 33 closely: at 0.3 and 0.2, three
+monosemantic neurons plus two neurons sharing three features (a binary code); at 0.15, two
+monosemantic and three polysemantic neurons with 7 features represented; at 0.07, all five
+neurons polysemantic with 8 features represented (p. 33: "eight features in five neurons");
+at 0.03, 9 features in five neurons.
+
+*Sidestepping the ReLU (p. 34, INFO).* Given a hidden bias, the best models set **all** five
+biases positive at every tested sparsity (mean 0.28 at 1 − S = 1, 0.93 at 0.1, 0.80 at 0.03),
+and their ReLUs clip only 0.06–0.21% of (input, neuron) pairs, against 34.6% (0.1) and 53.8%
+(0.03) for the replication model without a hidden bias. The sidestepping models also reach
+much lower losses (0.0054 vs 0.0199 at 0.1; 0.00043 vs 0.00288 at 0.03): the ReLU only limits
+this model.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E07 -->
+Run `20260929T174443Z-d54df07e` · profile `quick` · seed 0 · device `cpu` · commit `5a825d0653` · wall-clock 418.544 s · overall **PASS** (3/3)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| — | Dense (1 − S = 1): every neuron is monosemantic (exactly one feature at ≥ 25% of its largest \|weight\|) | pp. 32–33 | PASS | {"features_per_neuron": [1, 1, 1, 1, 1], "monosemantic": 5} | 5/5 neurons carry exactly 1 feature |
+| — | The polysemantic-neuron count never falls more than 1 below any denser setting's count | pp. 32–33 | PASS | {"counts": {"1": 0, "0.5": 0, "0.3": 2, "0.2": 2, "0.15": 3, "0.12": 3, "0.07": 5, "0.03": 5}, "violations_at": []} | {"tolerance": 1} |
+| — | Polysemantic neurons exist at the sparsest setting (1 − S = 0.03) | pp. 32–33 | PASS | 5 | > 0 |
+| — | Best model per sparsity: neuron counts, features per neuron, represented and superposed features, loss, and the share o… | pp. 32–33 | INFO | {"1-S=1": {"mono": 5, "poly": 0, "dead": 0, "features_per_neuron": [1, 1, 1, 1, 1], "represented": 5, "superposed": 0, "loss": 0.05998, "sa… | — |
+| — | p. 34: with a hidden bias the model sets it positive and keeps neurons linear. Per sparsity: share of hidden biases > 0… | p. 34 | INFO | {"1-S=1": {"hidden_biases_positive": "5/5", "mean_hidden_bias": 0.276, "clipped_with_bias": 0.0006, "clipped_without_bias": 0.0076, "loss_w… | — |
+<!-- END AUTO:E07 -->
+
+**Discrepancies and notes.**
+- At 1 − S = 0.12 we find two monosemantic neurons and 7 represented features; p. 33 shows one
+  monosemantic neuron and six features in four neurons. Regimes near 0.12–0.15 are narrow
+  ("this sparsity level … seems quite narrow"), and only 5–8% of our restarts reach the best
+  model's polysemantic count there (vs 78–100% at 0.07 and 0.03): 100 restarts instead of the
+  paper's 1,000 may not find the paper's optimum.
+- Neurons count as carrying a feature when |W[h, i]| ≥ 25% of their largest weight (D-407).
+- Not tested: the second sidestepping route ("simulate a bias by averaging over many
+  features").
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T174443Z-d54df07e`
+(419 s wall-clock).
+
+## E08 abs_computation (pp. 34–39)
+
+**Paper's claims.** (a) With n = 3 features and m = 6 neurons, the model computes |x| exactly
+as ReLU(x) + ReLU(−x): one "positive side" and one "negative side" neuron per feature (p. 36).
+(b) With n = 100, m = 40, Iᵢ = 0.8ⁱ: dense → each neuron represents a single feature; sparse →
+"this model, too, uses superposition to represent more features than it has neurons", and it
+"manages to find solutions that usefully approximate the computation even when each neuron
+encodes a mix of multiple features"; many neurons have a primary feature plus smaller secondary
+ones (pp. 36–38).
+
+**Our figures** (quick profile, footnote-15 normalization): (a) W₁ and W₂ per neuron; (b) |W₁|
+stack plots per sparsity (as p. 37), and features computed well against m/2.
+
+![E08(a) side neurons](figures/abs_computation/abs_n3_m6.png)
+
+![E08(b) stack plots](figures/abs_computation/abs_stack_plots.png)
+
+![E08(b) capacity](figures/abs_computation/abs_capacity.png)
+
+**Status: PARTIAL (2/4 graded criteria).**
+
+*(a) passes exactly.* Each feature gets one positive-side and one negative-side neuron
+(normalized W₁ rows ±eᵢ, off-feature weights ≤ 0.002; W₂ weights 1.000; b = 0) and every
+per-feature loss is 0 to six decimals.
+
+*(b) Neurons: the picture of p. 37 reproduces; the strict dense criterion misses by one
+neuron.* At 1 − S = 1, 39 of 40 neurons are monosemantic (one neuron carries three features),
+so "every neuron is monosemantic" fails; at 1 − S = 0.3 all 40 are. Polysemantic neurons then
+appear (17 at 0.1, 22 at 0.03, 39 at 0.01, 40 at 0.003 and 0.001), with the most features on
+one neuron growing from 1 (at 1 − S = 0.3) to 59 (at 0.001). Neurons with one primary feature (≥ 2× the next weight) plus
+secondary ones peak at intermediate sparsity (11 at 0.1, 15 at 0.03, 8 at 0.01), as p. 38
+describes.
+
+*(b) Computation: does not reproduce.* A feature counts as computed well when its loss is
+below half of what predicting the mean costs. The best models compute 13, 19, 13, 8, 9, 8 and
+3 features well at 1 − S = 1 … 0.001: never more than m/2 = 20, and fewest at the sparsest
+setting (criterion: > 20 there). Even the dense models fall short of the 20 features a
+no-superposition solution computes with two neurons each.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E08 -->
+Run `20260929T175145Z-5a0a35cf` · profile `quick` · seed 0 · device `cpu` · commit `5a825d0653` · wall-clock 369.381 s · overall **PARTIAL** (2/4)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| a_n3_m6 | (a) n = 3, m = 6: each feature gets one positive-side and one negative-side neuron (after footnote-15 normalization) | p. 36 | PASS | {"roles": ["negative-side(0)", "positive-side(0)", "positive-side(1)", "positive-side(2)", "negative-side(2)", "negative-side(1)"], "per_fe… | exactly one of each per feature |
+| a_n3_m6 | (a) Every per-feature loss is below 5% of the loss of predicting the mean | p. 36 | PASS | [0.0, 0.0, 0.0] | < 0.05 |
+| a_n3_m6 | (a) Normalized W₁ rows (per neuron), W₂ columns and b of the best model | p. 36 | INFO | {"W1": [[-1.0, -0.0, -0.002], [1.0, -0.0, -0.002], [-0.0, 1.0, -0.001], [0.001, -0.0, 1.0], [0.001, -0.0, -1.0], [-0.0, -1.0, -0.001]], "W2… | — |
+| b_n100_m40 | (b) Dense (1 − S = 1): every neuron is monosemantic | pp. 36–38 | FAIL | {"monosemantic": 39, "polysemantic": 1, "dead": 0} | 40/40 neurons carry exactly 1 feature |
+| b_n100_m40 | (b) Sparse (1 − S = 0.001): more than m/2 = 20 features computed well (per-feature loss < 50% of predicting the mean) | pp. 36–38 | FAIL | 3 | > 20 |
+| b_n100_m40 | (b) Best model per sparsity: features computed well, neuron counts, polysemantic neurons with a primary feature (≥ 2× t… | pp. 36–38 | INFO | {"1-S=1": {"computed_well": 13, "mono": 39, "poly": 1, "dead": 0, "primary_plus_secondary": 0, "max_features_per_neuron": 3, "loss": 0.0263… | — |
+| b_n100_m40 | (b) Which feature sides get computed (1-sparse relative error < 25%), split by whether the side's gain Σₕ W₂[i,h]·ReLU(… | pp. 36–38 | INFO | {"1-S=1": {"feature_probability": 1.0, "sides_alive_at_init": 91, "computed_if_alive": "68/91", "computed_if_dead": "82/109", "features_bot… | — |
+| b_n100_m40 | (b) Diagnostic variant, not the replication: output bias initialized to 0.1 instead of 0 (2 restarts), against the defa… | pp. 36–38 | INFO | {"1-S=0.01": {"loss_b0=0": 0.00747, "loss_b0=0.1": 0.003363, "computed_well_b0=0": 9, "computed_well_b0=0.1": 10, "both_sides_b0=0.1": 9, "… | — |
+<!-- END AUTO:E08 -->
+
+**Why computation fails here: an optimization problem, not a capacity result.** At very
+sparse settings almost every input has one active feature, so each side of feature i
+(xᵢ > 0 or xᵢ < 0) is trained only by its own examples. With the output bias starting at 0
+(SPEC §3), a side whose initial gain Σₕ W₂[i,h] ReLU(±W₁[h,i]) is negative produces a negative
+pre-activation, the output ReLU clips it, and no gradient ever reaches it. The run measures
+this (INFO `b_side_diagnostics`): at 1 − S = 0.001, 0 of the 89 sides dead at initialization
+are computed after training, against 23 of the 111 alive ones (0.003: 1/87 vs 28/113; 0.01:
+2/87 vs 37/113). A diagnostic variant that starts the output bias at +0.1, so that no side
+starts dead (INFO `b_bias_init_variant`, not the replication), halves the loss (0.00085 →
+0.00040 at 0.001; 0.00747 → 0.00336 at 0.01) and raises the features computed well at 0.001
+from 3 to 14: still short of 20. Dead sides explain much of the gap but not all of it, and
+before fixing the quick profile, more restarts (4), longer training (30,000 steps), a larger
+learning rate (3e-3) and larger batches (4,096) did not reach 20 either (D-409).
+
+**Discrepancies and hypotheses.**
+- *The paper does not quantify computation.* Its evidence is the stack plots (which we
+  reproduce) and the statement that the model "usefully approximates" |x|; the > m/2 criterion
+  is SPEC's operationalization. A one-sided feature (ReLU(xᵢ) only) has a loss ratio just
+  above 0.5, on the criterion's boundary; many of our sparse features are one-sided (21 of the
+  23 computed sides at 0.001 belong to one-sided features).
+- *Hypotheses for the gap:* initialization (the bias-init variant helps a lot), training
+  length or schedule, or details of the paper's setup it does not state (footnote 16 notes the
+  model "learns more easily when there are more neurons"). Next step: consult the reference
+  implementations (allowed by SPEC §2 after this attempt) and run the full profile; see the
+  Phase 4 report.
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T175145Z-5a0a35cf`
+(369 s wall-clock).

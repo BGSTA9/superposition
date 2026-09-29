@@ -6,6 +6,43 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Phase 4: dynamics, robustness, neurons (2026-09-29)
+
+#### Added
+- **E05 learning_dynamics** (pp. 26–28): energy-level jumps in the uniform n = 400, m = 30
+  setup, with a jump detector (stable level → jump → coinciding loss drop on a fixed batch);
+  two correlated sets in m = 3 classified into geometric stages (small, collapsed, transition,
+  prism, octahedron) with trajectory types. PASS 2/2.
+- **E06 adversarial** (pp. 29–30) and `superposition.adversarial`: the analytic per-feature L2
+  attack (budget 0.1 × mean input norm, per-example worst case), a no-superposition reference
+  and vulnerability (L′ − L)/(L′₀ − L₀). PARTIAL 2/4: passes on the uniform setup of the
+  p. 29 figure (8.5× rise, ρ = 1.0), fails on n = 20, m = 5.
+- **E07 privileged_basis** (pp. 31–34): the ReLU hidden layer model across sparsity (best of
+  100 restarts), neuron polysemanticity, and a hidden-bias variant documenting how the model
+  sidesteps its ReLU (p. 34). PASS 3/3.
+- **E08 abs_computation** (pp. 34–39): side neurons for n = 3, m = 6; |W₁| stack plots,
+  features computed well and primary + secondary neurons for n = 100, m = 40; dead-side and
+  bias-init diagnostics. PARTIAL 2/4 (computation in superposition not reproduced; see
+  REPRODUCTION.md).
+- `metrics.per_feature_loss` (exact conditional estimator for very sparse features) and
+  `metrics.normalize_hidden_units` (footnote 15).
+- Plotting: `plotting/dynamics.py` (Dᵢ over training, stage rasters, 3D trajectories in
+  matplotlib and plotly), `plotting/adversarial.py` (p. 29, p. 30), `plotting/neurons.py`
+  (W heatmaps, neuron stack plots, p. 36 weight bars, capacity).
+- Lab pages **Dynamics** (training-step scrubbers, 3D trajectories), **Neurons** (E07/E08;
+  E09 in Phase 5) and **Adversarial**; loaders in `superposition.lab`.
+- Notebooks `06_learning_dynamics`, `07_adversarial`, `08_neurons_and_computation`.
+- Tests: unit tests for the attack, jump detector, stage classifier, neuron roles and
+  per-feature loss; AppTest for the new pages (with and without runs); slow replication tests
+  for E05–E08.
+- Docs: DECISIONS D-401–D-409; REPRODUCTION sections E05–E08; STUDY_GUIDE stops 6–8;
+  GLOSSARY (monosemantic/polysemantic neuron, stack plot, energy-level jump, adversarial
+  vulnerability); PAPER_MAP and DESIGN rows.
+
+#### Changed
+- `superposition list` and the Home status table include E05–E08; the CLI test compares the
+  listing with the registry instead of a fixed list.
+
 ### Phase 2: lab v1 (2026-09-29)
 
 #### Added
