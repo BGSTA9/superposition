@@ -30,7 +30,7 @@ import numpy as np
 import torch
 from jaxtyping import Float, Int
 from torch import Tensor, nn
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from superposition.config import Schedule, TrainConfig
 from superposition.data import FeatureDistribution
