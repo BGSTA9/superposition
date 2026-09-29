@@ -62,8 +62,9 @@ def tradeoff_figure(table: pd.DataFrame, n_hidden: dict[str, int], title: str = 
             ax_n.set_xlabel("λ (L1 coefficient on h)")
             for ax in (ax_l, ax_n):
                 ax.set_xscale("symlog", linthresh=LINTHRESH)
+                ax.set_xlim(-0.3 * LINTHRESH, float(lam.max()) * 1.25)  # no negative λ
                 ax.grid(axis="y")
-        axes[1, 0].legend(loc="upper right")
+        axes[1, 0].legend(loc="lower left")
         fig.text(
             0.99, 0.005, "shaded: no superposition", ha="right", va="bottom", fontsize=7,
             color=INK_SECONDARY,
@@ -77,7 +78,7 @@ def tradeoff_figure(table: pd.DataFrame, n_hidden: dict[str, int], title: str = 
 def tradeoff_curve_figure(table: pd.DataFrame, title: str = "") -> Figure:
     """Per setup: reconstruction loss (x) against superposed features (y), in λ order.
 
-    Labels mark λ = 0, the first superposition-free λ and the largest λ.
+    Labels mark λ = 0 and the first superposition-free λ.
     """
     setups = list(dict.fromkeys(table["setup"]))
     with paper_style():
@@ -90,11 +91,14 @@ def tradeoff_curve_figure(table: pd.DataFrame, title: str = "") -> Figure:
             first_free = next(
                 (i for i, r in enumerate(rows) if float(r["lambda"]) > 0 and _free(r)), None
             )
-            for i in {0, len(rows) - 1, *([first_free] if first_free is not None else [])}:
+            labeled = [(0, (8, -2))] + ([(first_free, (-6, 8))] if first_free is not None else [])
+            for i, offset in labeled:
                 ax.annotate(
-                    f"λ = {float(rows[i]['lambda']):g}", (loss[i], sup[i]), xytext=(6, 6),
+                    f"λ = {float(rows[i]['lambda']):g}", (loss[i], sup[i]), xytext=offset,
                     textcoords="offset points", fontsize=7, color=INK_SECONDARY,
+                    ha="left" if offset[0] > 0 else "right",
                 )  # fmt: skip
+            ax.set_ylim(-0.4, max(sup) * 1.12 + 0.2)
             ax.set_xscale("log")
             ax.set_xlabel("reconstruction loss (log)")
             ax.set_ylabel("superposed features")
