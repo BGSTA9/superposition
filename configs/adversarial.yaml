@@ -30,9 +30,11 @@ base:
     log_every: 100
     eval_samples: 20000
 profiles:
-  # quick: 12 + 10 + 7 sparsities; about 8 minutes on a laptop CPU.
+  # quick: 12 + 10 + 7 sparsities.
+  # Measured: 401 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: denser grids, more restarts, longer training.
+  # full: denser grids, more restarts, longer training. Not yet measured; estimated from the
+  # quick run (401 s on an Apple M2 CPU): ≈ 1 hour on a laptop CPU.
   full:
     settings:
       - {label: uniform_n400_m30, n_features: 400, n_hidden: 30, importance_decay: 1.0,

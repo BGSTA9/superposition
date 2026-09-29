@@ -55,8 +55,11 @@ base:
     min_stage_steps: 1000
 profiles:
   # quick: 4 restarts × 80k steps for (a); 3 densities × 16 restarts × 30k steps for (b).
+  # Measured: 516 s on an Apple M2 CPU (--device cpu).
   quick: {}
   # full: more restarts and longer training, plus the Xavier-init variant of (b) (D-403).
+  # Not yet measured; estimated from the quick run (516 s on an Apple M2 CPU): ≈ 30 min on a
+  # laptop CPU, and ≈ 1 GB of memory for part (a)'s snapshots.
   full:
     energy:
       n_restarts: 8

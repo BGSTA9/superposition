@@ -32,8 +32,10 @@ base:
     eval_samples: 20000
 profiles:
   # quick: 8 sparsities × 100 restarts (800 models) at batch 256.
+  # Measured: 419 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: the paper's 1,000 models per setting on a finer grid (hours on a CPU; use a GPU).
+  # full: the paper's 1,000 models per setting on a finer grid. Not yet measured; estimated from
+  # the quick run (419 s on an Apple M2 CPU for 800 models): ≈ 2 hours on a laptop CPU; use a GPU.
   full:
     feature_probabilities: [1.0, 0.7, 0.5, 0.3, 0.2, 0.15, 0.12, 0.1, 0.08, 0.07, 0.05, 0.04, 0.03, 0.02, 0.01]
     n_restarts: 1000
