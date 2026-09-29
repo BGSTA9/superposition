@@ -1,0 +1,30 @@
+# Paper PDF: never commit it (licensing). Link to the web version instead.
+references/*.pdf
+
+# Run outputs and checkpoints (SPEC §5: results/ is git-ignored)
+results/
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
