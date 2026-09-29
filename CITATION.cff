@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below, and cite the original paper
+  (Elhage et al., 2022) listed under references.
+title: "superposition: an independent replication of Toy Models of Superposition"
+type: software
+authors:
+  - name: "superposition contributors"
+license: MIT
+version: 0.1.0
+date-released: "2026-09-29"
+keywords:
+  - interpretability
+  - superposition
+  - replication
+references:
+  - type: article
+    title: "Toy Models of Superposition"
+    authors:
+      - family-names: Elhage
+        given-names: Nelson
+      - family-names: Hume
+        given-names: Tristan
+      - family-names: Olsson
+        given-names: Catherine
+      - family-names: Schiefer
+        given-names: Nicholas
+      - family-names: Henighan
+        given-names: Tom
+      - family-names: Kravec
+        given-names: Shauna
+      - family-names: Hatfield-Dodds
+        given-names: Zac
+      - family-names: Lasenby
+        given-names: Robert
+      - family-names: Drain
+        given-names: Dawn
+      - family-names: Chen
+        given-names: Carol
+      - family-names: Grosse
+        given-names: Roger
+      - family-names: McCandlish
+        given-names: Sam
+      - family-names: Kaplan
+        given-names: Jared
+      - family-names: Amodei
+        given-names: Dario
+      - family-names: Wattenberg
+        given-names: Martin
+      - family-names: Olah
+        given-names: Christopher
+    journal: "Transformer Circuits Thread"
+    year: 2022
+    url: "https://transformer-circuits.pub/2022/toy_model/index.html"
