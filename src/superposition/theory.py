@@ -162,6 +162,16 @@ def linear_loss_decomposition(
 # --- the exact integral F and the 1-sparse decomposition (p. 13) -----------------------------
 
 
+def _positive_interval(slope: FloatArray, intercept: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """Endpoints of {t ∈ [0, 1] : slope·t + intercept > 0} (an interval, possibly empty)."""
+    safe = np.where(slope == 0, 1.0, slope)
+    root = np.clip(-intercept / safe, 0.0, 1.0)
+    positive = (intercept > 0).astype(np.float64)
+    lo = np.where(slope > 0, root, 0.0)
+    hi = np.where(slope > 0, 1.0, np.where(slope < 0, root, positive))
+    return lo, hi
+
+
 def relu_square_integral(own: ArrayLike, a: ArrayLike, beta: ArrayLike, c: ArrayLike) -> FloatArray:
     """F(γ, α, β, c) = ∫₀¹∫₀¹ (γx − ReLU(αx + βy + c))² dy dx, exactly, elementwise.
 
@@ -205,16 +215,6 @@ def relu_square_integral(own: ArrayLike, a: ArrayLike, beta: ArrayLike, c: Array
     inner = antiderivative(y_hi) - antiderivative(y_lo)
     positive_part = (half * (inner * _GL_WEIGHTS).sum(-1)).sum(0)
     return own**2 / 3 - positive_part
-
-
-def _positive_interval(slope: FloatArray, intercept: FloatArray) -> tuple[FloatArray, FloatArray]:
-    """Endpoints of {t ∈ [0, 1] : slope·t + intercept > 0} (an interval, possibly empty)."""
-    safe = np.where(slope == 0, 1.0, slope)
-    root = np.clip(-intercept / safe, 0.0, 1.0)
-    positive = (intercept > 0).astype(np.float64)
-    lo = np.where(slope > 0, root, 0.0)
-    hi = np.where(slope > 0, 1.0, np.where(slope < 0, root, positive))
-    return lo, hi
 
 
 def relu_square_1d(beta: ArrayLike, c: ArrayLike) -> FloatArray:
@@ -467,13 +467,27 @@ class OptimizerSettings:
     scale each output's bias is optimized on its own (outputs are separable given the scale),
     then the scale is optimized. ``scale_max`` and ``bias_range`` bound the coarse grids; the
     refinement brackets the best grid point. See docs/DECISIONS.md (D-302).
+
+    ``fit_bias = False`` fixes every bias at 0: the setting of McGrath's exact analysis
+    ("ignoring bias terms", p. 51), used to compare with the confused-feature regime.
     """
 
+    fit_bias: bool = True
     scale_max: float = 2.0
     scale_grid: int = 41
     bias_range: tuple[float, float] = (-1.5, 1.5)
     bias_grid: int = 121
     golden_iterations: int = 40
+
+
+def _last_argmin(values: FloatArray) -> NDArray[np.int64]:
+    """Argmin along the last axis, ties resolved to the *largest* index.
+
+    A ReLU output is flat in its bias wherever it is always off (ReLU(b) = 0 for b ≤ 0), so
+    the grid has exact ties there; the optimum, if not in the flat part, lies just to the
+    right of the flat part's last grid point (e.g. b = p/2 for an unrepresented feature).
+    """
+    return values.shape[-1] - 1 - np.argmin(values[..., ::-1], axis=-1)
 
 
 def _golden_minimize(
@@ -562,8 +576,12 @@ def _optimize_unique_factor(
         """For per-cell scales ``(cells,)``: optimal biases ``(cells, k)`` and the loss."""
         biases, total = [], np.zeros(n_cells)
         for i in range(k):
+            if not settings.fit_bias:
+                biases.append(np.zeros(n_cells))
+                total = total + importance[:, i] * output_loss(i, scale, np.zeros(n_cells))
+                continue
             values = output_loss(i, scale[:, None], bias_grid[None, :])
-            start = bias_grid[values.argmin(axis=1)]
+            start = bias_grid[_last_argmin(values)]
             b_i, loss_i = _golden_minimize(
                 lambda c, i=i: output_loss(i, scale, c),
                 start - bias_step,
@@ -578,12 +596,13 @@ def _optimize_unique_factor(
         bias, loss = best_biases(np.zeros(n_cells))
         return FactorSolution(loss=loss, scale=np.zeros(n_cells), bias=bias)
     scale_grid = np.linspace(0.0, settings.scale_max, settings.scale_grid)
+    trial_biases = bias_grid if settings.fit_bias else np.zeros(1)
     coarse = sum(
         importance[:, i, None]
-        * output_loss(i, scale_grid[None, :, None], bias_grid[None, None, :]).min(axis=-1)
+        * output_loss(i, scale_grid[None, :, None], trial_biases[None, None, :]).min(axis=-1)
         for i in range(k)
     )  # (cells, scales): the grid optimum over biases at each grid scale
-    best = scale_grid[np.asarray(coarse).argmin(axis=1)]
+    best = scale_grid[_last_argmin(np.asarray(coarse))]
     step = scale_grid[1] - scale_grid[0]
     scale, _ = _golden_minimize(
         lambda s: best_biases(s)[1],

@@ -236,6 +236,76 @@ def classify_fraction(D: Float[Tensor, ...], tol: float = 0.02) -> Int[Tensor, .
     return torch.where(within, nearest, torch.full_like(nearest, -1))
 
 
+# Uniform polytopes the paper finds (p. 19), keyed by (features, dimensions spanned).
+POLYTOPES: dict[tuple[int, int], str] = {
+    (1, 1): "dedicated dimension",
+    (2, 1): "digon (antipodal pair)",
+    (3, 2): "triangle",
+    (4, 3): "tetrahedron",
+    (5, 2): "pentagon",
+    (8, 3): "square antiprism",
+}
+
+
+def component_geometry(
+    W: Float[Tensor, "hidden feat"],
+    component: list[int] | set[int],
+    rank_rtol: float = 0.1,
+    dimensionality_tol: float = 0.05,
+) -> tuple[int, int, str]:
+    """Name the geometry of one tegum factor (a connected component of the geometry graph).
+
+    Paper: Feature Dimensionality and Why These Geometric Structures?, pp. 18–20. A factor of
+    k features spanning r dimensions is a uniform polytope when every feature has Dᵢ = r/k
+    (its dimensions are shared equally); the paper's characteristic ones are listed in
+    :data:`POLYTOPES`. Dᵢ alone cannot tell them apart (2/5 and 3/8 differ by only 0.025),
+    but (k, r) can. Dᵢ is computed within the factor, where it equals the model's Dᵢ because
+    factors are orthogonal.
+
+    Args:
+        W: one instance, ``(hidden, feat)``.
+        component: feature indices of the factor.
+        rank_rtol: singular values above this fraction of the largest count toward the rank r
+            (trained solutions are only approximately low rank).
+        dimensionality_tol: every Dᵢ must be within this of r/k to count as uniform.
+
+    Returns:
+        ``(k, r, name)``: name is a polytope from :data:`POLYTOPES` if (k, r) is one and the
+        factor is uniform, else ``"k in r (uniform)"`` or ``"k in r (non-uniform)"``.
+    """
+    index = sorted(component)
+    block = W[:, index]
+    singular = torch.linalg.svdvals(block.double())
+    rank = int((singular > rank_rtol * singular.max()).sum()) if singular.numel() else 0
+    k = len(index)
+    dims = feature_dimensionality(block[None])[0]
+    uniform = bool(((dims - rank / k).abs() <= dimensionality_tol).all()) if rank else False
+    if uniform and (k, rank) in POLYTOPES:
+        return k, rank, POLYTOPES[(k, rank)]
+    return k, rank, f"{k} in {rank} ({'uniform' if uniform else 'non-uniform'})"
+
+
+def geometry_census(
+    W: Float[Tensor, "hidden feat"],
+    edge_threshold: float = 0.05,
+    represented_threshold: float = 0.5,
+    rank_rtol: float = 0.1,
+    dimensionality_tol: float = 0.05,
+) -> dict[str, int]:
+    """How many represented features sit in each kind of tegum factor, for one instance.
+
+    Paper: pp. 18–20. Components come from :func:`geometry_graph`; each is named by
+    :func:`component_geometry`. Returns feature counts per name (not factor counts), so the
+    values sum to the number of represented features.
+    """
+    _, components = geometry_graph(W, edge_threshold, represented_threshold)
+    census: dict[str, int] = {}
+    for component in components:
+        k, _, name = component_geometry(W, component, rank_rtol, dimensionality_tol)
+        census[name] = census.get(name, 0) + k
+    return census
+
+
 def neuron_polysemanticity(
     W: Float[Tensor, "inst hidden feat"], rel_threshold: float = 0.25, abs_threshold: float = 0.05
 ) -> Int[Tensor, "inst hidden"]:

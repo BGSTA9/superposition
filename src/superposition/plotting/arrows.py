@@ -51,20 +51,25 @@ def plot_feature_arrows(
     annotate: bool = True,
     subtitle: str = "",
     importance: np.ndarray | None = None,
+    colors: Sequence[str] | None = None,
 ) -> None:
-    """Draw each column of a (2, feat) W as a line from the origin to a dot (p. 2)."""
+    """Draw each column of a (2, feat) W as a line from the origin to a dot (p. 2).
+
+    Colors follow importance (brightest = most important) unless ``colors`` gives one color
+    per feature (e.g. one per correlated set, p. 24).
+    """
     if W.shape[0] != 2:
         raise ValueError(f"expected W of shape (2, feat), got {W.shape}")
     n = W.shape[1]
-    colors = importance_colors(n, importance)
+    palette = list(importance_colors(n, importance)) if colors is None else list(colors)
     ax.set_facecolor(PANEL)
     ax.axhline(0, color=GRID, linewidth=0.8, linestyle=(0, (3, 3)), zorder=0)
     ax.axvline(0, color=GRID, linewidth=0.8, linestyle=(0, (3, 3)), zorder=0)
     # Draw least important first so the important features sit on top.
     for i in reversed(range(n)):
         x, y = W[0, i], W[1, i]
-        ax.plot([0, x], [0, y], color=colors[i], linewidth=2.2, solid_capstyle="round", zorder=2)
-        ax.scatter([x], [y], s=46, color=colors[i], edgecolors=SURFACE, linewidths=1.5, zorder=3)
+        ax.plot([0, x], [0, y], color=palette[i], linewidth=2.2, solid_capstyle="round", zorder=2)
+        ax.scatter([x], [y], s=46, color=palette[i], edgecolors=SURFACE, linewidths=1.5, zorder=3)
         if annotate and np.hypot(x, y) > 0.2:
             ax.annotate(
                 str(i),
