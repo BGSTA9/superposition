@@ -20,7 +20,7 @@ from superposition.acceptance import (
 )
 from superposition.cli import app
 from superposition.config import ExperimentConfig
-from superposition.report import criteria_table, replace_block, status_table
+from superposition.report import criteria_table, replace_block, status_rows, status_table
 from superposition.runs import (
     RESULTS_ENV,
     create_run,
@@ -97,7 +97,7 @@ def test_report_blocks() -> None:
     assert found and "new table" in new and "old" not in new and new.endswith("outro")
     _, found = replace_block(text, "E01", "x")
     assert not found
-    table = status_table({})
+    table = status_table(status_rows({}))
     assert "not run" in table and "intro_pentagon" in table
     doc = acceptance_document(
         experiment="x", code="E99", title="t", paper_pages="p. 1", run_id="r1", profile="quick",
@@ -116,3 +116,68 @@ def test_cli_list_figures_and_app(results: Path) -> None:
     assert missing.exit_code == 1
     bad_profile = runner.invoke(app, ["run", "intro_pentagon", "--profile", "medium"])
     assert bad_profile.exit_code != 0
+
+
+def fake_complete_run(overall: str = "PASS", dirty: bool = False):
+    """A complete intro_pentagon run with a one-criterion acceptance record."""
+    from superposition.runs import create_run, finish_run
+
+    run = create_run("intro_pentagon", ExperimentConfig(experiment="intro_pentagon"), "cpu", seed=0)
+    run.update_manifest(git={"commit": "abc123", "dirty": dirty})
+    criterion = check("c", "a criterion", "p. 2", overall == "PASS", 1.0, 2.0)
+    document = acceptance_document(
+        experiment="intro_pentagon", code="E00", title="t", paper_pages="p. 2",
+        run_id=run.run_id, profile="quick", criteria=[criterion],
+    )  # fmt: skip
+    run.write_acceptance(document)
+    finish_run(run)
+    return run
+
+
+def test_pinning_and_regenerating_reproduction(results: Path, tmp_path: Path) -> None:
+    from superposition.report import load_citations, pin_run, update_reproduction
+
+    cited_file = tmp_path / "cited_runs.yaml"
+    run = fake_complete_run()
+    citation = pin_run("intro_pentagon", path=cited_file)
+    assert (citation.run_id, citation.overall, citation.commit) == (run.run_id, "PASS", "abc123")
+    assert load_citations(cited_file)["intro_pentagon"] == citation
+
+    # A newer run does not change what the docs cite.
+    newer = fake_complete_run(overall="FAIL")
+    citations = load_citations(cited_file)
+    rows = {r.name: r for r in status_rows(citations)}
+    assert rows["intro_pentagon"].source == "cited"
+    assert rows["intro_pentagon"].citation.run_id == run.run_id  # type: ignore[union-attr]
+    assert rows["basic_results"].source == "not run"
+
+    doc = tmp_path / "REPRODUCTION.md"
+    doc.write_text(
+        "<!-- BEGIN AUTO:STATUS -->\nold\n<!-- END AUTO:STATUS -->\n"
+        "<!-- BEGIN AUTO:E00 -->\nold\n<!-- END AUTO:E00 -->\n"
+    )
+    update_reproduction(doc, citations)
+    text = doc.read_text()
+    assert f"`{run.run_id}`" in text and newer.run_id not in text
+    assert "**PASS**" in text and "a criterion" in text
+
+    # Cited run missing locally (e.g. a fresh clone): the status row survives, the block stays.
+    import shutil
+
+    shutil.rmtree(run.path)
+    doc.write_text(doc.read_text().replace("a criterion", "hand-kept"))
+    notes = update_reproduction(doc, citations)
+    assert "hand-kept" in doc.read_text()
+    assert any("not in" in note for note in notes)
+    assert f"`{run.run_id}`" in doc.read_text()
+
+
+def test_pinning_refuses_dirty_runs(results: Path, tmp_path: Path) -> None:
+    from superposition.report import pin_run
+
+    fake_complete_run(dirty=True)
+    with pytest.raises(ValueError, match="dirty"):
+        pin_run("intro_pentagon", path=tmp_path / "c.yaml")
+    assert pin_run("intro_pentagon", allow_dirty=True, path=tmp_path / "c.yaml").dirty is True
+    with pytest.raises(FileNotFoundError):
+        pin_run("basic_results", path=tmp_path / "c.yaml")
