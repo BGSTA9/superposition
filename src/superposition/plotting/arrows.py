@@ -27,9 +27,19 @@ from superposition.plotting.style import (
 )
 
 
-def importance_colors(n_features: int) -> np.ndarray:
-    """RGBA colors for features 0 … n−1: most important (0) brightest."""
-    shades = np.linspace(1.0, 0.0, n_features) if n_features > 1 else np.ones(1)
+def importance_colors(n_features: int, importance: np.ndarray | None = None) -> np.ndarray:
+    """RGBA colors for features 0 … n−1, brightest = most important.
+
+    Without ``importance``, colors follow the feature index (features are ordered by
+    importance). With it, colors follow the importance values, so equally important features
+    share one color.
+    """
+    if importance is not None:
+        values = np.asarray(importance, dtype=float)
+        span = values.max() - values.min()
+        shades = (values - values.min()) / span if span > 0 else np.ones(n_features)
+    else:
+        shades = np.linspace(1.0, 0.0, n_features) if n_features > 1 else np.ones(1)
     return IMPORTANCE_CMAP(shades)
 
 
@@ -40,12 +50,13 @@ def plot_feature_arrows(
     limit: float = 1.35,
     annotate: bool = True,
     subtitle: str = "",
+    importance: np.ndarray | None = None,
 ) -> None:
     """Draw each column of a (2, feat) W as a line from the origin to a dot (p. 2)."""
     if W.shape[0] != 2:
         raise ValueError(f"expected W of shape (2, feat), got {W.shape}")
     n = W.shape[1]
-    colors = importance_colors(n)
+    colors = importance_colors(n, importance)
     ax.set_facecolor(PANEL)
     ax.axhline(0, color=GRID, linewidth=0.8, linestyle=(0, (3, 3)), zorder=0)
     ax.axvline(0, color=GRID, linewidth=0.8, linestyle=(0, (3, 3)), zorder=0)
@@ -142,4 +153,18 @@ def arrows_grid(
         )
         if suptitle:
             fig.suptitle(suptitle, x=0.06, ha="left", fontsize=10.5)
+    return fig
+
+
+def arrows_figure(
+    W: np.ndarray, title: str = "", subtitle: str = "", importance: np.ndarray | None = None
+) -> Figure:
+    """A single arrow panel as its own figure (used by the lab's Playground)."""
+    limit = max(1.35, float(np.abs(W).max()) * 1.3)
+    with paper_style():
+        fig, ax = plt.subplots(figsize=(3.6, 3.6))
+        plot_feature_arrows(
+            ax, W, title=title, limit=limit, subtitle=subtitle, importance=importance
+        )
+        fig.tight_layout()
     return fig

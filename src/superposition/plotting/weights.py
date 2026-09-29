@@ -100,7 +100,7 @@ def weights_grid(
     limit = 1.0
     xmax = max(1.2, *(float(np.max(p.norms)) * 1.05 for p in panels))
     with paper_style():
-        fig = plt.figure(figsize=(1.55 * k + 1.2, 4.3))
+        fig = plt.figure(figsize=(max(1.55 * k + 1.2, 4.2), 4.3))
         grid = fig.add_gridspec(
             2,
             2 * k,
@@ -148,4 +148,29 @@ def weights_grid(
             fontsize=7.5,
             color=INK_SECONDARY,
         )
+    return fig
+
+
+def weight_matrix_figure(W: np.ndarray, title: str = "W (features × neurons)") -> Figure:
+    """W itself, features as rows (most important on top) and neurons as columns.
+
+    Paper: Superposition in a Privileged Basis, p. 31. With a ReLU on the hidden layer the
+    neuron basis is privileged, so W can be read directly, unlike the rotation-invariant WᵀW.
+    """
+    n_hidden, n_features = W.shape
+    limit = max(1.0, float(np.abs(W).max()))
+    with paper_style():
+        fig, ax = plt.subplots(figsize=(0.35 * n_hidden + 1.6, 0.22 * n_features + 1.2))
+        image = ax.imshow(
+            W.T, cmap=WEIGHT_CMAP, norm=weight_norm(limit), interpolation="nearest", aspect="auto"
+        )
+        ax.set_xlabel("neuron")
+        ax.set_ylabel("feature")
+        ax.set_xticks(range(n_hidden))
+        ax.set_yticks(range(n_features) if n_features <= 20 else range(0, n_features, 5))
+        ax.set_title(title, fontsize=9.5, loc="left")
+        cbar = fig.colorbar(image, ax=ax, fraction=0.08, pad=0.04)
+        cbar.outline.set_visible(False)  # type: ignore[union-attr]
+        cbar.ax.tick_params(labelsize=7)
+        fig.tight_layout()
     return fig
