@@ -1,0 +1,25 @@
+# E00 intro_pentagon: five features in two dimensions (Paper: p. 2). SPEC §7 E00.
+# `sparsities` are S values (the code trains on p = 1 − S). Importance Iᵢ = 0.9ⁱ.
+experiment: intro_pentagon
+base:
+  seed: 0
+  device: auto
+  n_features: 5
+  n_hidden: 2
+  importance_decay: 0.9
+  sparsities: [0.0, 0.8, 0.9]
+  models: [relu_output, linear]
+  n_restarts: 8
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 100000   # SPEC: linear-optimum check needs ≥ 100,000 fresh samples
+profiles:
+  # quick: the SPEC §7 setup (8 restarts). ≈ 20 s on an Apple M2 (MPS), ≈ 1 min on its CPU.
+  quick: {}
+  # full: 32 restarts for restart statistics. ≈ 1 min (MPS) / ≈ 3 min (CPU) on an Apple M2.
+  full:
+    n_restarts: 32

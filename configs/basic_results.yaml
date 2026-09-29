@@ -1,0 +1,30 @@
+# E01 basic_results: linear vs ReLU output models across sparsity (Paper: pp. 10–12).
+# SPEC §7 E01. feature_probabilities are 1 − S, densest first as on p. 11.
+experiment: basic_results
+base:
+  seed: 0
+  device: auto
+  settings:
+    - {label: n20_m5, n_features: 20, n_hidden: 5, importance_decay: 0.7, paper_page: "p. 11"}
+    - {label: n80_m20, n_features: 80, n_hidden: 20, importance_decay: 0.9, paper_page: "p. 12"}
+  feature_probabilities: [1.0, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
+  models: [linear, relu_output]
+  n_restarts: 4
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000
+profiles:
+  # quick: the SPEC §7 setup (≥ 4 restarts, 10k steps). Measured: 474 s on an Apple M2 CPU
+  # (--device cpu), dominated by the n = 80 grids.
+  quick: {}
+  # full: more restarts and 3× longer training, which also tests whether the sparsest
+  # settings are under-trained at 10k steps (docs/DECISIONS.md D-113).
+  full:
+    n_restarts: 8
+    train:
+      steps: 30000
+      eval_samples: 100000

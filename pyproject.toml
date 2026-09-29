@@ -56,6 +56,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/superposition"]
 
+# Ship the experiment configs inside the wheel (as superposition/configs/) so a pip install
+# (e.g. in Colab) can run experiments; a source checkout reads ./configs directly.
+[tool.hatch.build.targets.wheel.force-include]
+"configs" = "superposition/configs"
+
 # CPU-only torch wheels on Linux (CI). macOS and Windows wheels on PyPI are already
 # CPU/MPS builds. See docs/DECISIONS.md (2026-09-29, "CPU-only torch on Linux").
 [tool.uv.sources]
