@@ -73,9 +73,10 @@ extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "RUF"]
+# E501: ruff format enforces line length for code; long string literals are allowed.
 # F722: jaxtyping shape strings such as Float[Tensor, "inst feat"] are not Python
 # expressions. This is the ignore jaxtyping's documentation recommends.
-ignore = ["F722", "RUF001", "RUF002", "RUF003"]
+ignore = ["F722", "E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "notebooks/*.ipynb" = ["E402", "E501"]
