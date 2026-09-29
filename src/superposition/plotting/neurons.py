@@ -257,7 +257,9 @@ def abs_weights_figure(
             ax.grid(axis="y")
         ax2.set_xticks(range(n_hidden))
         ax2.set_xticklabels([roles[h] for h in order], fontsize=7, rotation=30, ha="right")
-        ax1.legend(loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=n_feat)
+        # W₂ of side neurons is non-negative, so the lower half of that panel is free.
+        handles, labels = ax1.get_legend_handles_labels()
+        ax2.legend(handles, labels, loc="lower right", ncol=n_feat)
         if title:
             ax1.set_title(title, loc="left")
         fig.tight_layout()
@@ -328,6 +330,7 @@ def capacity_figure(
         if title:
             ax.set_title(title, loc="left")
         ax.grid(axis="y")
-        ax.legend(loc="upper left", fontsize=7)
+        # Below the axes: the curves cross everywhere inside them.
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=2, fontsize=7)
         fig.tight_layout()
     return fig
