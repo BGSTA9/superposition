@@ -1,8 +1,10 @@
-"""Computation behind the interactive lab: live Playground training, feature tables, probes.
+"""Computation behind the interactive lab: live Playground training, feature tables, probes,
+and loaders for the results pages (Dynamics, Neurons, Adversarial).
 
 SPEC §8 (The interactive lab). Paper: Demonstrating Superposition, pp. 9–12 (the models and
 the WᵀW / ‖Wᵢ‖ views), Feature Dimensionality, pp. 18–19 (the Dᵢ table), Superposition in a
-Privileged Basis, p. 31 (the ReLU hidden model).
+Privileged Basis, p. 31 (the ReLU hidden model); Learning Dynamics, pp. 26–27; Adversarial
+Robustness, p. 29; Privileged Basis and Computation in Superposition, pp. 31–39.
 
 The Streamlit pages in ``app/`` only lay out widgets and figures; everything they compute
 comes from this module, so it is unit-tested without a browser. Results are plain NumPy
@@ -11,6 +13,7 @@ comes from this module, so it is unit-tested without a browser. Results are plai
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -19,14 +22,16 @@ import einops
 import numpy as np
 import pandas as pd
 import torch
+import yaml
 from jaxtyping import Float
 
 from superposition import metrics
-from superposition.config import TrainConfig
+from superposition.config import TrainConfig, from_dict
 from superposition.data import geometric_importance
 from superposition.experiments.common import train_sparsity_grid
 from superposition.models import TiedKind, TiedModel
-from superposition.runs import latest_run, project_root
+from superposition.plotting.neurons import NeuronPanel, neuron_order_by_top_feature
+from superposition.runs import RunDir, latest_run, project_root
 from superposition.utils import resolve_device
 
 # Control ranges of the Playground (SPEC §8).
@@ -336,3 +341,184 @@ def status_frame() -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+# --- results pages: Dynamics, Neurons, Adversarial (SPEC §8 pages 6–8) -----------------------
+# These pages never train paper-scale models; they read a saved run through runs.py.
+
+
+def run_command(name: str) -> str:
+    """The CLI command that creates the run a results page needs."""
+    return f"uv run superposition run {name} --profile quick"
+
+
+def criteria_frame(run: RunDir) -> pd.DataFrame:
+    """A run's acceptance criteria as a table: group, status, criterion, value (abridged)."""
+    doc = run.read_acceptance()
+    return pd.DataFrame(
+        [
+            {
+                "group": c["group"],
+                "status": c["status"],
+                "criterion": c["description"],
+                "value": json.dumps(c["value"], ensure_ascii=False)[:400],
+            }
+            for c in doc["criteria"]
+        ]
+    )
+
+
+@dataclass
+class DynamicsRun:
+    """What the Dynamics page shows, loaded from a learning_dynamics run (E05).
+
+    Part (a): ``steps`` ``(T,)``, ``dimensionality`` ``(T, restarts, feat)``, ``loss``
+    ``(T, restarts)`` on a fixed batch, detected ``jumps``. Part (b): ``trans_steps`` ``(T′,)``,
+    ``W`` ``(T′, inst, 3, feat)``, ``stages`` ``(inst, T′)``, ``trans_loss`` ``(inst, T′)``,
+    ``sets`` ``(feat,)`` and the per-run ``table``.
+    """
+
+    run_id: str
+    n_hidden: int
+    steps: np.ndarray
+    dimensionality: np.ndarray
+    loss: np.ndarray
+    jumps: list[dict]
+    inverse_density: float
+    trans_steps: np.ndarray
+    W: np.ndarray
+    stages: np.ndarray
+    trans_loss: np.ndarray
+    sets: np.ndarray
+    table: pd.DataFrame
+
+
+def load_dynamics(run: RunDir) -> DynamicsRun:
+    """Load an E05 run's trajectories (Paper: pp. 26–27)."""
+    energy = run.load_checkpoint("energy_levels")
+    trans = run.load_checkpoint("transformations")
+    return DynamicsRun(
+        run_id=run.run_id,
+        n_hidden=int(energy["W_final"].shape[1]),
+        steps=np.asarray(energy["steps"]),
+        dimensionality=np.asarray(energy["dimensionality"]),
+        loss=np.asarray(energy["loss"]),
+        jumps=run.read_table("jumps").to_dict("records"),
+        inverse_density=float(energy["inverse_density"]),
+        trans_steps=np.asarray(trans["steps"]),
+        W=trans["W"].numpy(),
+        stages=np.asarray(trans["stages"]),
+        trans_loss=np.asarray(trans["loss"]),
+        sets=np.asarray(trans["sets"]),
+        table=run.read_table("metrics"),
+    )
+
+
+def trajectory_in_frame(dynamics: DynamicsRun, instance: int) -> np.ndarray:
+    """One part-(b) run's snapshots ``(T′, 3, feat)``, rotated into the display frame."""
+    from superposition.experiments.learning_dynamics import canonical_frame_3d
+
+    rotation = canonical_frame_3d(dynamics.W[-1, instance], dynamics.sets)
+    return np.einsum("ij,tjf->tif", rotation, dynamics.W[:, instance])
+
+
+@dataclass
+class NeuronModel:
+    """One best model for the Neurons page: its stack-plot panel plus a summary row."""
+
+    label: str
+    panel: NeuronPanel
+    summary: dict
+
+
+def load_privileged_basis(run: RunDir) -> tuple[list[NeuronModel], pd.DataFrame, dict | None]:
+    """E07: one :class:`NeuronModel` per sparsity (best restart), the summary table and the
+    hidden-bias (ReLU sidestepping) report if the run has one (Paper: pp. 31–34)."""
+    from superposition.experiments.common import GridResult, format_probability
+    from superposition.experiments.privileged_basis import PrivilegedBasisConfig, neuron_counts
+
+    config = from_dict(PrivilegedBasisConfig, yaml.safe_load(run.config_path.read_text()))
+    grid = GridResult.from_checkpoint(run.load_checkpoint("relu_hidden"))
+    summary = run.read_table("summary")
+    models = []
+    for cond, row in enumerate(summary.to_dict("records")):
+        W, _, _ = grid.best_weights(cond)
+        Wn = W.numpy()
+        label = f"1−S = {format_probability(grid.condition_probability(cond))}"
+        models.append(
+            NeuronModel(
+                label=label,
+                panel=NeuronPanel(
+                    title=label,
+                    W=Wn,
+                    superposition=metrics.superposition_score(W[None])[0].numpy(),
+                    polysemantic=neuron_counts(W[None], config.thresholds)[0].numpy(),
+                    order=neuron_order_by_top_feature(Wn),
+                ),
+                summary=row,
+            )
+        )
+    variant = next(
+        (c["value"] for c in run.read_acceptance()["criteria"] if c["id"] == "relu_sidestepping"),
+        None,
+    )
+    return models, summary, variant
+
+
+@dataclass
+class AbsRun:
+    """E08 for the Neurons page: part (a) weights and roles, part (b) panels and summary."""
+
+    small_W1: np.ndarray  # (hidden, feat), normalized
+    small_W2: np.ndarray  # (feat, hidden), normalized
+    small_roles: list[str]
+    sweep: list[NeuronModel]
+    summary: pd.DataFrame
+    n_hidden: int
+
+
+def load_abs_computation(run: RunDir) -> AbsRun:
+    """Load an E08 run (Paper: pp. 34–39), footnote-15 normalized."""
+    from superposition.experiments.abs_computation import (
+        AbsComputationConfig,
+        TrainedAbs,
+        neuron_feature_counts,
+        side_roles,
+    )
+    from superposition.experiments.common import format_probability
+
+    config = from_dict(AbsComputationConfig, yaml.safe_load(run.config_path.read_text()))
+    thr = config.thresholds
+    small = TrainedAbs(**run.load_checkpoint("n3_m6"))
+    W1n, W2n = metrics.normalize_hidden_units(small.W1, small.W2)
+    roles = side_roles(W1n[0].numpy(), W2n[0].numpy(), thr)
+    sweep = TrainedAbs(**run.load_checkpoint("n100_m40"))
+    S1, S2 = metrics.normalize_hidden_units(sweep.W1, sweep.W2)
+    counts = neuron_feature_counts(S1, S2, thr)
+    score = metrics.superposition_score(S1)
+    summary = run.read_table("metrics")
+    models = []
+    for c, row in enumerate(summary.to_dict("records")):
+        label = f"1−S = {format_probability(float(sweep.feature_probability[c]))}"
+        W = S1[c].numpy()
+        models.append(
+            NeuronModel(
+                label=label,
+                panel=NeuronPanel(
+                    title=label,
+                    W=W,
+                    superposition=score[c].numpy(),
+                    polysemantic=counts[c].numpy(),
+                    order=neuron_order_by_top_feature(W),
+                ),
+                summary=row,
+            )
+        )
+    return AbsRun(
+        small_W1=W1n[0].numpy(),
+        small_W2=W2n[0].numpy(),
+        small_roles=roles,
+        sweep=models,
+        summary=summary,
+        n_hidden=int(sweep.W1.shape[1]),
+    )

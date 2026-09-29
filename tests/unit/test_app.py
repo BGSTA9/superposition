@@ -72,3 +72,97 @@ def test_playground_linear_shows_closed_form_optimum() -> None:
     at.run()
     assert not at.exception
     assert "closed-form linear optimum" in [m.label for m in at.metric]
+
+
+# --- results pages (Phase 4): Dynamics, Neurons, Adversarial ----------------------------------
+
+RESULT_PAGES = {
+    "5_Dynamics.py": ["learning_dynamics"],
+    "6_Neurons.py": ["privileged_basis", "abs_computation"],
+    "7_Adversarial.py": ["adversarial"],
+}
+TINY_TRAIN = {"steps": 200, "log_every": 50, "eval_samples": 1000}
+# Tiny versions of each experiment: the pages only need a run with the right structure.
+TINY_RUNS: dict[str, dict] = {
+    "learning_dynamics": {
+        "energy": {"n_features": 40, "n_hidden": 6, "n_restarts": 1, "loss_eval_samples": 256},
+        "train": {**TINY_TRAIN, "snapshot_every": 50},
+        "jumps": {"jump_window": 50, "stable_window": 100},
+        "transformations": {
+            "set_probabilities": [0.1],
+            "n_restarts": 2,
+            "loss_eval_samples": 500,
+            "train": {**TINY_TRAIN, "snapshot_every": 50},
+        },
+        "stages": {"min_stage_steps": 50},
+    },
+    "adversarial": {
+        "settings": [
+            {"label": "tiny", "n_features": 12, "n_hidden": 3, "n_points": 3, "n_restarts": 1,
+             "batch_size": None, "attack_samples": 200},
+        ],
+        "train": TINY_TRAIN,
+    },
+    "privileged_basis": {
+        "feature_probabilities": [1.0, 0.1],
+        "figure_probabilities": [1.0, 0.1],
+        "n_restarts": 2,
+        "hidden_bias": {"feature_probabilities": [1.0], "n_restarts": 1},
+        "thresholds": {"activity_samples": 200},
+        "train": TINY_TRAIN,
+    },
+    "abs_computation": {
+        "no_superposition": {"n_restarts": 1},
+        "sweep": {"n_features": 12, "n_hidden": 6, "feature_probabilities": [1.0, 0.01],
+                  "n_restarts": 1},
+        "bias_variant": {"feature_probabilities": [0.01], "n_restarts": 1},
+        "thresholds": {"loss_samples": 200},
+        "train": TINY_TRAIN,
+    },
+}  # fmt: skip
+
+
+@pytest.fixture(scope="module")
+def tiny_results(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A results folder holding one tiny complete run of each Phase 4 experiment."""
+    from superposition.experiments.runner import run_experiment
+    from superposition.runs import RESULTS_ENV
+
+    root = tmp_path_factory.mktemp("results")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv(RESULTS_ENV, str(root))
+        for name, overrides in TINY_RUNS.items():
+            run_experiment(name, "quick", device="cpu", overrides=overrides, echo=False)
+    return root
+
+
+@pytest.mark.parametrize("page", sorted(RESULT_PAGES))
+def test_result_page_without_runs_shows_the_command(page: str) -> None:
+    at = AppTest.from_file(str(APP / "pages" / page), default_timeout=60).run()
+    assert not at.exception
+    commands = [c.value for c in at.code]
+    for name in RESULT_PAGES[page]:
+        assert f"uv run superposition run {name} --profile quick" in commands
+
+
+@pytest.mark.parametrize("page", sorted(RESULT_PAGES))
+def test_result_page_renders_a_run(
+    page: str, tiny_results: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    at = AppTest.from_file(str(APP / "pages" / page), default_timeout=120).run()
+    assert not at.exception
+    assert not at.code  # nothing missing
+    assert len(at.dataframe) >= 1
+
+
+def test_dynamics_scrubber_moves(tiny_results: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    at = AppTest.from_file(str(APP / "pages" / "5_Dynamics.py"), default_timeout=120).run()
+    at.select_slider(key="dyn_step_b").set_value(0).run()
+    assert not at.exception
+    assert any("stage at step 0" in str(chart.proto) for chart in at.get("plotly_chart"))

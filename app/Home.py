@@ -80,9 +80,9 @@ st.markdown(
 | Phase diagrams | E02 and E12 with the theory overlay | Phase 3 |
 | Geometry | E03 curves, geometry graphs, Dᵢ histograms | Phase 3 |
 | Non-uniform | E04 with a density slider for the perturbed feature | Phase 3 |
-| Dynamics | E05 training-step scrubber and 3D trajectories | Phase 4 |
-| Neurons | E07/E08 stack plots, E09 roles and ablations | Phase 4–5 |
-| Adversarial | E06 | Phase 4 |
+| **Dynamics** | E05 energy-level jumps and 3D trajectories, with a training-step scrubber | available |
+| **Neurons** | E07/E08 W matrices and neuron stack plots across sparsity; E09 roles and ablations | available (E09: Phase 5) |
+| **Adversarial** | E06 vulnerability vs features per dimension | available |
 | SAE lab | train or load SAEs and compare them with the true features | Phase 5 |
 """
 )
