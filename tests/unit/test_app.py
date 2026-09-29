@@ -78,8 +78,9 @@ def test_playground_linear_shows_closed_form_optimum() -> None:
 
 RESULT_PAGES = {
     "5_Dynamics.py": ["learning_dynamics"],
-    "6_Neurons.py": ["privileged_basis", "abs_computation"],
+    "6_Neurons.py": ["privileged_basis", "abs_computation", "mech_interp_abs"],
     "7_Adversarial.py": ["adversarial"],
+    "8_SAE_lab.py": ["sae_recovery", "l1_removes_superposition"],
 }
 TINY_TRAIN = {"steps": 200, "log_every": 50, "eval_samples": 1000}
 # Tiny versions of each experiment: the pages only need a run with the right structure.
@@ -119,12 +120,39 @@ TINY_RUNS: dict[str, dict] = {
         "thresholds": {"loss_samples": 200},
         "train": TINY_TRAIN,
     },
+    "mech_interp_abs": {
+        "shapes": [{"n_features": 3, "n_hidden": 4}],
+        "feature_probabilities": [0.3],
+        "context_probabilities": [0.5],
+        "n_restarts": 2,
+        "showcase": {"n_features": 3, "n_hidden": 4},
+        "thresholds": {"analysis_samples": 200},
+        "train": TINY_TRAIN,
+    },
+    "sae_recovery": {
+        "toy_models": [
+            {"label": "pentagon", "n_restarts": 1, "sweep": {"dictionary_sizes": [5],
+             "l1_values": [0.3], "resample": [True], "topk_values": [1]}},
+        ],
+        "sae": {"steps": 100, "batch_size": 256, "resample_every": 50, "eval_samples": 1000},
+        "train": TINY_TRAIN,
+    },
+    "l1_removes_superposition": {
+        "lambdas": [0.0, 0.5],
+        "setups": [
+            {"label": "pentagon", "n_restarts": 1, "figure_lambdas": [0.0, 0.5]},
+            {"label": "n20_m5", "n_features": 20, "n_hidden": 5, "importance_decay": 0.7,
+             "feature_probability": 0.01, "n_restarts": 1, "figure_lambdas": [0.0]},
+        ],
+        "thresholds": {"eval_samples": 2000},
+        "train": TINY_TRAIN,
+    },
 }  # fmt: skip
 
 
 @pytest.fixture(scope="module")
 def tiny_results(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """A results folder holding one tiny complete run of each Phase 4 experiment."""
+    """A results folder holding one tiny complete run of each Phase 4 and 5 experiment."""
     from superposition.experiments.runner import run_experiment
     from superposition.runs import RESULTS_ENV
 
@@ -166,3 +194,27 @@ def test_dynamics_scrubber_moves(tiny_results: Path, monkeypatch: pytest.MonkeyP
     at.select_slider(key="dyn_step_b").set_value(0).run()
     assert not at.exception
     assert any("stage at step 0" in str(chart.proto) for chart in at.get("plotly_chart"))
+
+
+def test_sae_lab_trains_an_sae_live() -> None:
+    at = AppTest.from_file(str(APP / "pages" / "8_SAE_lab.py"), default_timeout=120)
+    at.session_state["sae_steps"] = 500
+    at.run()
+    assert not at.exception
+    labels = [m.label for m in at.metric]
+    assert labels[:3] == ["recovered at cos > 0.9", "recovered at cos > 0.95", "mean max cos"]
+    at.slider(key="sae_topk").set_value(1).run()
+    assert not at.exception
+
+
+def test_neurons_e09_tab_switches_models(
+    tiny_results: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    at = AppTest.from_file(str(APP / "pages" / "6_Neurons.py"), default_timeout=120).run()
+    options = at.selectbox(key="e09_model").options
+    assert len(options) == 2 and options[1].endswith("(context)")
+    at.selectbox(key="e09_model").set_value(options[1]).run()
+    assert not at.exception

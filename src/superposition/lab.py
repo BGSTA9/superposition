@@ -522,3 +522,281 @@ def load_abs_computation(run: RunDir) -> AbsRun:
         summary=summary,
         n_hidden=int(sweep.W1.shape[1]),
     )
+
+
+# --- Neurons page, E09 tab: roles and ablations (SPEC §8 page 7) ------------------------------
+
+
+@dataclass
+class InterpModel:
+    """One analyzed E09 model: normalized weights, roles, motif neurons and ablations."""
+
+    key: str
+    shape: str
+    feature_probability: float
+    graded: bool
+    W1n: np.ndarray  # (hidden, feat)
+    W2n: np.ndarray  # (feat, hidden)
+    labels: list[str]
+    kinds: list[str]
+    order: np.ndarray
+    highlight: set[int]
+    zero: np.ndarray  # (hidden, feat) Δ loss / mean-prediction loss, zero-ablated
+    mean: np.ndarray  # (hidden, feat) the same, mean-ablated
+    table: pd.DataFrame
+    summary: dict
+
+
+@dataclass
+class MechInterpRun:
+    """What the Neurons page's E09 tab shows, from a mech_interp_abs run (pp. 38–39)."""
+
+    run_id: str
+    summary: pd.DataFrame
+    motifs: pd.DataFrame
+    rebuild: pd.DataFrame
+    models: list[InterpModel]
+
+
+def load_mech_interp(run: RunDir) -> MechInterpRun:
+    """Load an E09 run: every analyzed model with its role table and ablation matrices."""
+    from superposition.experiments.common import format_probability
+    from superposition.experiments.mech_interp_abs import TrainedShape
+    from superposition.plotting.interp import motif_order
+
+    summary = run.read_table("metrics")
+    roles = run.read_table("roles")
+    ablations = run.read_table("ablations")
+    shapes: dict[str, TrainedShape] = {}
+    models = []
+    for row in summary.to_dict("records"):
+        shape, p = str(row["shape"]), float(row["feature_probability"])
+        if shape not in shapes:
+            shapes[shape] = TrainedShape(**run.load_checkpoint(shape))
+        trained = shapes[shape]
+        k = int(row["instance"])
+        W1n, W2n = metrics.normalize_hidden_units(trained.W1[k][None], trained.W2[k][None])
+        table = roles.loc[
+            ((roles["shape"] == shape) & (roles["feature_probability"] == p)).to_numpy()
+        ]
+        abl = ablations.loc[
+            ((ablations["shape"] == shape) & (ablations["feature_probability"] == p)).to_numpy()
+        ]
+        grids = {
+            kind: abl.loc[(abl["kind"] == kind).to_numpy()]
+            .sort_values(["neuron", "feature"])["relative"]
+            .to_numpy()
+            .reshape(trained.n_hidden, trained.n_features)
+            for kind in ("zero", "mean")
+        }
+        labels = [str(v) for v in table["role"]]
+        kinds = [str(v) for v in table["kind"]]
+        n, m = shape.split("_")
+        models.append(
+            InterpModel(
+                key=f"n = {n[1:]}, m = {m[1:]}, 1 − S = {format_probability(p)}"
+                + ("" if row["graded"] else " (context)"),
+                shape=shape,
+                feature_probability=p,
+                graded=bool(row["graded"]),
+                W1n=W1n[0].numpy(),
+                W2n=W2n[0].numpy(),
+                labels=labels,
+                kinds=kinds,
+                order=motif_order(kinds, labels, W1n[0].numpy()),
+                highlight={int(h) for h in table.loc[table["in_motif"].to_numpy(bool), "neuron"]},
+                zero=grids["zero"],
+                mean=grids["mean"],
+                table=table.drop(columns=["shape", "feature_probability", "graded"]),
+                summary=row,
+            )
+        )
+    return MechInterpRun(
+        run_id=run.run_id,
+        summary=summary,
+        motifs=run.read_table("motifs"),
+        rebuild=run.read_table("rebuild"),
+        models=models,
+    )
+
+
+# --- SAE lab (SPEC §8 page 9): live SAEs, E10 and E11 --------------------------------------
+
+# Toy models to decompose live: the pentagon and E01's sparse settings (pp. 2, 11).
+SAE_TOY_PRESETS: dict[str, PlaygroundConfig] = {
+    "pentagon · n = 5, m = 2, 1 − S = 0.1 (E00, p. 2)": PlaygroundConfig(),
+    "n = 20, m = 5, 1 − S = 0.01 (E01, p. 11)": PlaygroundConfig(
+        n_features=20, n_hidden=5, importance_decay=0.7, feature_probability=0.01
+    ),
+    "n = 20, m = 5, 1 − S = 0.001 (E01, p. 11)": PlaygroundConfig(
+        n_features=20, n_hidden=5, importance_decay=0.7, feature_probability=0.001
+    ),
+}
+SAE_LATENTS_RANGE = (2, 64)
+SAE_STEPS_RANGE = (200, 20_000)
+SAE_TOPK_RANGE = (0, 8)
+
+
+@dataclass(frozen=True)
+class LiveSAEConfig:
+    """One live SAE job (SPEC §8 page 9). ``topk`` = 0 is a ReLU + L1 SAE."""
+
+    n_latents: int = 10
+    l1: float = 0.3
+    topk: int = 0
+    resample: bool = True
+    steps: int = 3_000
+    batch_size: int = 1024
+    seed: int = 0
+
+    def validate(self) -> None:
+        for name, value, (low, high) in (
+            ("n_latents", self.n_latents, SAE_LATENTS_RANGE),
+            ("steps", self.steps, SAE_STEPS_RANGE),
+            ("topk", self.topk, SAE_TOPK_RANGE),
+        ):
+            if not low <= value <= high:
+                raise ValueError(f"{name}={value} is outside [{low}, {high}]")
+        if self.l1 < 0:
+            raise ValueError("l1 must be non-negative")
+
+
+@dataclass
+class LiveSAEResult:
+    """A live SAE on one toy model's activations, scored against its true features."""
+
+    decoder: np.ndarray  # (hidden, latent), unit columns
+    alive: np.ndarray  # (latent,)
+    max_cos: np.ndarray  # (feat,), NaN for unrepresented features
+    best_latent: np.ndarray  # (feat,)
+    represented: np.ndarray  # (feat,)
+    recovered_09: float
+    recovered_095: float
+    mean_max_cos: float
+    l0: float
+    fvu: float
+    dead_fraction: float
+    resampled: int
+    mse_history: np.ndarray
+    log_steps: list[int]
+    train_seconds: float
+
+
+def train_live_sae(
+    toy: PlaygroundResult, config: LiveSAEConfig, device: str = "cpu"
+) -> LiveSAEResult:
+    """Train one SAE on the best restart's hidden activations h = Wx (Paper: pp. 42–44)."""
+    from superposition.data import IndependentSparse
+    from superposition.sae import (
+        SAETrainConfig,
+        SparseAutoencoder,
+        recovery,
+        sae_stats,
+        train_sae,
+    )
+    from superposition.utils import make_generator
+
+    config.validate()
+    torch_device = resolve_device(device)
+    W = torch.as_tensor(toy.best_W, dtype=torch.float32)
+    p = toy.config.feature_probability
+    dist = IndependentSparse(p, 1, W.shape[1])
+
+    def sample(batch: int, generator: torch.Generator) -> torch.Tensor:
+        return dist.sample(batch, generator)[:, 0] @ W.T.to(generator.device)
+
+    sae = SparseAutoencoder(
+        W.shape[0], config.n_latents, 1, config.l1, config.topk, config.resample, seed=config.seed
+    ).to(torch_device)
+    train_config = SAETrainConfig(
+        steps=config.steps,
+        batch_size=config.batch_size,
+        resample_every=max(1, config.steps // 5),
+        log_every=max(1, config.steps // 100),
+    )
+    result = train_sae(sae, sample, train_config, seed=config.seed)
+    h = sample(50_000, make_generator(config.seed + 1, torch_device))
+    stats = sae_stats(sae, h)
+    represented = metrics.represented_mask(W[None], REPRESENTED_THRESHOLD)[0]
+    rec = recovery(sae.unit_decoder().cpu(), stats.alive, W, represented)
+    return LiveSAEResult(
+        decoder=sae.unit_decoder()[0].cpu().numpy(),
+        alive=stats.alive[0].numpy(),
+        max_cos=rec.max_cos[0].numpy(),
+        best_latent=rec.best_latent[0].numpy(),
+        represented=represented.numpy(),
+        recovered_09=float(rec.fraction[0.9][0]),
+        recovered_095=float(rec.fraction[0.95][0]),
+        mean_max_cos=float(rec.mean_max_cos[0]),
+        l0=float(stats.l0[0]),
+        fvu=float(stats.fvu[0]),
+        dead_fraction=float(stats.dead_fraction[0]),
+        resampled=int(result.resampled[0]),
+        mse_history=result.mse_history[:, 0].numpy(),
+        log_steps=result.log_steps,
+        train_seconds=result.wall_time_s,
+    )
+
+
+@dataclass
+class SAERecoveryRun:
+    """An E10 run for the SAE lab: the sweep table and, per toy model, its weights and SAEs."""
+
+    run_id: str
+    table: pd.DataFrame
+    thresholds: dict[str, float]
+    toys: dict[str, dict]
+
+
+def load_sae_recovery(run: RunDir) -> SAERecoveryRun:
+    """Load an E10 run (Paper: pp. 42–44)."""
+    from superposition.experiments.sae_recovery import SAERecoveryConfig
+
+    config = from_dict(SAERecoveryConfig, yaml.safe_load(run.config_path.read_text()))
+    toys = {}
+    for spec in config.toy_models:
+        state = run.load_checkpoint(spec.label)
+        toys[spec.label] = {
+            "W": state["toy_W"].numpy(),
+            "represented": state["represented"].numpy(),
+            "decoder": state["sae_state"]["W_dec"].numpy(),
+            "mask": state["sae_state"]["latent_mask"].numpy(),
+            "alive": state["alive"].numpy(),
+            "n_hidden": spec.n_hidden,
+        }
+    return SAERecoveryRun(
+        run_id=run.run_id,
+        table=run.read_table("metrics"),
+        thresholds={s.label: s.cos_threshold for s in config.toy_models},
+        toys=toys,
+    )
+
+
+@dataclass
+class L1Run:
+    """An E11 run for the SAE lab: the λ table and the best weights per λ and setup."""
+
+    run_id: str
+    table: pd.DataFrame
+    n_hidden: dict[str, int]
+    weights: dict[str, dict[float, tuple[np.ndarray, np.ndarray]]]
+
+
+def load_l1(run: RunDir) -> L1Run:
+    """Load an E11 run (Paper: p. 42)."""
+    from superposition.experiments.l1_removes_superposition import L1Config, L1Sweep
+
+    config = from_dict(L1Config, yaml.safe_load(run.config_path.read_text()))
+    weights: dict[str, dict[float, tuple[np.ndarray, np.ndarray]]] = {}
+    for setup in config.setups:
+        sweep = L1Sweep(**run.load_checkpoint(setup.label))
+        weights[setup.label] = {
+            float(lam): (sweep.W[int(k)].numpy(), sweep.b[int(k)].numpy())
+            for lam, k in zip(sweep.lambdas, sweep.best.tolist(), strict=True)
+        }
+    return L1Run(
+        run_id=run.run_id,
+        table=run.read_table("metrics"),
+        n_hidden={s.label: s.n_hidden for s in config.setups},
+        weights=weights,
+    )
