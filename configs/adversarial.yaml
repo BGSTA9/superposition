@@ -1,0 +1,48 @@
+# E06 adversarial (Paper: pp. 29–30). SPEC §6 adversarial.py, §7 E06; decisions D-405, D-406.
+# Setting 1 is the uniform setup the p. 29 axes imply (n = 400, m = 30, Iᵢ = 1) over the
+# figure's range 1/(1 − S) ∈ [1, 10]; setting 2 is SPEC's example n = 20, m = 5 (Iᵢ = 0.7ⁱ)
+# over the same range; setting 3 extends n = 20, m = 5 to the p. 11 range (not graded).
+experiment: adversarial
+base:
+  seed: 0
+  device: auto
+  settings:
+    - {label: uniform_n400_m30, n_features: 400, n_hidden: 30, importance_decay: 1.0,
+       inverse_density_min: 1.0, inverse_density_max: 10.0, n_points: 12, n_restarts: 2,
+       batch_size: 256, attack_samples: 4000, graded: true, paper_page: "p. 29"}
+    - {label: n20_m5, n_features: 20, n_hidden: 5, importance_decay: 0.7,
+       inverse_density_min: 1.0, inverse_density_max: 10.0, n_points: 10, n_restarts: 4,
+       batch_size: null, attack_samples: 20000, graded: true, paper_page: "pp. 11, 29"}
+    - {label: n20_m5_extended, n_features: 20, n_hidden: 5, importance_decay: 0.7,
+       inverse_density_min: 10.0, inverse_density_max: 1000.0, n_points: 7, n_restarts: 4,
+       batch_size: null, attack_samples: 100000, graded: false, paper_page: "pp. 11, 29"}
+  thresholds:
+    budget_fraction: 0.1
+    rise_min: 2.0
+    spearman_min: 0.8
+    represented_norm: 0.5
+    superposition_score: 0.05
+  train:
+    steps: 10000
+    batch_size: 1024
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    eval_samples: 20000
+profiles:
+  # quick: 12 + 10 + 7 sparsities; about 8 minutes on a laptop CPU.
+  quick: {}
+  # full: denser grids, more restarts, longer training.
+  full:
+    settings:
+      - {label: uniform_n400_m30, n_features: 400, n_hidden: 30, importance_decay: 1.0,
+         inverse_density_min: 1.0, inverse_density_max: 10.0, n_points: 32, n_restarts: 4,
+         batch_size: 256, attack_samples: 8000, graded: true, paper_page: "p. 29"}
+      - {label: n20_m5, n_features: 20, n_hidden: 5, importance_decay: 0.7,
+         inverse_density_min: 1.0, inverse_density_max: 10.0, n_points: 20, n_restarts: 8,
+         batch_size: null, attack_samples: 50000, graded: true, paper_page: "pp. 11, 29"}
+      - {label: n20_m5_extended, n_features: 20, n_hidden: 5, importance_decay: 0.7,
+         inverse_density_min: 10.0, inverse_density_max: 1000.0, n_points: 13, n_restarts: 8,
+         batch_size: null, attack_samples: 200000, graded: false, paper_page: "pp. 11, 29"}
+    train:
+      steps: 20000

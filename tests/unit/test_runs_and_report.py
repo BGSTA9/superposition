@@ -111,7 +111,10 @@ def test_cli_list_figures_and_app(results: Path) -> None:
     runner = CliRunner()
     names = runner.invoke(app, ["list", "--names"])
     assert names.exit_code == 0
-    assert names.output.split() == ["intro_pentagon", "basic_results"]
+    from superposition.experiments import REGISTRY
+
+    assert names.output.split() == list(REGISTRY)
+    assert names.output.split()[:2] == ["intro_pentagon", "basic_results"]
     missing = runner.invoke(app, ["figures", "intro_pentagon"])
     assert missing.exit_code == 1
     bad_profile = runner.invoke(app, ["run", "intro_pentagon", "--profile", "medium"])

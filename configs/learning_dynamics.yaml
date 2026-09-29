@@ -1,0 +1,69 @@
+# E05 learning_dynamics (Paper: pp. 26–28). SPEC §7 E05; decisions D-401 – D-404.
+# (a) energy-level jumps: uniform setup of p. 17 (n = 400, m = 30, Iᵢ = 1) at 1/(1 − S) = 3,
+#     inside the paper's 1/2 plateau; `train` holds part (a)'s optimizer settings.
+# (b) geometric transformations: two correlated sets of three features in m = 3 (p. 27).
+experiment: learning_dynamics
+base:
+  seed: 0
+  device: auto
+  energy:
+    n_features: 400
+    n_hidden: 30
+    importance_decay: 1.0
+    inverse_density: 3.0
+    n_restarts: 4
+    loss_eval_samples: 8192
+  jumps:
+    jump: 0.15
+    jump_window: 2000
+    stable_window: 5000
+    stable_tol: 0.05
+    drop_factor: 3.0
+    level_tol: 0.05
+  train:
+    steps: 80000
+    batch_size: 256
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 100
+    snapshot_every: 100
+    eval_samples: 20000
+  transformations:
+    n_sets: 2
+    set_size: 3
+    n_hidden: 3
+    importance_decay: 1.0
+    set_probabilities: [0.01, 0.03, 0.1]
+    init_scales: [0.1]
+    n_restarts: 16
+    loss_eval_samples: 20000
+    train:
+      steps: 30000
+      batch_size: 1024
+      lr: 1.0e-3
+      schedule: constant
+      log_every: 50
+      snapshot_every: 50
+      eval_samples: 20000
+  stages:
+    small_norm: 0.3
+    collapsed_cos: 0.8
+    opposed_cos: -0.9
+    antipodal_cos: -0.95
+    orthogonal_cos: 0.1
+    represented_norm: 0.5
+    min_stage_steps: 1000
+profiles:
+  # quick: 4 restarts × 80k steps for (a); 3 densities × 16 restarts × 30k steps for (b).
+  quick: {}
+  # full: more restarts and longer training, plus the Xavier-init variant of (b) (D-403).
+  full:
+    energy:
+      n_restarts: 8
+    train:
+      steps: 150000
+    transformations:
+      init_scales: [0.1, 1.0]
+      n_restarts: 32
+      train:
+        steps: 60000
