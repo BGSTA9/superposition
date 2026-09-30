@@ -474,6 +474,45 @@ what the draft session had seen before each choice (its transcript is the eviden
   polytope, including the tight square antiprism (Dᵢ = 3/8), and the bipyramid split.
 - **Paper:** pp. 19–21.
 
+### D-309 · 2026-09-30 · E02–E04 quick profiles train at batch 256, not SPEC §6's 1024
+- **Decision:** the quick profiles of E02, E03 and E04 use batch 256 (10,000 steps, everything
+  else SPEC §6). Their full profiles use batch 1024. Each config keeps a `batch1024` profile,
+  identical to `quick` except for the batch size, so the comparison below can be repeated with
+  `superposition run <exp> --profile batch1024` (config files may define named variant
+  profiles; the CLI accepts them).
+- **Rationale:** at batch 1024 the quick grids do not fit SPEC §5's 10 minutes on a laptop CPU.
+  Measured on an Apple M2 CPU, from clean commit `230a51d`, seed 0, through the CLI:
+
+  | Exp. | batch 256 (quick, cited) | batch 1024 |
+  |---|---|---|
+  | E02 | `20260930T090540Z-4e3325bf`, 487 s, PASS 6/6 | `20260930T075829Z-609cc6fb`, 1,597 s, PASS 6/6 |
+  | E03 | `20260930T091350Z-2cb2dc61`, 365 s, PASS 4/4 | `20260930T082510Z-c635c83a`, 1,472 s, PASS 4/4 |
+  | E04 | `20260930T091958Z-43c63e78`, 287 s, PASS 9/9 | `20260930T084945Z-5297207f`, 952 s, PASS 9/9 |
+
+  The batch size changes no criterion's outcome and little else:
+  - *E02:* the majority labels are identical in all 144 cells for n = 2, m = 1 and in 140 of
+    144 for n = 3, m = 2; the 4 that differ are votes of 5 to 4 that flip. Agreement with the
+    theory: 0.875 and 0.875; 0.819 and 0.833.
+  - *E03:* the same plateau span (2.34–3.79), D* at 1/(1 − S) ≈ 7.85 of 0.2637 and 0.2633, the
+    same four Dᵢ clusters (2/3, 1/2, 2/5, 3/8). D* differs by less than 0.013 everywhere except
+    at the two transitions: from 1 to 1/2 (1/(1 − S) ≈ 1.4–2.1), where batch 1024 falls earlier
+    by up to 0.085 (at 1.83: 0.737 against 0.652), and just after the plateau (at 4.28: 0.410
+    against 0.447). Neither run is converged in the first: the draft's uncited 50,000-step,
+    batch-1024 run gave 0.613 at 1.83. No criterion reads these points, and
+    docs/REPRODUCTION.md reports the first as a discrepancy with the paper's curve.
+  - *E04:* the same collapse threshold (a ratio of 0.251), the same order of pair collapses in
+    (d), neighbour angles within 0.8° at every ratio, and the same geometries in (b) and (c).
+- **Exploratory runs (uncited, from the draft session's scratchpad), consistent with this:** E02
+  n = 2, m = 1 on CPU at 10,000 steps × batch 256 and on Apple MPS at 50,000 × 1024 gave
+  identical majority labels in all 144 cells (agreement 0.875 both); E03 at 50,000 × 1024 on MPS
+  passed the same four criteria with the same plateau span, but its triangle (2/3) cluster was
+  gone, leaving exactly the three clusters the criterion needs.
+- **Scope:** E05(a), E06 and E07 chose batch 256 separately (D-402, D-406, D-407); those choices
+  are not re-examined here.
+- **Alternatives:** batch 1024 with fewer steps (the same number of samples, fewer updates, and
+  the E03 transition is already the least converged part); smaller grids (coarser diagrams
+  than the paper's); an accelerator for the quick profile (SPEC §5 fixes the budget on a CPU).
+
 ### D-310 · 2026-09-30 · Test tiers: slow under 15 minutes, and an opt-in paper tier
 - **Decision:** three tiers. Unmarked tests are the fast unit and property tier (CI,
   `make test`). `slow` trains small models or runs short notebooks and must stay under 15
