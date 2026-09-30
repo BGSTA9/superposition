@@ -110,7 +110,7 @@ def test_e10_selection_without_ground_truth() -> None:
     # Instance 1 is sparsest and recovers everything, but fails the FVU bar; instances 2 and 4
     # tie on L0 and the lower FVU wins. Recovery plays no part in the choice.
     assert (int(chosen["instance"]), n_qualified) == (4, 4)
-    shuffled = frame.assign(**{"recovered_0.95": frame["recovered_0.95"][::-1].to_numpy()})
+    shuffled = frame.assign(**{"recovered_0.95": frame["recovered_0.95"].to_numpy()[::-1]})
     assert int(e10.select_without_ground_truth(shuffled, 0.1)[0]["instance"]) == 4
     # Nothing meets the bar: fall back to the lowest FVU.
     chosen, n_qualified = e10.select_without_ground_truth(frame, 0.005)
