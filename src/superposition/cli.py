@@ -118,20 +118,31 @@ def report(
     allow_dirty: bool = typer.Option(
         False, "--allow-dirty", help="Allow citing a run made from a dirty working tree."
     ),
+    run_id: str = typer.Option(
+        "latest", "--run", help="With one --pin: the run ID to cite (default: its latest run)."
+    ),
+    label: str | None = typer.Option(
+        None,
+        "--label",
+        help="With one --pin: cite the run as supplementary evidence under this label (e.g. "
+        "pilot, heldout); the experiment's main citation is unchanged.",
+    ),
 ) -> None:
     """Regenerate the tables in docs/REPRODUCTION.md from the cited runs."""
     from superposition.experiments import REGISTRY
     from superposition.experiments.runner import get_experiment
-    from superposition.report import pin_run, update_reproduction
+    from superposition.report import citation_key, pin_run, update_reproduction
 
     names = list(REGISTRY) if pin_all else [get_experiment(p).name for p in pin or []]
+    if (run_id != "latest" or label is not None) and len(names) != 1:
+        raise typer.BadParameter("--run and --label need exactly one --pin")
     for name in names:
         try:
-            citation = pin_run(name, allow_dirty=allow_dirty)
+            citation = pin_run(name, run_id=run_id, allow_dirty=allow_dirty, label=label)
         except (FileNotFoundError, ValueError) as error:
             typer.echo(f"cannot pin {name}: {error}", err=True)
             raise typer.Exit(1) from error
-        typer.echo(f"cited {name}: {citation.run_id} ({citation.overall})")
+        typer.echo(f"cited {citation_key(name, label)}: {citation.run_id} ({citation.overall})")
     for note in update_reproduction():
         typer.echo(note)
     typer.echo("updated docs/REPRODUCTION.md")

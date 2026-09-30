@@ -14,6 +14,7 @@ from superposition.acceptance import (
     PASS,
     acceptance_document,
     check,
+    graded,
     info,
     overall_status,
     to_jsonable,
@@ -89,6 +90,21 @@ def test_overall_status_and_jsonable() -> None:
         criteria=[passed, failed, note],
     )  # fmt: skip
     assert (doc["overall"], doc["n_passed"], doc["n_graded"]) == (PARTIAL, 1, 2)
+
+
+def test_graded_partial_criteria() -> None:
+    passed = check("a", "d", "p. 1", True, 1.0, 2.0)
+    partial = graded("b", "d", "p. 1", PARTIAL, 1.0, "exists")
+    assert partial.status == PARTIAL
+    assert overall_status([passed, partial]) == PARTIAL
+    assert overall_status([partial]) == PARTIAL  # not FAIL: it passed in a degenerate form
+    doc = acceptance_document(
+        experiment="x", code="E99", title="t", paper_pages="p. 1", run_id="r", profile="quick",
+        criteria=[passed, partial],
+    )  # fmt: skip
+    assert (doc["overall"], doc["n_passed"], doc["n_graded"]) == (PARTIAL, 1, 2)
+    with pytest.raises(ValueError, match="graded status"):
+        graded("c", "d", "p. 1", INFO, 1.0, None)
 
 
 def test_report_blocks() -> None:
@@ -173,6 +189,48 @@ def test_pinning_and_regenerating_reproduction(results: Path, tmp_path: Path) ->
     assert "hand-kept" in doc.read_text()
     assert any("not in" in note for note in notes)
     assert f"`{run.run_id}`" in doc.read_text()
+
+
+def test_supplementary_citations(results: Path, tmp_path: Path) -> None:
+    from superposition.report import load_citations, pin_run, update_reproduction
+
+    cited_file = tmp_path / "cited_runs.yaml"
+    main = fake_complete_run()
+    held_out = fake_complete_run(overall="FAIL")
+    pin_run("intro_pentagon", run_id=main.run_id, path=cited_file)
+    extra = pin_run("intro_pentagon", run_id=held_out.run_id, path=cited_file, label="heldout")
+    citations = load_citations(cited_file)
+    assert citations["intro_pentagon"].run_id == main.run_id  # the main citation is unchanged
+    assert citations["intro_pentagon:heldout"] == extra
+    from superposition.experiments import REGISTRY
+
+    rows = {r.name: r for r in status_rows(citations)}
+    assert list(rows) == list(REGISTRY)  # supplementary keys add no status rows
+    assert rows["intro_pentagon"].citation.run_id == main.run_id  # type: ignore[union-attr]
+
+    doc = tmp_path / "REPRODUCTION.md"
+    doc.write_text(
+        "<!-- BEGIN AUTO:STATUS -->\nold\n<!-- END AUTO:STATUS -->\n"
+        "<!-- BEGIN AUTO:E00 -->\nold\n<!-- END AUTO:E00 -->\n"
+        "<!-- BEGIN AUTO:E00:heldout -->\nold\n<!-- END AUTO:E00:heldout -->\n"
+    )
+    update_reproduction(doc, citations)
+    main_block, held_block = doc.read_text().split("AUTO:E00:heldout -->", 1)
+    assert f"`{main.run_id}`" in main_block and held_out.run_id not in main_block
+    assert f"`{held_out.run_id}`" in held_block and "**FAIL**" in held_block
+    # Without a block for the label, nothing is appended and a note says so.
+    doc.write_text("<!-- BEGIN AUTO:STATUS -->\n<!-- END AUTO:STATUS -->\n")
+    notes = update_reproduction(doc, citations)
+    assert any("E00:heldout" in note for note in notes)
+    assert held_out.run_id not in doc.read_text()
+    with pytest.raises(ValueError, match="label"):
+        pin_run("intro_pentagon", run_id=main.run_id, path=cited_file, label="a:b")
+
+
+def test_cli_report_label_needs_one_pin(results: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(app, ["report", "--pin", "E00", "--pin", "E01", "--label", "heldout"])
+    assert result.exit_code != 0
 
 
 def test_pinning_refuses_dirty_runs(results: Path, tmp_path: Path) -> None:

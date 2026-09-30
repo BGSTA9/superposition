@@ -5,10 +5,12 @@ threshold and status"). Experiments build a list of :class:`Criterion` from thei
 :func:`acceptance_document` turns it into the JSON stored in the run directory, which
 ``superposition report`` later renders into docs/REPRODUCTION.md.
 
-Statuses: each graded criterion is PASS or FAIL. INFO rows report a number without a
-threshold (e.g. "report where antipodal pairs appear") and never affect the overall status.
-The overall status is PASS if every graded criterion passes, FAIL if none does, and PARTIAL
-otherwise.
+Statuses: each graded criterion is PASS or FAIL, or PARTIAL when the experiment defines, up
+front, a degenerate form in which the test passes only nominally (E11: superposition gone only
+once a single feature is left, D-R05); a PARTIAL criterion does not count as passed. INFO rows
+report a number without a threshold (e.g. "report where antipodal pairs appear") and never
+affect the overall status. The overall status is PASS if every graded criterion passes, FAIL if
+every one fails, and PARTIAL otherwise.
 """
 
 from __future__ import annotations
@@ -79,6 +81,31 @@ def check(
     )
 
 
+def graded(
+    id: str,
+    description: str,
+    paper_page: str,
+    status: str,
+    value: Any,
+    threshold: Any,
+    group: str = "",
+    notes: str = "",
+) -> Criterion:
+    """A graded criterion with an explicit PASS, PARTIAL or FAIL status."""
+    if status not in (PASS, PARTIAL, FAIL):
+        raise ValueError(f"a graded status is PASS, PARTIAL or FAIL, not {status!r}")
+    return Criterion(
+        id=id,
+        description=description,
+        paper_page=paper_page,
+        status=status,
+        value=to_jsonable(value),
+        threshold=to_jsonable(threshold),
+        group=group,
+        notes=notes,
+    )
+
+
 def info(
     id: str, description: str, paper_page: str, value: Any, group: str = "", notes: str = ""
 ) -> Criterion:
@@ -95,13 +122,13 @@ def info(
 
 
 def overall_status(criteria: list[Criterion]) -> str:
-    """PASS if all graded criteria pass, FAIL if none does, PARTIAL otherwise."""
-    graded = [c.status for c in criteria if c.status != INFO]
-    if not graded:
+    """PASS if all graded criteria pass, FAIL if all fail, PARTIAL otherwise."""
+    statuses = [c.status for c in criteria if c.status != INFO]
+    if not statuses:
         return INFO
-    if all(s == PASS for s in graded):
+    if all(s == PASS for s in statuses):
         return PASS
-    if all(s == FAIL for s in graded):
+    if all(s == FAIL for s in statuses):
         return FAIL
     return PARTIAL
 
@@ -117,7 +144,7 @@ def acceptance_document(
     criteria: list[Criterion],
 ) -> dict[str, Any]:
     """The ``acceptance.json`` payload for one run."""
-    graded = [c for c in criteria if c.status != INFO]
+    scored = [c for c in criteria if c.status != INFO]
     return {
         "experiment": experiment,
         "code": code,
@@ -126,7 +153,7 @@ def acceptance_document(
         "run_id": run_id,
         "profile": profile,
         "overall": overall_status(criteria),
-        "n_graded": len(graded),
-        "n_passed": sum(c.status == PASS for c in graded),
+        "n_graded": len(scored),
+        "n_passed": sum(c.status == PASS for c in scored),
         "criteria": [asdict(c) for c in criteria],
     }

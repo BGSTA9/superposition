@@ -13,6 +13,12 @@ summary, so the status table can be rebuilt even on a fresh clone without ``resu
 with ``superposition report --pin <experiment>`` (latest clean complete run) after writing
 the narrative for it. Experiments without a pin fall back to their latest local run, marked
 as uncited.
+
+**Supplementary citations.** A narrative can also rest on a second run of the same
+experiment, such as a pilot that chose a setting or a held-out check on fresh seeds (D-R07).
+``--pin <experiment> --run <id> --label <label>`` cites it under the key
+``<experiment>:<label>``; it never enters the status table, and its criteria render into the
+block ``<code>:<label>`` (e.g. ``E11:heldout``) when docs/REPRODUCTION.md has one.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ from superposition.runs import RunDir, latest_run, project_root, results_root
 
 STATUS_KEY = "STATUS"
 CITATIONS_RELATIVE = Path("docs") / "cited_runs.yaml"
+LABEL_SEPARATOR = ":"  # citation key of a supplementary run: "<experiment>:<label>"
 
 
 def _marker(key: str) -> tuple[str, str]:
@@ -84,8 +91,9 @@ def load_citations(path: Path | None = None) -> dict[str, Citation]:
 def save_citations(citations: dict[str, Citation], path: Path | None = None) -> Path:
     path = path or citations_path()
     header = (
-        "# Runs cited by docs/REPRODUCTION.md, one per experiment (written by\n"
-        "# `superposition report --pin <experiment>`; do not edit by hand).\n"
+        "# Runs cited by docs/REPRODUCTION.md, one per experiment, plus supplementary runs keyed\n"
+        "# <experiment>:<label> (written by `superposition report --pin <experiment>\n"
+        "# [--run <id> --label <label>]`; do not edit by hand).\n"
     )
     body = yaml.safe_dump({k: asdict(v) for k, v in sorted(citations.items())}, sort_keys=False)
     path.write_text(header + body)
@@ -111,13 +119,32 @@ def citation_for(run: RunDir) -> Citation:
     )
 
 
+def citation_key(experiment: str, label: str | None = None) -> str:
+    """``experiment`` for the main citation, ``experiment:label`` for a supplementary one."""
+    if label is None:
+        return experiment
+    if not label or LABEL_SEPARATOR in label:
+        raise ValueError(f"invalid citation label {label!r}")
+    return f"{experiment}{LABEL_SEPARATOR}{label}"
+
+
+def split_key(key: str) -> tuple[str, str | None]:
+    """Inverse of :func:`citation_key`: ``(experiment, label or None)``."""
+    experiment, _, label = key.partition(LABEL_SEPARATOR)
+    return experiment, label or None
+
+
 def pin_run(
     experiment: str,
     run_id: str = "latest",
     allow_dirty: bool = False,
     path: Path | None = None,
+    label: str | None = None,
 ) -> Citation:
     """Cite a run of ``experiment`` (default: its latest complete run).
+
+    With ``label``, the run is cited as supplementary evidence (``experiment:label``) and the
+    main citation is left unchanged.
 
     Raises:
         FileNotFoundError: if the run does not exist or is not complete.
@@ -142,7 +169,7 @@ def pin_run(
             "or pass --allow-dirty"
         )
     citations = load_citations(path)
-    citations[experiment] = citation
+    citations[citation_key(experiment, label)] = citation
     save_citations(citations, path)
     return citation
 
@@ -272,5 +299,19 @@ def update_reproduction(
         if not found:
             begin, end = _marker(exp.code)
             text += f"\n## {exp.code} {row.name} ({exp.paper_pages})\n\n{begin}\n{body}\n{end}\n"
+    for key, citation in sorted(citations.items()):
+        name, label = split_key(key)
+        if label is None or name not in REGISTRY:
+            continue
+        block = f"{REGISTRY[name].code}{LABEL_SEPARATOR}{label}"
+        run = RunDir(results_root() / name / citation.run_id)
+        if not run.acceptance_path.is_file():
+            notes.append(f"{block}: cited run {citation.run_id} is not in {results_root()}")
+            continue
+        text, found = replace_block(
+            text, block, criteria_table(run.read_acceptance(), run.read_manifest())
+        )
+        if not found:
+            notes.append(f"{block}: no AUTO:{block} block in {path.name}; nothing rendered")
     path.write_text(text)
     return notes
