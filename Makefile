@@ -29,7 +29,7 @@ test:  ## Fast tier: unit and property tests (CI)
 test-slow:  ## Slow tier (< 15 min): short replication tests, lab tests, short notebooks
 	$(RUN) pytest -m slow --nbmake tests/replication notebooks
 
-test-paper:  ## Paper tier (hours): every quick profile re-run and checked, long notebooks
+test-paper:  ## Paper tier (hours, estimated): every quick profile re-run and checked, long notebooks
 	$(RUN) pytest -m paper --nbmake tests/replication notebooks
 
 run-quick:  ## Run the quick profile of every registered experiment

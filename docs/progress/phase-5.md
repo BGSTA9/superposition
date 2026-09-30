@@ -75,7 +75,7 @@ E10's sweeps, reconstruction vs recovery, E11). Both reuse your latest quick run
 | Lint | `make lint` (ruff check, ruff format --check, pyright basic) | clean; pyright 0 errors |
 | Unit + property (CI tier) | `make test` | **174 passed** in 25 s (143 before + 31 new) |
 | Slow: new replication tests | `pytest -m slow tests/replication/test_{mech_interp_abs,sae_recovery,l1_removes_superposition}.py` | **3 passed in 20 min** (each re-runs its quick profile from scratch on CPU; E09 and E10 require every criterion, E11 every criterion except the pentagon's "falls to none") |
-| Slow: notebooks 09–10 | `pytest --nbmake notebooks/09_*.ipynb notebooks/10_*.ipynb` with `SUPERPOSITION_RESULTS=results/` | **2 passed** (they reuse the cited runs; without runs they train the quick profiles, ≈ 20 minutes) |
+| Slow: notebooks 09–10 | `pytest --nbmake notebooks/09_*.ipynb notebooks/10_*.ipynb` with `SUPERPOSITION_RESULTS=results/` | **2 passed** (they reuse the cited runs; without runs they train the quick profiles, an estimated ≈ 20 minutes, not measured) |
 | Slow: app launch | `tests/replication/test_lab.py::test_superposition_app_launches` | passed |
 
 New unit tests:
@@ -168,11 +168,11 @@ pages):
    interference lies within ±0.08 (6 of 18 negative); p. 39 says "converts … into negative
    interference". The regime was chosen from a pilot (D-502).
 5. **Full profiles of E09–E11 were not run.** Their runtimes in the configs are estimates; E11's
-   full profile is ≈ 1.8 hours on a CPU.
+   full profile is estimated (not measured) at ≈ 1.8 hours on a CPU.
 6. **Carried over:** Phase 3 (E02–E04, notebooks 03–05, three app pages); E08's computation in
    superposition (Phase 4 open issue 1: consult the reference implementations or try a bias-init
    variant; your call); E06's n = 20, m = 5 setting; owner placeholders (LICENSE, CITATION.cff,
-   notebooks' `<OWNER>`); CI not yet run on GitHub; the slow tier is now about an hour.
+   notebooks' `<OWNER>`); CI not yet run on GitHub; the slow tier is now about an hour (estimated, not measured).
 
 ## What the owner should look at and learn from this phase
 

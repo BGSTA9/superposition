@@ -11,7 +11,7 @@ uv sync                                    # create/refresh the env from uv.lock
 make lint                                  # ruff check + ruff format --check + pyright (basic)
 make test                                  # fast tier: pytest -m "not slow" (CI)
 make test-slow                             # slow tier (< 15 min): E00, reduced E02–E04, lab, notebooks 00–03
-make test-paper                            # paper tier (hours): every quick profile + notebooks 04–10
+make test-paper                            # paper tier (hours, estimated): every quick profile + notebooks 04–10
 uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish

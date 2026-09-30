@@ -35,7 +35,7 @@ uv run superposition app                      # launch the lab in your browser
 
 Developer commands: `make lint`, `make test` (fast tier), `make test-slow` (short replication
 and notebook tests, under 15 minutes), `make test-paper` (every quick profile re-run and checked,
-hours). See [CLAUDE.md](CLAUDE.md) for the full list and conventions.
+an estimated few hours; never timed as a whole). See [CLAUDE.md](CLAUDE.md) for the full list and conventions.
 
 ## Results gallery
 

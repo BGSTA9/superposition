@@ -227,7 +227,7 @@ pages):
    (≈ 0.1 higher around 1/(1 − S) = 1.5–1.9). Longer training moves it toward the paper.
 5. **E04 differences:** the pentagon snaps at ≤ 0.25× the others' density, not ≈ 0.4×; the
    collapse regimes of (d) sit at somewhat higher densities than p. 25 gives.
-6. **Full profiles of E02–E04 were not run.** Estimates are in the configs: about 2, 5 and 2
+6. **Full profiles of E02–E04 were not run.** Estimates (not measured) are in the configs: about 2, 5 and 2
    hours on a laptop CPU.
 7. **CI on GitHub is broken.** All 14 CI runs so far (since the first push on 2026-09-29) failed
    at job setup: `astral-sh/setup-uv@v10` does not exist. This is outside this session's list:

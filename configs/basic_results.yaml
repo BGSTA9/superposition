@@ -22,7 +22,8 @@ profiles:
   # (--device cpu), dominated by the n = 80 grids.
   quick: {}
   # full: more restarts and 3× longer training (docs/DECISIONS.md D-113, D-114).
-  # Measured: 1,673 s on an Apple M2 (--device mps); expect several times longer on a CPU.
+  # Measured: 1,673 s on an Apple M2 (--device mps). On a CPU: not measured; estimated at
+  # several times longer.
   full:
     n_restarts: 8
     train:
