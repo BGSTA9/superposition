@@ -1,0 +1,6 @@
+experiment: uniform_geometry
+run_id: 20260930T091350Z-2cb2dc61
+profile: quick
+git_commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+git_dirty: False
+figures: dstar.png, dimensionality.png, geometry_graphs.png, factor_census.png

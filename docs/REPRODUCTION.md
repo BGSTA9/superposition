@@ -17,6 +17,9 @@ PDF print of the paper (see `references/README.md`).
 |---|---|---|---|---|---|---|
 | E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20260929T093651Z-5eeb804c` | quick · cpu |
 | E01 | `basic_results` | pp. 10–12 | **PASS** | 12/12 | `20260929T093755Z-2cb0bbc4` | quick · cpu |
+| E02 | `phase_change` | pp. 14–16 | **PASS** | 6/6 | `20260930T090540Z-4e3325bf` | quick · cpu |
+| E03 | `uniform_geometry` | pp. 16–21 | **PASS** | 4/4 | `20260930T091350Z-2cb2dc61` | quick · cpu |
+| E04 | `nonuniform_geometry` | pp. 21–26 | **PASS** | 9/9 | `20260930T091958Z-43c63e78` | quick · cpu |
 | E05 | `learning_dynamics` | pp. 26–28 | **PASS** | 2/2 | `20260929T172920Z-2fae0fc5` | quick · cpu |
 | E06 | `adversarial` | pp. 29–30 | **PARTIAL** | 2/4 | `20260929T173800Z-e84cec26` | quick · cpu |
 | E07 | `privileged_basis` | pp. 31–34 | **PASS** | 3/3 | `20260929T174443Z-d54df07e` | quick · cpu |
@@ -185,6 +188,262 @@ under-represents features came from reading low-resolution figures (DECISIONS.md
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `340f825`): `20260929T093755Z-2cb0bbc4`
 (472 s wall-clock). Full profile (MPS): `20260929T090856Z-6d287488` (1,673 s).
+
+## E02 phase_change (pp. 14–16)
+
+**Paper's claims (pp. 14–16).** Store n features in m = n − 1 dimensions and vary one "extra"
+feature's importance relative to the others (0.1× to 10×) and every feature's density
+(1 − S from 1 to 0.01). The extra feature is either not learned, stored in superposition as an
+antipodal pair, or given a dedicated dimension, and the transitions look sharp: a phase change.
+A "toy model of the toy model", the exact loss of a few natural weight configurations, predicts
+the same three regions, with a first-order transition where two configurations' loss curves
+cross (p. 15). Shown for n = 2, m = 1 (p. 15) and n = 3, m = 2 (p. 16), each with an empirical
+and a theoretical diagram. McGrath (pp. 51–53) solved the n = 2, m = 1 problem exactly without
+biases and found a fourth, "confused" solution W₁ ≈ W₂, and several local minima.
+
+**Our figures** (quick profile). Left to right: the empirical diagram colored by the extra
+feature's norm and superposition as on pp. 15–16; the majority label of the nine models kept
+per cell; the theoretical diagram (the paper's families, each optimized exactly, D-301/D-302);
+and the cells where the two disagree (dots: next to a theoretical boundary).
+
+![E02 n = 2, m = 1](figures/phase_change/phase_n2_m1.png)
+
+![E02 n = 3, m = 2](figures/phase_change/phase_n3_m2.png)
+
+![E02 family losses, n = 2](figures/phase_change/family_losses_n2_m1.png)
+
+**Status: PASS (6/6 graded criteria).**
+
+Both problems show all three regions in both diagrams, arranged as on pp. 15–16. For n = 2,
+m = 1 the vote matches the theory in 126 of 144 cells (0.875); for n = 3, m = 2 in 118 of 144
+(0.819), just above SPEC's 0.80. The theory finds the paper's crossing loss curves (the
+family-loss figure): each family's optimum is smooth in the density, and the winner switches
+where two curves cross.
+
+*What the disagreements are.* In n = 2 all 18 disagreeing cells are ones where the theory says
+superposition and the vote says the extra feature was dropped (10) or given the dimension (8).
+In n = 3, 25 of the 26 are cells where the theory gives the extra feature a dimension and the
+vote says superposition (18 of them at relative importance 1.2–2.9×); in the last one, at
+0.1×, the theory drops it. The votes are close: 5–4 or 6–3 in 35 of the 44 cells, 7–2 in 8
+(and 5–3–1 in one).
+Notebook 04 (section 3) compares each cell's voting models with the theory's winning family
+(`lab.phase_cell_shared_losses`):
+- *n = 2, exactly* (every n = 2, m = 1 model's loss is computable in closed form): in all 18
+  cells the lowest-loss voting model has the theory's label, and in 14 it is within 0.3% of the
+  theory's optimum. The other voting models sit in worse minima and outnumber it, which is what
+  McGrath reports for this problem (p. 52) and why the paper discards the worst model.
+- *n = 3, on 2,000,000 shared inputs* (trained n = 3 models have no closed form): in all 26
+  cells the lowest-loss voting model has the theory's label, within 0.7% of its optimum. At
+  densities 0.01–0.015 the loss comes from a few hundred double activations and such sampled
+  comparisons are only indicative; at 0.023 and above they are precise.
+
+Labeling each cell by its lowest-loss model according to the run's own 20,000-sample losses
+(INFO row) agrees with the theory in all 144 n = 2 cells and in 136 of 144 n = 3 cells.
+
+*Solutions the paper's families miss.* In 4 of the n = 2 cells (density 0.12–0.28, extra
+importance 0.1–0.15× or 4–10×) the best trained model beats the theory's antipodal family by
+5.4–6.5% in exact loss. It is an *asymmetric* pair: the more important feature 1.02–1.04 long,
+the other 0.82–0.89, with a small positive bias (0.017–0.065) on the less important output. The
+family W ⊥ [1, 1] cannot express it, because W₁ + W₂ = 0 forces equal lengths. The label is still
+superposition, so no agreement number changes. In one dense n = 3 cell (density 0.66, 1.23×),
+where the vote agrees with the theory, the best model stores all three features in joint
+superposition (pairwise cosines −0.79, −0.33, −0.32) and beats every family by 1.3% on shared
+inputs; p. 15 says the paper deliberately leaves that solution out. Both are reported, not
+graded (docs/progress/phase-3.md, open issue 2).
+
+*The confused feature.* With every bias fixed at 0 the confused family wins 16 cells (n = 2)
+and 13 (n = 3), as McGrath found; with fitted biases it wins none. No cell's vote is confused:
+5 of the 2,880 trained models end confused, and 3 of those are their cell's discarded
+highest-loss model. A bias can predict a feature's mean on its own, which is most of what
+sharing a direction was buying (notebook 04, section 4).
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E02 -->
+Run `20260930T090540Z-4e3325bf` · profile `quick` · seed 0 · device `cpu` · commit `230a51dddd` · wall-clock 486.673 s · overall **PASS** (6/6)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| n2_m1 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 88, "not_learned": 29, "dedicated"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 106, "not_learned": 19, "dedicated… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Empirical majority label equals the theoretical label (paper's families) | p. 15 | PASS | {"agreement": 0.875, "cells": 144, "agreeing": 126} | {"min": 0.8} |
+| n2_m1 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 15 | INFO | {"agreement": 1.0} | — |
+| n2_m1 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 18, "on_or_next_to_a_theory_boundary": 5, "empirical_label_counts": {"not_learned": 10, "dedicated": 8}, "cells": [{"density… | — |
+| n2_m1 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 0, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+| n3_m2 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 79, "dedicated": 47, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 53, "dedicated": 72, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Empirical majority label equals the theoretical label (paper's families) | p. 16 | PASS | {"agreement": 0.8194, "cells": 144, "agreeing": 118} | {"min": 0.8} |
+| n3_m2 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 16 | INFO | {"agreement": 0.9444} | — |
+| n3_m2 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 26, "on_or_next_to_a_theory_boundary": 7, "empirical_label_counts": {"superposition": 26}, "cells": [{"density": 0.01, "impo… | — |
+| n3_m2 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 1, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+<!-- END AUTO:E02 -->
+
+**Discrepancies and notes.**
+- *n = 3, m = 2 margin.* 0.819 is close to the 0.80 bar; the batch-1024 run gives 0.833
+  (D-309). The disagreements are stuck models, not physics (above), so more restarts per cell
+  would likely raise it; the quick profile keeps the paper's ten.
+- *Where the empirical n = 3 diagram differs from p. 16.* The paper's empirical diagram shows
+  red specks near 1× at low density; ours has a band of red cells at 1.2–3×. The cause is the
+  one above: in those cells most voting models pair the extra feature with another one, a
+  minimum the theory ranks 12% to 4.5× worse than giving it a dimension, and they outvote the
+  models that found the optimum.
+- *Batch size.* Quick profiles train at batch 256 to fit 10 minutes on a CPU; a batch-1024 run
+  gives identical labels in 284 of 288 cells (D-309).
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `230a51d`): `20260930T090540Z-4e3325bf`
+(487 s wall-clock). Batch comparison: `20260930T075829Z-609cc6fb` (D-309).
+
+## E03 uniform_geometry (pp. 16–21)
+
+**Paper's claims (pp. 17–20).** With n = 400 equally important, equally sparse features in
+m = 30 dimensions, D* = m/‖W‖²_F is "sticky" at 1 and at 1/2 as sparsity grows (p. 17): about
+1 up to 1/(1 − S) ≈ 1.2, a plateau at 1/2 (roughly 2.6–3.7, read from the figure), then a
+fall to about 0.25 at 8. Individual Dᵢ cluster at fractions that belong to uniform polytopes
+(3/4 tetrahedron, 2/3 triangle, 1/2 digon, 2/5 pentagon, 3/8 square antiprism, p. 19), and the
+Dᵢ add up to m when features are packed efficiently (p. 18). Tegum factors are the connected
+components of the geometry graph (p. 20).
+
+**Our figures** (quick profile; best of 2 restarts at each of 20 sparsities):
+
+![E03 D*](figures/uniform_geometry/dstar.png)
+
+![E03 Dᵢ](figures/uniform_geometry/dimensionality.png)
+
+![E03 geometry graphs](figures/uniform_geometry/geometry_graphs.png)
+
+**Status: PASS (4/4 graded criteria).**
+
+D* is 0.998–0.999 at 1/(1 − S) ≤ 1.2. It sits within 0.03 of 1/2 from 2.34 to 3.79
+(0.525, 0.507, 0.500, 0.496, 0.493), wider than the paper's roughly 2.6–3.7, then falls
+steadily to 0.264 at 7.85 and 0.218 at 10. Σᵢ Dᵢ stays between 29.84 and 29.99 at every
+sparsity, as p. 18 says it should. From 2.64 to 3.79 all 58 represented features are in
+digons (29 antipodal pairs). Dᵢ cluster at four fractions: 2/3 (10 features at 1/(1 − S) = 1.62),
+1/2 (58 at 2.64), 2/5 (33 at 4.83) and 3/8 (29 at 4.83). Beyond about 5 the Dᵢ form a band that
+falls with D* instead of sitting on fraction lines, as in the paper's figure.
+
+*Which polytopes are really there.* Dᵢ alone cannot name a polytope, so the run also names each
+connected component of the geometry graph (D-308). With E03's edge threshold, |Wᵢ·Wⱼ| > 0.05
+(D-110), only the plateau's digons and one pentagon are separate factors; at higher sparsity a
+few small overlaps link everything into one component. Ignoring overlaps below 0.2 (notebook
+05, section 2) separates them: at 1/(1 − S) = 4.28 all 70 represented features sit in digons
+(50) and pentagons (20); at 4.83 there are 5 pentagons, 12 digons, a square antiprism and two
+uniform pieces (11 features in 4 dimensions, 4 in 2); at 5.46 two square antiprisms and two
+pentagons. From 6.16 on, one uniform component spans all 30 dimensions even at 0.2. The paper's
+geometric story holds in the middle of the range, with factors that are nearly rather than
+exactly orthogonal.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E03 -->
+Run `20260930T091350Z-2cb2dc61` · profile `quick` · seed 0 · device `cpu` · commit `230a51dddd` · wall-clock 364.968 s · overall **PASS** (4/4)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| — | D* ≈ 1 (≥ 0.95) at every 1/(1 − S) ≤ 1.2 | p. 17 | PASS | {"1.000": 0.9983, "1.129": 0.999} | {"min_dstar": 0.95, "up_to": 1.2} |
+| — | A plateau at 0.5 ± 0.03 over a contiguous range (end points at least 1.25× apart in 1/(1 − S)); report the span | p. 17 | PASS | {"span": [2.336, 3.793], "width_ratio": 1.624, "dstar_on_plateau": [0.5254, 0.5067, 0.5003, 0.4958, 0.4926], "paper_span": [2.6, 3.7]} | {"value": 0.5, "tol": 0.03, "min_span": 1.25} |
+| — | D* falls below the plateau after it and is 0.25 ± 0.05 at 1/(1 − S) ≈ 8 | p. 17 | PASS | {"at": 7.848, "dstar": 0.2637, "all_after_plateau_below": true, "dstar_after_plateau": [0.4102, 0.3797, 0.3407, 0.3096, 0.2876, 0.2637, 0.2… | {"value": 0.25, "tol": 0.05} |
+| — | Nonzero Dᵢ cluster within ±0.02 of at least 3 characteristic fractions | p. 19 | PASS | {"clusters": ["triangle (0.667)", "antipodal pair (digon) (0.5)", "pentagon (0.4)", "square antiprism (0.375)"], "by_fraction": {"tetrahedr… | {"min_clusters": 3, "cluster": "≥ 20% and ≥ 8 of one model's represented featur… |
+| — | Σᵢ Dᵢ of the best model at each sparsity, against m = 30 | p. 18 | INFO | {"1.000": {"sum_D": 29.99, "D_star": 0.9983}, "1.129": {"sum_D": 29.986, "D_star": 0.999}, "1.274": {"sum_D": 29.98, "D_star": 0.9993}, "1.… | — |
+| — | Represented features per tegum-factor type (geometry-graph components named by size, rank and uniformity) | pp. 19–20 | INFO | {"1.000": {}, "1.129": {}, "1.274": {}, "1.438": {"12 in 12 (non-uniform)": 12}, "1.624": {"23 in 23 (non-uniform)": 23, "dedicated dimensi… | — |
+<!-- END AUTO:E03 -->
+
+**Discrepancies and notes.**
+- *No tetrahedra.* The paper shows a cluster at 3/4 near 1/(1 − S) ≈ 1.3; we have none (and
+  neither did the batch-1024 run or the draft's longer exploratory runs). The 2/3 cluster at
+  1.62 is not backed by triangle factors in this run either: its geometry graph is one
+  non-uniform component (the batch-1024 run does find 6 triangles there).
+- *The drop from 1 to 1/2 comes late.* Between 1/(1 − S) ≈ 1.5 and 1.9 our D* is about 0.1
+  above the paper's curve (read by eye from p. 19: ≈ 0.82 at 1.6 and ≈ 0.6 at 1.8; ours 0.92 at
+  1.62 and 0.74 at 1.83). This is the least converged part of the curve: batch 1024 lowers it by
+  up to 0.085 (D-309) and the draft's uncited 50,000-step run by more. Hypothesis: the paper
+  trained longer. No criterion reads this range; the full profile (batch 1024, 20,000 steps,
+  60 points) is the test.
+- *Plateau wider than the paper's.* 2.34–3.79 against roughly 2.6–3.7; our reading of the
+  figure is approximate.
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `230a51d`): `20260930T091350Z-2cb2dc61`
+(365 s wall-clock). Batch comparison: `20260930T082510Z-c635c83a` (D-309).
+
+## E04 nonuniform_geometry (pp. 21–26)
+
+**Paper's claims (pp. 21–25).** (a) Five features in two dimensions at density 0.05 form a
+pentagon; making one feature denser pushes its neighbours away, making it sparser lets them
+close in, and past about 2.5× sparser the pentagon snaps to two digons with that feature
+dropped, where the loss curves of the two geometries cross (p. 22). (b) In m = 2, correlated
+features prefer to be orthogonal and, when they cannot be, side by side; anticorrelated
+features prefer to be antipodal (pp. 23–24). (c) In a larger model, each correlated set forms a
+local almost-orthogonal basis (pp. 24–25). (d) Three correlated pairs in m = 2 form a hexagon
+with pair members adjacent when very sparse, and collapse pair by pair onto their principal
+components as density rises (p. 25).
+
+**Our figures** (quick profile):
+
+![E04 (a) solutions](figures/nonuniform_geometry/perturbed_solutions.png)
+
+![E04 (a) losses](figures/nonuniform_geometry/perturbed_losses.png)
+
+![E04 (b) correlated sets](figures/nonuniform_geometry/correlated_sets.png)
+
+![E04 (c) local bases](figures/nonuniform_geometry/local_bases_gram.png)
+
+![E04 (d) collapse](figures/nonuniform_geometry/collapse.png)
+
+**Status: PASS (9/9 graded criteria).**
+
+*(a)* The angle between feature 0 and its neighbours grows with its density, from 55.7° at
+0.126× to 72.2° at 1× and 76.3° at 10× (it levels off above about 4×); Spearman ρ = 0.991 over
+ratios ≥ 1 and 1.0 over ratios ≤ 1. The best restart is two digons with feature 0 dropped
+(‖W₀‖ = 0.0003) at every ratio up to 0.251, and a pentagon from 0.316 on. Every restart's loss
+is plotted: the digon and pentagon curves cross between 0.251 (0.00544 against 0.00582) and
+0.316 (0.00672 against 0.00612), the first-order transition of p. 22.
+
+*(b)* The best correlated 2 × 2 model has each pair orthogonal (|cos| = 0.013 and 0.007; all 16
+restarts have mean within-pair cos within ±0.05). The best anticorrelated model has each pair
+exactly antipodal (cos −1.0) and a loss of about 10⁻¹⁶: two members are never active together,
+so the pair costs nothing. Only 5 of 16 restarts find it; the other 11 keep each pair
+orthogonal. With three correlated pairs, all six features are represented and each pair sits
+side by side, 64.6–65.2° apart (a regular hexagon would give 60°).
+
+*(c)* In two correlated sets of 10 in m = 10, features are almost orthogonal within a set (mean
+|cos| 0.007) and not across sets (0.216), in every one of the 8 restarts.
+
+*(d)* At density 0.01 the six features form a hexagon with pair members adjacent (within-pair
+cos 0.41–0.43). One pair is collapsed (cos > 0.95) at densities 0.085–0.121, two at
+0.172–0.35 (collapsed features at norm 0.71–0.73, the paper's 1/√2), and all three at 0.5
+(norm 0.65); the mean within-pair cosine rises from about 0.42 to 1.0 (Spearman ρ = 0.979).
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E04 -->
+Run `20260930T091958Z-43c63e78` · profile `quick` · seed 0 · device `cpu` · commit `230a51dddd` · wall-clock 287.461 s · overall **PASS** (9/9)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| a_perturbed | Denser perturbed feature → its neighbours move away: the neighbour angle grows with density (Spearman ≥ 0.8 over ratios… | p. 22 | PASS | {"spearman": 0.991, "densest_angle_deg": 76.33, "angle_by_ratio": {"0.126": 55.74, "0.158": 58.78, "0.2": 61.24, "0.251": 64.02, "0.316": 6… | {"min_spearman": 0.8, "densest_above_deg": 73.0} |
+| a_perturbed | Sparser perturbed feature → its neighbours close in: the neighbour angle shrinks with density (Spearman ≥ 0.8 over pent… | p. 22 | PASS | {"spearman": 1.0, "sparsest_pentagon_angle_deg": 55.74, "sparsest_pentagon_ratio": 0.1259} | {"min_spearman": 0.8, "sparsest_below_deg": 71.0} |
+| a_perturbed | Sparsest setting: the best solution is two digons with the perturbed feature at ≈ 0 (‖W‖ < 0.1); report the threshold | p. 22 | PASS | {"sparsest_ratio": 0.1, "best_geometry": "digons (perturbed dropped)", "perturbed_norm": 0.0003, "largest_ratio_with_collapse": 0.2512, "be… | {"geometry": "digons (perturbed dropped)", "norm_below": 0.1} |
+| a_perturbed | Lowest loss of each geometry at each density ratio (the crossing loss curves) | p. 22 | INFO | {"0.1": {"digons (perturbed dropped)": 0.003038}, "0.126": {"digons (perturbed dropped)": 0.003543, "pentagon": 0.004532}, "0.158": {"digon… | — |
+| b_correlation | Anticorrelated features interfere more negatively (lower mean within-set cosine) than correlated features (2 sets of 2,… | pp. 23–24 | PASS | {"anticorrelated_mean_cos": -1.0, "correlated_mean_cos": -0.0098} | anticorrelated < correlated |
+| b_correlation | 2 correlated pairs in m = 2: each pair orthogonal (\|cos\| < 0.1) | p. 24 | PASS | {"within_pair_abs_cos": [0.0131, 0.0065]} | {"abs_cos_max": 0.1} |
+| b_correlation | 3 correlated pairs in m = 2: all 6 represented and each pair's members side by side (angular neighbours) | p. 24 | PASS | {"represented": 6, "pairs_adjacent": true, "within_pair_angle_deg": [65.2, 64.6, 64.9]} | {"represented": 6, "pairs_adjacent": true} |
+| b_correlation | Mean within-set cosine of every restart (not just the best) | pp. 23–24 | INFO | {"correlated_2x2": [-0.011, 0.002, -0.001, -0.01, -0.002, -0.001, -0.001, -0.003, 0.001, 0.034, 0.004, 0.01, 0.005, 0.003, -0.003, 0.046], … | — |
+| c_local_bases | 2 correlated sets of 10 in m = 10: mean \|cos\| within a set < mean \|cos\| across sets | pp. 24–25 | PASS | {"within": 0.0069, "across": 0.2162, "all_restarts_within_across": [[0.0071, 0.2183], [0.0072, 0.2389], [0.0069, 0.2296], [0.0069, 0.2162],… | within < across |
+| d_collapse | Sparsest density: all 6 represented, pair members adjacent, no pair collapsed (cos < 0.95) | p. 25 | PASS | {"density": 0.01, "represented": 6, "pairs_adjacent": true, "within_pair_cos": [0.43, 0.412, 0.431]} | {"represented": 6, "pairs_adjacent": true, "collapsed": 0} |
+| d_collapse | Within-pair cosine rises toward 1 as density rises (Spearman ≥ 0.8; densest setting mean cos > 0.95) | p. 25 | PASS | {"spearman": 0.979, "mean_within_pair_cos": {"0.01": 0.424, "0.0143": 0.417, "0.0204": 0.422, "0.0291": 0.429, "0.0415": 0.438, "0.0592": 0… | {"min_spearman": 0.8, "densest_above": 0.95} |
+| d_collapse | Collapsed pairs (cos > 0.95) per density, and the norms of collapsed features (the paper draws them at r = 1/√2 ≈ 0.707) | p. 25 | INFO | {"0.01": {"collapsed_pairs": 0, "collapsed_norms": []}, "0.0143": {"collapsed_pairs": 0, "collapsed_norms": []}, "0.0204": {"collapsed_pair… | — |
+<!-- END AUTO:E04 -->
+
+**Discrepancies and notes.**
+- *(a) The snap comes later.* Our pentagon survives down to 0.316× the others' density and
+  collapses at ≤ 0.251×, against the paper's "≈ 2.5× less dense" (0.4×). Both runs agree
+  (D-309). Hypothesis: the paper's losses or restart counts; its figure does not give numbers.
+- *(d) The regimes are shifted.* The paper's "one set collapsed" at 0.05–0.15, "two sets" at
+  0.15–0.2 and "all sets" at 0.25–0.5 correspond to ours at 0.085–0.121, 0.172–0.35 and 0.5; at
+  0.5 our collapsed features have norm 0.65, below 1/√2.
+- *Unstated settings.* The paper gives no density for (b)–(d); ours are in D-307.
+
+**Run IDs.** Cited (quick, CPU, seed 0, commit `230a51d`): `20260930T091958Z-43c63e78`
+(287 s wall-clock). Batch comparison: `20260930T084945Z-5297207f` (D-309).
 
 ## E05 learning_dynamics (pp. 26–28)
 

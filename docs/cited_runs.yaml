@@ -77,6 +77,28 @@ mech_interp_abs:
   n_passed: 3
   n_graded: 3
   wall_clock_s: 270.704
+nonuniform_geometry:
+  run_id: 20260930T091958Z-43c63e78
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+  dirty: false
+  overall: PASS
+  n_passed: 9
+  n_graded: 9
+  wall_clock_s: 287.461
+phase_change:
+  run_id: 20260930T090540Z-4e3325bf
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+  dirty: false
+  overall: PASS
+  n_passed: 6
+  n_graded: 6
+  wall_clock_s: 486.673
 privileged_basis:
   run_id: 20260929T174443Z-d54df07e
   profile: quick
@@ -99,3 +121,14 @@ sae_recovery:
   n_passed: 3
   n_graded: 3
   wall_clock_s: 405.936
+uniform_geometry:
+  run_id: 20260930T091350Z-2cb2dc61
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+  dirty: false
+  overall: PASS
+  n_passed: 4
+  n_graded: 4
+  wall_clock_s: 364.968

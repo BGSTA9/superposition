@@ -1,0 +1,6 @@
+experiment: nonuniform_geometry
+run_id: 20260930T091958Z-43c63e78
+profile: quick
+git_commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+git_dirty: False
+figures: perturbed_solutions.png, perturbed_losses.png, correlated_sets.png, local_bases_gram.png, collapse.png
