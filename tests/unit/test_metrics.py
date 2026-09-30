@@ -178,6 +178,55 @@ def test_geometry_graph_components() -> None:
     assert pentagon_components == [{0, 1, 2, 3, 4}]
 
 
+def square_antiprism() -> torch.Tensor:
+    """Two unit squares at heights ±1/√3, turned 45° apart: a unit-norm tight frame of 8 vectors
+    in 3D (the Thomson solution of p. 19), shape (3, 8)."""
+    angles = torch.arange(8, dtype=torch.float64) * math.pi / 4
+    radius, height = math.sqrt(2 / 3), 1 / math.sqrt(3)
+    z = torch.tensor([height if k % 2 == 0 else -height for k in range(8)], dtype=torch.float64)
+    return torch.stack([radius * angles.cos(), radius * angles.sin(), z]).float()
+
+
+def tegum(*blocks: torch.Tensor) -> torch.Tensor:
+    """Tegum product (p. 20): place each block's features in its own orthogonal subspace."""
+    return torch.block_diag(*blocks)
+
+
+def test_component_geometry_names_the_papers_polytopes() -> None:
+    """Paper: pp. 19–20. (features, dimensions spanned) plus uniformity names each factor, which
+    Dᵢ alone cannot (2/5 and 3/8 are 0.025 apart)."""
+    cases = [
+        (polygon(5)[0], "pentagon", 2),
+        (polygon(3)[0], "triangle", 2),
+        (tetrahedron()[0], "tetrahedron", 3),
+        (square_antiprism(), "square antiprism", 3),
+        (torch.tensor([[1.0, -1.0]]), "digon (antipodal pair)", 1),
+        (torch.tensor([[1.0]]), "dedicated dimension", 1),
+    ]
+    for W, name, rank in cases:
+        k = W.shape[1]
+        assert metrics.component_geometry(W, list(range(k))) == (k, rank, name)
+    dims = metrics.feature_dimensionality(square_antiprism()[None])[0]
+    assert all_close(dims, 3 / 8)
+    # A regular hexagon is uniform but not one of the paper's polytopes.
+    assert metrics.component_geometry(polygon(6)[0], list(range(6)))[2] == "6 in 2 (uniform)"
+    # Three connected vectors in 2D with Dᵢ ≈ 0.42, 0.58, 0.42 (not all 2/3) are not uniform.
+    skew = torch.tensor([[1.0, 0.6, -1.0], [0.0, 0.8, 0.0]])
+    assert metrics.component_geometry(skew, list(range(3)))[2] == "3 in 2 (non-uniform)"
+
+
+def test_geometry_census_splits_tegum_products() -> None:
+    """A triangular bipyramid is the tegum product of a triangle and a digon: its features land
+    at 2/3 and 1/2, not at a single 3/5 line (p. 19)."""
+    W = tegum(polygon(3)[0], torch.tensor([[1.0, -1.0]]))
+    assert metrics.geometry_census(W) == {"triangle": 3, "digon (antipodal pair)": 2}
+    W = tegum(polygon(5)[0], tetrahedron()[0], torch.tensor([[1.0, -1.0]]))
+    W = torch.cat([W, torch.zeros(W.shape[0], 2)], dim=1)  # two unlearned features
+    census = metrics.geometry_census(W)
+    assert census == {"pentagon": 5, "tetrahedron": 4, "digon (antipodal pair)": 2}
+    assert sum(census.values()) == int(metrics.represented_mask(W[None])[0].sum())
+
+
 def test_neuron_polysemanticity() -> None:
     W = torch.tensor(
         [
