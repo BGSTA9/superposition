@@ -552,9 +552,15 @@ def _load(run_dir: RunDir) -> dict[str, tuple[PhaseGridResult, TheoryResult]]:
 
 def figures(run_dir: RunDir) -> list[Path]:
     """Empirical vs theoretical diagrams with the agreement map, and family loss curves."""
+    import yaml
+
+    from superposition.config import from_dict
+
+    config = from_dict(PhaseChangeConfig, yaml.safe_load(run_dir.config_path.read_text()))
     cells = run_dir.read_table("cells")
     paths: list[Path] = []
     for label, (empirical, predicted) in _load(run_dir).items():
+        voters = empirical.models_per_cell - config.discard_worst
         frame = cells[cells["setting"] == label]
         shape = (len(empirical.density_grid), len(empirical.importance_grid))
         imp, dens = empirical.importance_grid, empirical.density_grid
@@ -570,7 +576,7 @@ def figures(run_dir: RunDir) -> list[Path]:
             ),
             (
                 "regimes",
-                "Empirical (majority of 9)",
+                f"Empirical (majority of {voters})",
                 {"labels": np.asarray(frame["empirical"]).reshape(shape)},
             ),
             ("regimes", "Theoretical (paper families)", {"labels": predicted.labels()}),

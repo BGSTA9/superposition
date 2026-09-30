@@ -204,9 +204,14 @@ def family_loss_figure(
     curves share one scale (losses at different densities are not comparable, footnote 17).
     """
     variance = density / 3 - density**2 / 4
+    # Families sharing a regime (n = 3 has two "dedicated" ones) get distinct line styles.
+    styles = []
+    for f, label in enumerate(family_labels):
+        repeat = list(family_labels[:f]).count(label)
+        styles.append((0, (4, 2)) if label == "confused" else ["-", (0, (1, 1.5))][repeat % 2])
     with paper_style():
         fig, axes = plt.subplots(
-            1, len(importance_values), figsize=(3.4 * len(importance_values), 3.0), squeeze=False
+            1, len(importance_values), figsize=(3.4 * len(importance_values), 3.2), squeeze=False
         )
         for ax, imp, block in zip(axes[0], importance_values, losses, strict=True):
             for f, (name, label) in enumerate(zip(family_names, family_labels, strict=True)):
@@ -216,7 +221,7 @@ def family_loss_figure(
                     color=REGIME_COLORS[label],
                     linewidth=1.8,
                     label=name,
-                    linestyle="-" if label != "confused" else (0, (4, 2)),
+                    linestyle=styles[f],
                 )
             ax.set_xscale("log")
             ax.set_xlabel("feature density 1 − S")
@@ -224,16 +229,23 @@ def family_loss_figure(
             ax.grid(axis="y")
         axes[0, 0].set_ylabel("optimal loss / (p/3 − p²/4)")
         handles, names = axes[0, 0].get_legend_handles_labels()
-        fig.legend(handles, names, loc="lower center", ncol=len(names), fontsize=8)
+        fig.legend(
+            handles,
+            names,
+            loc="lower left",
+            bbox_to_anchor=(0.01, 0.0),
+            ncol=min(3, len(names)),
+            fontsize=8,
+        )
         if suptitle:
             fig.suptitle(suptitle, x=0.02, ha="left", fontsize=10.5, color=INK)
         fig.text(
             0.99,
-            0.01,
+            0.02,
             "lowest curve wins; kinks in the minimum are first-order phase changes",
             ha="right",
             fontsize=7.5,
             color=INK_SECONDARY,
         )
-        fig.tight_layout(rect=(0, 0.1, 1, 0.92 if suptitle else 1.0))
+        fig.tight_layout(rect=(0, 0.17, 1, 0.92 if suptitle else 1.0))
     return fig
