@@ -60,7 +60,58 @@ open questions (pp. 45–46) is written in Phase 6.
   5. Read one column of the p. 11 figure: what do the WᵀW heatmap, the bias column and the bar
      colors each tell you?
 
-> Stops 3–5 (the math, phase changes, geometry; notebooks 03–05) arrive with Phase 3.
+## Stop 3 · The math (pp. 12–14)
+
+- **Read:** pp. 12–14 ("Mathematical Understanding"), and footnotes 10–12.
+- **Notebook:** `notebooks/03_the_math.ipynb` (exact computations only; under a minute).
+- **Code:** `src/superposition/theory.py`: the linear decomposition, the 0- and 1-sparse terms,
+  the exact loss of a model whose outputs read at most one other feature (docs/DECISIONS.md
+  D-301).
+- **App:** **Playground** probe panel. Activate one feature of a pentagon and read the other
+  outputs before and after the bias: that is the 1-sparse interference term.
+- **Explain it back:**
+  1. Write the linear model's loss as feature benefit plus interference. Why can an antipodal
+     pair never beat dropping the less important feature in the linear model?
+  2. Why do L₀ and L₁ dominate the loss as S → 1, and what does each one penalize?
+  3. Why is negative interference free on 1-sparse inputs, and what does a negative bias cost?
+  4. What is the "toy model of the toy model", and why does a crossing of two families' loss
+     curves make a first-order phase change?
+
+## Stop 4 · Superposition as a phase change (pp. 14–16, 51–53)
+
+- **Read:** pp. 14–16, then McGrath's comment on pp. 51–53.
+- **Notebook:** `notebooks/04_phase_change.ipynb` (runs E02, or reuses your latest quick run).
+- **Results:** `docs/REPRODUCTION.md`, section E02.
+- **App:** **Phase diagrams**. Switch between the empirical and theoretical views, click cells
+  marked × and compare the losses of the trained models with the winning family's optimum.
+  Then show the theory with every bias fixed at 0.
+- **Explain it back:**
+  1. How is each empirical cell labeled, and why does the paper discard the highest-loss model?
+  2. What are the three (and, for n = 3, four) families of the theoretical diagram, and which
+     scalars are optimized in each?
+  3. Where do empirical and theoretical diagrams disagree, and how do you tell a boundary cell
+     from a stuck model?
+  4. Why does McGrath's confused solution disappear once biases are free?
+
+## Stop 5 · The geometry of superposition (pp. 16–25)
+
+- **Read:** pp. 16–21 (uniform superposition, Dᵢ, polytopes, tegum products), then pp. 21–25
+  (non-uniform superposition).
+- **Notebook:** `notebooks/05_geometry.ipynb` (runs E03 and E04, or reuses your latest quick
+  runs).
+- **Results:** `docs/REPRODUCTION.md`, sections E03 and E04.
+- **App:** **Geometry**: drag the sparsity slider across the 1/2 plateau and watch the geometry
+  graph break into digons, then into larger factors. **Non-uniform**: move feature 0's density
+  and find where the best solution snaps from a pentagon to two digons; then step through the
+  collapse of correlated pairs.
+- **Explain it back:**
+  1. What does D* measure, and why is it "sticky" at 1 and 1/2?
+  2. Why does a uniform polytope give every vertex Dᵢ = (dimensions)/(features)? Why does a
+     triangular bipyramid show up at 2/3 and 1/2 rather than 3/5?
+  3. When one feature gets sparser, why do its neighbours close in, and why does the pentagon
+     eventually snap?
+  4. Why do correlated features prefer to be orthogonal, anticorrelated ones antipodal, and
+     when do correlated pairs collapse onto their principal component?
 
 ## Stop 6 · Learning dynamics (pp. 26–28)
 
