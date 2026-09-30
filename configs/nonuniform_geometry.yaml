@@ -51,9 +51,11 @@ base:
     eval_samples: 20000
 profiles:
   # quick: (a) 21 ratios × 32 restarts; (b) 3 × 16 restarts; (c) 8 restarts; (d) 12 densities
-  # × 16 restarts; all at batch 256.
+  # × 16 restarts; all at batch 256. Measured: 287 s on an Apple M2 CPU (--device cpu).
   quick: {}
   # full: twice the restarts, a finer ratio grid, SPEC §6's default batch 1024, twice the steps.
+  # Not yet measured; estimated from the batch1024 run (952 s on an Apple M2 CPU): ≈ 2 hours on
+  # a laptop CPU.
   full:
     perturbed:
       n_ratios: 41
@@ -68,6 +70,7 @@ profiles:
       steps: 20000
       batch_size: 1024
   # batch1024: the quick setup at SPEC §6's default batch 1024; compared with quick in D-309.
+  # Measured: 952 s on an Apple M2 CPU.
   batch1024:
     train:
       batch_size: 1024

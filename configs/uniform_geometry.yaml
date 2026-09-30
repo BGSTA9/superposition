@@ -40,8 +40,11 @@ base:
     eval_samples: 20000
 profiles:
   # quick: 20 sparsities × 2 restarts (40 models of 400 × 30) at batch 256.
+  # Measured: 365 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: SPEC's ≥ 60 points, 4 restarts, SPEC §6's default batch 1024, twice the steps.
+  # full: SPEC's ≥ 60 points, 4 restarts, SPEC §6's default batch 1024, twice the steps. Not yet
+  # measured; estimated from the batch1024 run (1,472 s for 40 models on an Apple M2 CPU): ≈ 5
+  # hours on a laptop CPU; use a GPU.
   full:
     n_points: 60
     n_restarts: 4
@@ -49,6 +52,7 @@ profiles:
       steps: 20000
       batch_size: 1024
   # batch1024: the quick grid at SPEC §6's default batch 1024; compared with quick in D-309.
+  # Measured: 1,472 s on an Apple M2 CPU.
   batch1024:
     train:
       batch_size: 1024

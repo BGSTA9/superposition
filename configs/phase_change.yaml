@@ -41,8 +41,10 @@ base:
     eval_samples: 20000
 profiles:
   # quick: 12 × 12 cells × 10 models for each problem (1,440 models each) at batch 256.
+  # Measured: 487 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: a finer 24 × 24 grid at SPEC §6's default batch 1024.
+  # full: a finer 24 × 24 grid at SPEC §6's default batch 1024. Not yet measured; estimated
+  # from the batch1024 run (1,597 s for 12 × 12 on an Apple M2 CPU): ≈ 2 hours on a laptop CPU.
   full:
     grid:
       n_importance: 24
@@ -50,6 +52,7 @@ profiles:
     train:
       batch_size: 1024
   # batch1024: the quick grid at SPEC §6's default batch 1024; compared with quick in D-309.
+  # Measured: 1,597 s on an Apple M2 CPU.
   batch1024:
     train:
       batch_size: 1024
