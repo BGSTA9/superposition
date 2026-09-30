@@ -1,4 +1,4 @@
-# E08 abs_computation (Paper: pp. 34–39). SPEC §7 E08; decision D-408.
+# E08 abs_computation (Paper: pp. 34–39). SPEC §7 E08; decisions D-408, D-409, D-R01.
 # (a) n = 3, m = 6, dense, equal importance; (b) n = 100, m = 40, Iᵢ = 0.8ⁱ over the p. 37
 # sparsities (1 − S, densest first). Inputs are 0 w.p. S, else U[−1, 1]; target |x|.
 experiment: abs_computation
@@ -17,14 +17,20 @@ base:
     importance_decay: 0.8
     feature_probabilities: [1.0, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
     n_restarts: 4
-  bias_variant:
+  bias_variant:            # diagnostic, not the replication (D-409)
     enabled: true
     bias_init: 0.1
     feature_probabilities: [0.01, 0.001]
     n_restarts: 2
+  init_variant:            # diagnostic, not the replication (D-R01): √((n + m)/(n·m)) × Xavier
+    enabled: true
+    init_scale: 0.187
+    feature_probabilities: [0.01, 0.001]
+    n_restarts: 4
   thresholds:
     per_feature_loss_max: 0.05
-    computed_well: 0.5
+    computed_well: 0.5       # SPEC's original (b) criterion, reported (D-R01)
+    usefully_computed: 0.75  # the graded (b) criterion (D-R01)
     rel_threshold: 0.25
     dead_output: 0.05
     primary_ratio: 2.0
@@ -38,10 +44,12 @@ base:
     log_every: 100
     eval_samples: 20000
 profiles:
-  # quick: 4 restarts per sparsity, plus the bias-init diagnostic variant (D-409).
-  # Measured: 369 s on an Apple M2 CPU (--device cpu).
+  # quick: 4 restarts per sparsity, plus the bias-init (D-409) and init-scale (D-R01)
+  # diagnostic variants. Measured: 369 s on an Apple M2 CPU (--device cpu) before the
+  # init-scale variant was added.
   quick: {}
-  # full: more restarts and longer training. Measured: 981 s on an Apple M2 (--device mps).
+  # full: more restarts and longer training. Measured: 981 s on an Apple M2 (--device mps),
+  # before the init-scale variant was added.
   full:
     sweep:
       n_restarts: 8

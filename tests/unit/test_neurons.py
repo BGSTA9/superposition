@@ -10,8 +10,10 @@ from superposition.experiments.abs_computation import (
     AbsComputationConfig,
     AbsThresholds,
     evaluate_sweep,
+    model_losses,
     neuron_feature_counts,
     primary_secondary,
+    reference_losses,
     side_roles,
 )
 from superposition.experiments.privileged_basis import (
@@ -119,29 +121,67 @@ def test_primary_plus_secondary_pattern() -> None:
     assert primary_secondary(W1n, counts, ratio=2.0) == 1  # only neuron 0
 
 
-def _abs_summary(dense_mono: int, sparse_well: int) -> pd.DataFrame:
+def _abs_summary(dense_mono: int, sparse_well: int, sparse_useful: int) -> pd.DataFrame:
     rows = [
         {"feature_probability": 1.0, "monosemantic": dense_mono, "polysemantic": 40 - dense_mono},
         {"feature_probability": 0.001, "monosemantic": 0, "polysemantic": 40},
     ]
-    for row, well in zip(rows, (20, sparse_well), strict=True):
+    for row, well, useful in zip(rows, (20, sparse_well), (40, sparse_useful), strict=True):
         row.update(
             dead=0,
             computed_well=well,
+            computed_well_features=list(range(well)),
+            usefully_computed=useful,
+            usefully_computed_features=list(range(useful)),
             primary_plus_secondary=0,
             max_features_per_neuron=1,
             loss=0.0,
+            loss_exact=0.002,
+            loss_mean_reference=0.004,
+            loss_no_superposition_reference=0.001,
         )
     return pd.DataFrame(rows)
 
 
 @pytest.mark.parametrize(
-    ("dense_mono", "sparse_well", "expected"),
-    [(40, 25, [PASS, PASS]), (38, 25, [FAIL, PASS]), (40, 20, [PASS, FAIL])],
+    ("dense_mono", "sparse_well", "sparse_useful", "expected", "original_would_pass"),
+    [
+        (40, 25, 45, [PASS, PASS], True),
+        (38, 25, 45, [FAIL, PASS], True),
+        (40, 20, 45, [PASS, PASS], False),  # graded on m, not on SPEC's original m/2 (D-R01)
+        (40, 25, 40, [PASS, FAIL], True),  # exactly m usefully computed is not more than m
+    ],
 )
-def test_e08_sweep_criteria(dense_mono: int, sparse_well: int, expected: list[str]) -> None:
-    criteria = evaluate_sweep(AbsComputationConfig(), _abs_summary(dense_mono, sparse_well))
-    assert [c.status for c in criteria] == [*expected, INFO]
+def test_e08_sweep_criteria(
+    dense_mono: int,
+    sparse_well: int,
+    sparse_useful: int,
+    expected: list[str],
+    original_would_pass: bool,
+) -> None:
+    summary = _abs_summary(dense_mono, sparse_well, sparse_useful)
+    criteria = evaluate_sweep(AbsComputationConfig(), summary)
+    assert [c.status for c in criteria] == [*expected, INFO, INFO, INFO]
+    by_id = {c.id: c for c in criteria}
+    assert by_id["b_sparse_original_criterion"].value["would_pass"] is original_would_pass
+    references = by_id["b_within_sparsity_references"].value["1-S=0.001"]
+    assert references["loss_over_no_superposition"] == pytest.approx(2.0)
+
+
+def test_e08_reference_losses_and_exact_model_loss() -> None:
+    importance = 0.8 ** torch.arange(100.0)
+    p = torch.tensor([1.0, 0.001])
+    mean_ref, no_sp_ref = reference_losses(importance, p, n_hidden=40)
+    variance = p / 3 - p**2 / 4
+    assert torch.allclose(mean_ref, variance * importance.sum())
+    assert torch.allclose(no_sp_ref, variance * importance[20:].sum())
+    # Every feature at its mean (ratio 1) is the mean reference; the top 20 exact (ratio 0) and
+    # the rest at their mean is the no-superposition reference.
+    ones = torch.ones(2, 100)
+    assert torch.allclose(model_losses(ones, importance, p), mean_ref)
+    top = ones.clone()
+    top[:, :20] = 0.0
+    assert torch.allclose(model_losses(top, importance, p), no_sp_ref)
 
 
 def test_e07_criteria_on_a_synthetic_sweep() -> None:

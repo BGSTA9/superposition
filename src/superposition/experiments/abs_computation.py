@@ -13,12 +13,18 @@ together to compute absolute value." Visualized after footnote-15 normalization 
 largest |W₁| weight scaled to 1, W₂ inversely).
 
 **(b) n = 100, m = 40, Iᵢ = 0.8ⁱ, sparsity swept (pp. 36–38).** Dense → each neuron represents
-a single feature; sparse → the model "uses superposition to represent more features than it
-has neurons", i.e. computes |x| for more than m/2 features (two neurons per feature is the
-capacity without superposition). Many neurons have one "primary" feature with a large weight
-plus "secondary" features with smaller ones (p. 38).
+a single feature; sparse → "this model, too, uses superposition to represent more features than
+it has neurons", and gradient descent "manages to find solutions that usefully approximate the
+computation even when each neuron encodes a mix of multiple features" (p. 37). Graded (D-R01):
+at the sparsest setting, more than m features are *usefully computed* (per-feature loss below
+75% of predicting the mean, i.e. closer to one side of |x| computed exactly than to nothing);
+SPEC's original criterion (more than m/2 features *computed well*, below 50%) is reported
+next to it. Many neurons have one "primary" feature with a large weight plus "secondary"
+features with smaller ones (p. 38).
 
-Operationalization of the criteria: docs/DECISIONS.md D-408.
+Operationalization of the criteria: docs/DECISIONS.md D-408, D-R01. Diagnostic variants (never
+the replication default): a positive initial output bias (D-409) and a smaller initial weight
+scale (D-R01).
 """
 
 from __future__ import annotations
@@ -88,7 +94,12 @@ class AbsThresholds:
     """Acceptance and role thresholds (SPEC §7 E08; D-408)."""
 
     per_feature_loss_max: float = 0.05  # (a) vs the loss of predicting the mean
-    computed_well: float = 0.5  # (b) per-feature loss below this fraction of the mean baseline
+    # (b) per-feature loss below this fraction of the mean baseline: SPEC's original criterion
+    # ("computed well", both sides needed), reported next to the graded one (D-R01)
+    computed_well: float = 0.5
+    # (b) graded (D-R01): "usefully computed", closer to one side of |x| computed exactly (≈ 0.5)
+    # than to not computing the feature at all (1)
+    usefully_computed: float = 0.75
     rel_threshold: float = 0.25  # a feature counts for a neuron at ≥ 25% of its largest |W₁|
     dead_output: float = 0.05  # a neuron whose normalized W₂ column is below this is dead
     primary_ratio: float = 2.0  # primary feature ≥ 2× the next-largest |W₁| weight (p. 38)
@@ -108,12 +119,29 @@ class BiasInitVariant:
 
 
 @dataclass
+class InitScaleVariant:
+    """A diagnostic variant (never graded, never the default): both weight matrices start at
+    ``init_scale`` × SPEC §3's Xavier init (D-R01).
+
+    The default 0.187 = √((n + m)/(n·m)) for n = 100, m = 40 gives the standard deviation
+    √(2/(n·m)) of a Kaiming-uniform init whose fan-in is the whole m × n matrix: the scale of
+    the ARENA reference implementation's |x| model, consulted for diagnosis only (D-R01).
+    """
+
+    enabled: bool = True
+    init_scale: float = 0.187
+    feature_probabilities: list[float] = field(default_factory=lambda: [0.01, 0.001])
+    n_restarts: int = 4
+
+
+@dataclass
 class AbsComputationConfig(ExperimentConfig):
     """E08 settings; ``train`` is shared by both parts."""
 
     no_superposition: NoSuperpositionSetup = field(default_factory=NoSuperpositionSetup)
     sweep: SparsitySweepSetup = field(default_factory=SparsitySweepSetup)
     bias_variant: BiasInitVariant = field(default_factory=BiasInitVariant)
+    init_variant: InitScaleVariant = field(default_factory=InitScaleVariant)
     thresholds: AbsThresholds = field(default_factory=AbsThresholds)
 
 
@@ -262,10 +290,12 @@ def train_abs(
     seed: int,
     device: torch.device,
     bias_init: float = 0.0,
+    init_scale: float = 1.0,
 ) -> TrainedAbs:
     """Train ``len(probabilities) × n_restarts`` absolute-value models; keep the best of each.
 
-    ``bias_init`` ≠ 0 is only used by the diagnostic variant; SPEC §3 initializes biases to 0.
+    ``bias_init`` ≠ 0 and ``init_scale`` ≠ 1 are only used by the diagnostic variants; SPEC §3
+    initializes biases to 0 and weights with the Xavier init.
     """
     condition = torch.arange(len(probabilities)).repeat_interleave(n_restarts)
     p = torch.tensor(probabilities, dtype=torch.float32)[condition]
@@ -273,6 +303,8 @@ def train_abs(
     model = AbsModel(n_features, n_hidden, n_inst, seed=seed)
     with torch.no_grad():
         model.b.fill_(bias_init)
+        model.W1.mul_(init_scale)
+        model.W2.mul_(init_scale)
     model = model.to(device)
     W1_init, W2_init = model.W1.detach().cpu().clone(), model.W2.detach().cpu().clone()
     dist = IndependentSparse(p, n_inst, n_features, low=-1.0, high=1.0)
@@ -306,6 +338,28 @@ def loss_ratios(trained: TrainedAbs, n_samples: int, seed: int) -> Tensor:
     )
     baseline = uniform_feature_variance(trained.feature_probability)
     return per_feature / torch.as_tensor(baseline)[:, None]
+
+
+def model_losses(ratios: Tensor, importance: Tensor, probabilities: Tensor) -> Tensor:
+    """Each model's importance-weighted loss Σᵢ Iᵢ ℓᵢ, ``(cond,)``, from its exact per-feature
+    losses ℓᵢ = ratioᵢ · V(p) (more precise than a plain Monte Carlo loss when sparse)."""
+    baseline = torch.as_tensor(uniform_feature_variance(probabilities))
+    return (ratios * baseline[:, None] * importance).sum(dim=-1)
+
+
+def reference_losses(
+    importance: Tensor, probabilities: Tensor, n_hidden: int
+) -> tuple[Tensor, Tensor]:
+    """Two reference losses per sparsity, ``(cond,)`` each.
+
+    Footnote 17: losses are comparable only within one sparsity, so each model is compared with
+    references at its own sparsity. *Mean*: every feature predicted by its mean, Σᵢ Iᵢ V(p).
+    *No superposition*: both sides of the m/2 most important features computed exactly (two
+    neurons each, p. 36) and every other feature at its mean, Σ_{i ≥ m/2} Iᵢ V(p). Here
+    V(p) = p/3 − p²/4 and ``importance`` is sorted most important first.
+    """
+    baseline = torch.as_tensor(uniform_feature_variance(probabilities))
+    return baseline * importance.sum(), baseline * importance[n_hidden // 2 :].sum()
 
 
 # --- run ----------------------------------------------------------------------------------------
@@ -358,6 +412,7 @@ def run(
         "per_feature_loss_ratio",
     )
     criteria += evaluate_sweep(config, summary)
+    sides = side_diagnostics(sweep, thr.side_computed_max)
     criteria.append(
         info(
             "b_side_diagnostics",
@@ -365,61 +420,104 @@ def run(
             "whether the side's gain Σₕ W₂[i,h]·ReLU(±W₁[h,i]) was positive at initialization. "
             "Meaningful where inputs are mostly 1-sparse (1 − S ≤ 0.01)",
             PAGE_B,
-            {
-                f"1-S={format_probability(row['feature_probability'])}": row
-                for row in side_diagnostics(sweep, thr.side_computed_max)
-            },
+            {f"1-S={format_probability(row['feature_probability'])}": row for row in sides},
             group="b_n100_m40",
         )
     )
-    if config.bias_variant.enabled:
-        criteria.append(run_bias_variant(config, sweep, ratios, device, logger))
+    v = config.bias_variant
+    if v.enabled:
+        logger.info(
+            f"(b) bias-init variant: b₀ = {v.bias_init:g} at 1−S = {v.feature_probabilities}"
+        )
+        criteria.append(
+            run_variant(
+                config,
+                sweep,
+                ratios,
+                sides,
+                device,
+                "b_bias_init_variant",
+                f"(b) Diagnostic variant, not the replication (D-409): output bias initialized to "
+                f"{v.bias_init:g} instead of 0 ({v.n_restarts} restarts), against the default runs",
+                v.feature_probabilities,
+                v.n_restarts,
+                bias_init=v.bias_init,
+            )
+        )
+    w = config.init_variant
+    if w.enabled:
+        logger.info(
+            f"(b) init-scale variant: {w.init_scale:g}× Xavier at 1−S = {w.feature_probabilities}"
+        )
+        criteria.append(
+            run_variant(
+                config,
+                sweep,
+                ratios,
+                sides,
+                device,
+                "b_init_scale_variant",
+                f"(b) Diagnostic variant, not the replication (D-R01): both weight matrices "
+                f"initialized at {w.init_scale:g}× the Xavier init, the scale of the ARENA "
+                f"reference |x| model ({w.n_restarts} restarts), against the default runs",
+                w.feature_probabilities,
+                w.n_restarts,
+                init_scale=w.init_scale,
+            )
+        )
     return criteria
 
 
-def run_bias_variant(
+def run_variant(
     config: AbsComputationConfig,
     sweep: TrainedAbs,
     ratios: Tensor,
+    sides: list[dict],
     device: torch.device,
-    logger: logging.Logger,
+    id: str,
+    description: str,
+    probabilities: list[float],
+    n_restarts: int,
+    bias_init: float = 0.0,
+    init_scale: float = 1.0,
 ) -> Criterion:
-    """Retrain a few sparse settings with a positive initial output bias (diagnostic, D-409)."""
-    s, v, thr = config.sweep, config.bias_variant, config.thresholds
-    logger.info(f"(b) bias-init variant: b₀ = {v.bias_init:g} at 1−S = {v.feature_probabilities}")
+    """Retrain a few sparse settings with a different initialization (diagnostic only) and
+    compare them with the default runs at the same sparsities (D-409, D-R01)."""
+    s, thr = config.sweep, config.thresholds
     variant = train_abs(
         s.n_features,
         s.n_hidden,
         s.importance_decay,
-        v.feature_probabilities,
-        v.n_restarts,
+        probabilities,
+        n_restarts,
         config.train,
         config.seed,
         device,
-        bias_init=v.bias_init,
+        bias_init=bias_init,
+        init_scale=init_scale,
     )
     variant_ratios = loss_ratios(variant, thr.loss_samples, config.seed)
-    variant_sides = side_errors(variant.model()) < thr.side_computed_max
+    variant_sides = side_diagnostics(variant, thr.side_computed_max)
+    default_loss = model_losses(ratios, sweep.importance, sweep.feature_probability)
+    variant_loss = model_losses(variant_ratios, variant.importance, variant.feature_probability)
     probs = sweep.feature_probability.tolist()
     report = {}
-    for c, p in enumerate(v.feature_probabilities):
+    for c, p in enumerate(probabilities):
         base = int(np.argmin(np.abs(np.array(probs) - p)))
         report[f"1-S={format_probability(p)}"] = {
-            "loss_b0=0": round(float(sweep.final_loss[base]), 6),
-            f"loss_b0={v.bias_init:g}": round(float(variant.final_loss[c]), 6),
-            "computed_well_b0=0": int((ratios[base] < thr.computed_well).sum()),
-            f"computed_well_b0={v.bias_init:g}": int((variant_ratios[c] < thr.computed_well).sum()),
-            f"both_sides_b0={v.bias_init:g}": int(variant_sides[c].all(dim=-1).sum()),
-            f"one_side_b0={v.bias_init:g}": int((variant_sides[c].sum(dim=-1) == 1).sum()),
+            "loss_default": round(float(default_loss[base]), 6),
+            "loss_variant": round(float(variant_loss[c]), 6),
+            "computed_well_default": int((ratios[base] < thr.computed_well).sum()),
+            "computed_well_variant": int((variant_ratios[c] < thr.computed_well).sum()),
+            "usefully_computed_default": int((ratios[base] < thr.usefully_computed).sum()),
+            "usefully_computed_variant": int((variant_ratios[c] < thr.usefully_computed).sum()),
+            "dead_sides_computed_default": sides[base]["computed_if_dead"],
+            "dead_sides_computed_variant": variant_sides[c]["computed_if_dead"],
+            "alive_sides_computed_variant": variant_sides[c]["computed_if_alive"],
+            "both_sides_variant": variant_sides[c]["features_both_sides"],
+            "one_side_variant": variant_sides[c]["features_one_side"],
         }
-    return info(
-        "b_bias_init_variant",
-        f"(b) Diagnostic variant, not the replication: output bias initialized to "
-        f"{v.bias_init:g} instead of 0 ({v.n_restarts} restarts), against the default runs",
-        PAGE_B,
-        report,
-        group="b_n100_m40",
-    )
+    return info(id, description, PAGE_B, report, group="b_n100_m40")
 
 
 def evaluate_small(
@@ -482,15 +580,25 @@ def summarize_sweep(
     thr = config.thresholds
     W1n, W2n = metrics.normalize_hidden_units(sweep.W1, sweep.W2)
     counts = neuron_feature_counts(W1n, W2n, thr)
+    loss = model_losses(ratios, sweep.importance, sweep.feature_probability)
+    mean_ref, no_superposition_ref = reference_losses(
+        sweep.importance, sweep.feature_probability, config.sweep.n_hidden
+    )
     rows = []
     for c in range(len(sweep.feature_probability)):
         well = ratios[c] < thr.computed_well
+        useful = ratios[c] < thr.usefully_computed
         rows.append(
             {
                 "feature_probability": float(sweep.feature_probability[c]),
                 "loss": float(sweep.final_loss[c]),
+                "loss_exact": float(loss[c]),
+                "loss_mean_reference": float(mean_ref[c]),
+                "loss_no_superposition_reference": float(no_superposition_ref[c]),
                 "computed_well": int(well.sum()),
                 "computed_well_features": torch.nonzero(well).flatten().tolist(),
+                "usefully_computed": int(useful.sum()),
+                "usefully_computed_features": torch.nonzero(useful).flatten().tolist(),
                 "monosemantic": int((counts[c] == 1).sum()),
                 "polysemantic": int((counts[c] >= 2).sum()),
                 "dead": int((counts[c] == 0).sum()),
@@ -504,7 +612,8 @@ def summarize_sweep(
 
 
 def evaluate_sweep(config: AbsComputationConfig, summary: pd.DataFrame) -> list[Criterion]:
-    """E08(b) criteria."""
+    """E08(b) criteria: dense monosemantic neurons, and (D-R01) more features usefully computed
+    than neurons at the sparsest setting, with SPEC's original criterion reported beside it."""
     thr = config.thresholds
     m = config.sweep.n_hidden
     labels = [format_probability(p) for p in summary["feature_probability"]]
@@ -525,23 +634,43 @@ def evaluate_sweep(config: AbsComputationConfig, summary: pd.DataFrame) -> list[
             group="b_n100_m40",
         ),
         check(
-            "b_sparse_computes_more_than_half_m",
-            f"(b) Sparse (1 − S = {labels[-1]}): more than m/2 = {m // 2} features computed "
-            f"well (per-feature loss < {thr.computed_well:.0%} of predicting the mean)",
+            "b_sparse_more_features_than_neurons",
+            f"(b) Sparse (1 − S = {labels[-1]}): the model represents more features than it has "
+            f"neurons while usefully approximating |x|: more than m = {m} features usefully "
+            f"computed (per-feature loss < {thr.usefully_computed:.0%} of predicting the mean; "
+            "p. 37, D-R01)",
             PAGE_B,
-            int(sparse["computed_well"]) > m / 2,
-            int(sparse["computed_well"]),
-            f"> {m / 2:g}",
+            int(sparse["usefully_computed"]) > m,
+            {
+                "usefully_computed": int(sparse["usefully_computed"]),
+                "polysemantic_neurons": int(sparse["polysemantic"]),
+                "features": list(sparse["usefully_computed_features"]),
+            },
+            f"> {m}",
+            group="b_n100_m40",
+        ),
+        info(
+            "b_sparse_original_criterion",
+            f"(b) SPEC's original sparse criterion, no longer graded (D-R01): more than m/2 = "
+            f"{m // 2} features computed well (per-feature loss < {thr.computed_well:.0%} of "
+            f"predicting the mean) at 1 − S = {labels[-1]}",
+            PAGE_B,
+            {
+                "computed_well": int(sparse["computed_well"]),
+                "threshold": f"> {m / 2:g}",
+                "would_pass": int(sparse["computed_well"]) > m / 2,
+            },
             group="b_n100_m40",
         ),
         info(
             "b_per_sparsity_summary",
-            "(b) Best model per sparsity: features computed well, neuron counts, polysemantic "
-            f"neurons with a primary feature (≥ {thr.primary_ratio:g}× the next weight, p. 38), "
-            "the most features on one neuron, loss",
+            "(b) Best model per sparsity: features usefully computed and computed well, neuron "
+            f"counts, polysemantic neurons with a primary feature (≥ {thr.primary_ratio:g}× the "
+            "next weight, p. 38), the most features on one neuron, loss",
             PAGE_B,
             {
                 f"1-S={lab}": {
+                    "usefully_computed": int(row["usefully_computed"]),
                     "computed_well": int(row["computed_well"]),
                     "mono": int(row["monosemantic"]),
                     "poly": int(row["polysemantic"]),
@@ -549,6 +678,28 @@ def evaluate_sweep(config: AbsComputationConfig, summary: pd.DataFrame) -> list[
                     "primary_plus_secondary": int(row["primary_plus_secondary"]),
                     "max_features_per_neuron": int(row["max_features_per_neuron"]),
                     "loss": round(float(row["loss"]), 5),
+                }
+                for lab, row in zip(labels, records, strict=True)
+            },
+            group="b_n100_m40",
+        ),
+        info(
+            "b_within_sparsity_references",
+            "(b) Each best model's loss (exact per-feature estimator) against two references at "
+            "the same sparsity (footnote 17): every feature at its mean, and no superposition "
+            f"(both sides of the m/2 = {m // 2} most important features exact, the rest at "
+            "their mean)",
+            PAGE_B,
+            {
+                f"1-S={lab}": {
+                    "loss": float(f"{row['loss_exact']:.4g}"),
+                    "mean_reference": float(f"{row['loss_mean_reference']:.4g}"),
+                    "no_superposition_reference": float(
+                        f"{row['loss_no_superposition_reference']:.4g}"
+                    ),
+                    "loss_over_no_superposition": round(
+                        float(row["loss_exact"] / row["loss_no_superposition_reference"]), 3
+                    ),
                 }
                 for lab, row in zip(labels, records, strict=True)
             },
@@ -618,6 +769,9 @@ def figures(run_dir: RunDir) -> list[Path]:
         summary["polysemantic"].to_numpy(),
         int(W1n.shape[1]),
         title="E08(b) · computing |x| in superposition",
+        usefully_computed=summary["usefully_computed"].to_numpy()
+        if "usefully_computed" in summary
+        else None,
     )
     paths += save_figure(fig, run_dir.figures_dir / "abs_capacity")
     return paths

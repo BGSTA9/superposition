@@ -300,14 +300,23 @@ def capacity_figure(
     polysemantic: np.ndarray,
     n_hidden: int,
     title: str = "",
+    usefully_computed: np.ndarray | None = None,
 ) -> Figure:
-    """Features computed well, and neuron counts, against feature density (pp. 36–37).
+    """Features computed, and neuron counts, against feature density (pp. 36–37).
 
-    Two neurons per feature is the capacity without superposition, so the m/2 line marks where
-    computing more features requires superposition.
+    Two neurons per feature is the capacity without superposition for both sides of |x|, so the
+    m/2 line marks where computing more features *well* requires superposition; one neuron per
+    side, so the m line marks where more features *usefully computed* (at least about one side)
+    requires it (D-R01).
     """
     with paper_style():
         fig, ax = plt.subplots(figsize=(5.0, 3.2))
+        if usefully_computed is not None:
+            ax.plot(
+                feature_probability, usefully_computed, marker="o", color=SERIES[0],
+                label="features usefully computed",
+            )  # fmt: skip
+            ax.axhline(n_hidden, color=INK_SECONDARY, linewidth=1.0, linestyle=":", label="m")
         ax.plot(
             feature_probability, computed_well, marker="o", color=SERIES[1],
             label="features computed well",

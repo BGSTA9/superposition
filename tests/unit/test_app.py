@@ -136,6 +136,7 @@ TINY_RUNS: dict[str, dict] = {
         "sweep": {"n_features": 12, "n_hidden": 6, "feature_probabilities": [1.0, 0.01],
                   "n_restarts": 1},
         "bias_variant": {"feature_probabilities": [0.01], "n_restarts": 1},
+        "init_variant": {"feature_probabilities": [0.01], "n_restarts": 1},
         "thresholds": {"loss_samples": 200},
         "train": TINY_TRAIN,
     },

@@ -127,7 +127,15 @@ with tab_e08:
         chosen = next(m for m in abs_run.sweep if m.label == label)
         st.pyplot(neuron_rows([chosen.panel], absolute=True, show_matrix=False), width="stretch")
         s = chosen.summary
-        cols = st.columns(4)
+        summary = abs_run.summary
+        useful = "usefully_computed" in summary  # runs before D-R01 lack the column
+        cols = st.columns(5 if useful else 4)
+        if useful:
+            cols[-1].metric(
+                "features usefully computed",
+                int(s["usefully_computed"]),
+                help="loss < 75% of predicting the mean (D-R01)",
+            )
         cols[0].metric(
             "features computed well",
             int(s["computed_well"]),
@@ -138,7 +146,6 @@ with tab_e08:
         cols[3].metric(
             "primary + secondary neurons", int(s["primary_plus_secondary"]), help="p. 38"
         )
-        summary = abs_run.summary
         st.pyplot(
             capacity_figure(
                 summary["feature_probability"].to_numpy(),
@@ -146,7 +153,8 @@ with tab_e08:
                 summary["monosemantic"].to_numpy(),
                 summary["polysemantic"].to_numpy(),
                 abs_run.n_hidden,
-                title="Computing |x| for more than m/2 features needs superposition",
+                title="Computing |x| for more features than neurons needs superposition",
+                usefully_computed=summary["usefully_computed"].to_numpy() if useful else None,
             ),
             width="content",
         )
