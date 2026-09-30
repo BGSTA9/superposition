@@ -94,6 +94,33 @@ def test_e10_sweep_settings_and_best_row() -> None:
     assert e10.setting_label(best) == "10 latents, L1 λ=0.1, resample on"
 
 
+def test_e10_selection_without_ground_truth() -> None:
+    frame = pd.DataFrame(
+        {"instance": range(5), "size": [5, 5, 10, 10, 20], "l1": [0.1, 1.0, 0.1, 0.0, 0.3],
+         "topk": [0, 0, 0, 1, 0], "resample": [False, True, False, True, True],
+         "l0": [0.9, 0.3, 0.6, 1.0, 0.6], "fvu": [0.02, 0.4, 0.08, 0.01, 0.05],
+         "mean_max_cos": [0.9, 0.99, 0.95, 1.0, 0.97],
+         "recovered_0.95": [0.4, 1.0, 0.6, 1.0, 0.8]}
+    )  # fmt: skip
+    chosen, n_qualified = e10.select_without_ground_truth(frame, 0.1)
+    # Instance 1 is sparsest and recovers everything, but fails the FVU bar; instances 2 and 4
+    # tie on L0 and the lower FVU wins. Recovery plays no part in the choice.
+    assert (int(chosen["instance"]), n_qualified) == (4, 4)
+    shuffled = frame.assign(**{"recovered_0.95": frame["recovered_0.95"][::-1].to_numpy()})
+    assert int(e10.select_without_ground_truth(shuffled, 0.1)[0]["instance"]) == 4
+    # Nothing meets the bar: fall back to the lowest FVU.
+    chosen, n_qualified = e10.select_without_ground_truth(frame, 0.005)
+    assert (int(chosen["instance"]), n_qualified) == (3, 0)
+
+    spec = e10.ToyModelSpec(label="toy", cos_threshold=0.95, min_fraction=1.0, min_represented=5)
+    passing = e10.selection_criterion(spec, frame, 5, fvu_max=0.1)
+    assert passing.status == "FAIL"  # the selected SAE (instance 4) recovers 80%
+    assert passing.value["setting"] == "20 latents, L1 λ=0.3, resample on"
+    assert passing.value["sae_meeting_fvu_bar"] == "4/5"
+    lenient = e10.ToyModelSpec(label="toy", cos_threshold=0.95, min_fraction=0.8)
+    assert e10.selection_criterion(lenient, frame, 5, fvu_max=0.1).status == "PASS"
+
+
 def test_e11_shared_evaluation_matches_the_model() -> None:
     torch.manual_seed(0)
     W = torch.randn(3, 2, 5)

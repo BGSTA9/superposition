@@ -147,7 +147,14 @@ with tab_e10:
                 + (", resample" if r["resample"] else "")
                 for r in rows.to_dict("records")
             ]
-            pick = st.selectbox("SAE", names, key="e10_sae")
+            records = rows.to_dict("records")
+            selected = [i for i, r in enumerate(records) if bool(r.get("selected", False))]
+            pick = st.selectbox("SAE", names, index=selected[0] if selected else 0, key="e10_sae")
+            if selected:  # runs before D-R04 have no selection column
+                st.caption(
+                    f"Selected without ground truth (the sparsest SAE with held-out FVU ≤ 0.1, "
+                    f"D-R04): {names[selected[0]]}"
+                )
             k = int(rows.iloc[names.index(pick)]["instance"])
             col = f"recovered_{e10.thresholds[label]:g}"
             st.pyplot(

@@ -1,12 +1,13 @@
-# E10 sae_recovery (Paper: pp. 42–44). SPEC §7 E10; decisions D-503, D-504.
+# E10 sae_recovery (Paper: pp. 42–44). SPEC §7 E10; decisions D-503, D-504, D-R04.
 # Toy models (ReLU output model, best restart) from E00, E01 and E03; on each, a sweep of
-# sparse autoencoders: dictionary size × L1 coefficient × resampling on/off, plus TopK.
-# feature_probability is 1 − S.
+# sparse autoencoders: dictionary size × L1 coefficient × resampling on/off, plus TopK. The
+# graded SAE is chosen without ground truth (D-R04). feature_probability is 1 − S.
 experiment: sae_recovery
 base:
   seed: 0
   device: auto
   represented_threshold: 0.5
+  selection_fvu_max: 0.1   # D-R04: grade the sparsest SAE with held-out FVU ≤ this
   toy_models:
     - label: pentagon
       source: "E00, p. 2"

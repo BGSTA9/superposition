@@ -15,10 +15,11 @@ For each toy model a sweep of SAEs (dictionary size × L1 coefficient × resampl
 TopK variants) trains as one multi-instance model. Every SAE's decoder is compared with the
 true feature directions Wᵢ of the *represented* features (‖Wᵢ‖ > 0.5).
 
-Grading uses the best SAE of the sweep, chosen by its ground-truth recovery: the question is
-whether an SAE in a standard sweep recovers the features at all. Because that selection uses
-the ground truth, the run also reports how many SAE settings pass, and what reconstruction
-error says (it can be low while recovery fails). Settings and criteria: D-503, D-504.
+Grading uses the SAE a practitioner would pick *without* ground truth (D-R04): the sparsest
+SAE of the sweep (lowest held-out L0) among those that explain at least 90% of the activation
+variance (held-out FVU ≤ 0.1), fixed before any run was scored with it. The best SAE by
+ground-truth recovery is reported as an upper bound, next to the pass rate across the sweep
+and the TopK k contrast on the E03 model. Settings and criteria: D-503, D-504, D-R04.
 """
 
 from __future__ import annotations
@@ -90,6 +91,9 @@ class SAERecoveryConfig(ExperimentConfig):
     toy_models: list[ToyModelSpec] = field(default_factory=lambda: [ToyModelSpec()])
     sae: SAETrainConfig = field(default_factory=SAETrainConfig)
     represented_threshold: float = 0.5
+    # D-R04: the graded SAE is the sparsest with held-out FVU ≤ this (the reconstruction bar
+    # that D-504's reconstruction-vs-recovery row already used)
+    selection_fvu_max: float = 0.1
 
 
 def sweep_settings(sweep: SweepSpec) -> list[dict]:
@@ -205,11 +209,38 @@ def train_sweep(
 
 
 def best_row(frame: pd.DataFrame, threshold: float) -> dict:
-    """The sweep's best SAE by ground truth: most features above ``threshold``, then highest
-    mean max cos."""
+    """The sweep's best SAE by ground truth (the oracle upper bound): most features above
+    ``threshold``, then highest mean max cos."""
     column = f"recovered_{threshold:g}"
     ranked = frame.sort_values([column, "mean_max_cos"], ascending=[False, False])
     return dict(ranked.iloc[0].to_dict())
+
+
+def select_without_ground_truth(frame: pd.DataFrame, fvu_max: float) -> tuple[dict, int]:
+    """The SAE a practitioner would pick from the sweep without knowing the features (D-R04).
+
+    Among the SAEs whose held-out FVU is at most ``fvu_max`` (they explain enough of the
+    activations), the sparsest: lowest held-out L0, ties broken by lower FVU. If none reaches
+    ``fvu_max``, the SAE with the lowest FVU. Uses only ``l0`` and ``fvu``, never recovery.
+    Returns the chosen row and how many SAEs met the FVU bar.
+    """
+    qualified = frame.loc[(frame["fvu"] <= fvu_max).to_numpy()]
+    if len(qualified):
+        chosen = qualified.sort_values(["l0", "fvu"], ascending=[True, True]).iloc[0]
+    else:
+        chosen = frame.sort_values("fvu", ascending=True).iloc[0]
+    return dict(chosen.to_dict()), len(qualified)
+
+
+def sae_summary(row: dict, column: str) -> dict:
+    """The numbers reported for one chosen SAE."""
+    return {
+        "setting": setting_label(row),
+        "recovered": round(float(row[column]), 4),
+        "mean_max_cos": round(float(row["mean_max_cos"]), 4),
+        "fvu": round(float(row["fvu"]), 4),
+        "l0": round(float(row["l0"]), 4),
+    }
 
 
 # --- run -----------------------------------------------------------------------------------------
@@ -220,7 +251,6 @@ def run(
 ) -> list[Criterion]:
     frames: list[pd.DataFrame] = []
     criteria: list[Criterion] = []
-    info_rows: dict[str, dict] = {}
     for index, spec in enumerate(config.toy_models):
         toy = train_toy(spec, config.train, config.seed, config.represented_threshold, device)
         n_rep = int(toy.represented.sum())
@@ -230,6 +260,9 @@ def run(
         )
         sae, frame, max_cos, alive = train_sweep(toy, spec.sweep, config, device, index)
         frame["graded"] = spec.graded
+        frame["represented"] = n_rep
+        chosen, _ = select_without_ground_truth(frame, config.selection_fvu_max)
+        frame["selected"] = frame["instance"] == int(chosen["instance"])
         frames.append(frame)
         run_dir.save_checkpoint(
             spec.label,
@@ -245,63 +278,124 @@ def run(
                 "settings": sweep_settings(spec.sweep),
             },
         )
-        best = best_row(frame, spec.cos_threshold)
         column = f"recovered_{spec.cos_threshold:g}"
+        best = best_row(frame, spec.cos_threshold)
         passing = int((frame[column] >= spec.min_fraction - 1e-9).sum())
         logger.info(
-            f"    {len(frame)} SAEs in {float(frame['wall_time_s'].iloc[0]):.1f} s; best: "
+            f"    {len(frame)} SAEs in {float(frame['wall_time_s'].iloc[0]):.1f} s; selected: "
+            f"{setting_label(chosen)} recovers {chosen[column]:.0%}; oracle best: "
             f"{setting_label(best)} recovers {best[column]:.0%} at cos > {spec.cos_threshold:g} "
             f"({passing}/{len(frame)} settings reach {spec.min_fraction:.0%})"
         )
-        summary = {
-            "represented": n_rep,
-            "best_setting": setting_label(best),
-            "best_recovered": round(float(best[column]), 4),
-            "best_mean_max_cos": round(float(best["mean_max_cos"]), 4),
-            "best_fvu": round(float(best["fvu"]), 4),
-            "settings_reaching_threshold": f"{passing}/{len(frame)}",
-        }
         if spec.graded:
-            ok = n_rep >= spec.min_represented and float(best[column]) >= spec.min_fraction - 1e-9
-            criteria.append(
-                check(
-                    f"{spec.label}_recovered",
-                    f"{spec.label} ({spec.source}, n = {spec.n_features}, m = {spec.n_hidden}, "
-                    f"1 − S = {spec.feature_probability:g}): ≥ {spec.min_fraction:.0%} of the "
-                    f"represented features recovered at cos > {spec.cos_threshold:g} by the best "
-                    "SAE of the sweep (selected by ground truth)"
-                    + (
-                        f"; needs ≥ {spec.min_represented} represented"
-                        if spec.min_represented
-                        else ""
-                    ),
-                    PAGE,
-                    ok,
-                    summary,
-                    f"≥ {spec.min_fraction}",
-                    group=spec.label,
-                )
-            )
-        else:
-            info_rows[spec.label] = summary
+            criteria.append(selection_criterion(spec, frame, n_rep, config.selection_fvu_max))
     table = pd.concat(frames, ignore_index=True)
     run_dir.write_table(table, "metrics")
-    criteria += report(config, table, info_rows)
+    criteria += report(config, table)
     return criteria
 
 
-def report(
-    config: SAERecoveryConfig, table: pd.DataFrame, ungraded: dict[str, dict]
-) -> list[Criterion]:
-    """INFO rows: ungraded toy models, resampling, TopK vs L1, reconstruction vs recovery."""
+def selection_criterion(
+    spec: ToyModelSpec, frame: pd.DataFrame, n_rep: int, fvu_max: float
+) -> Criterion:
+    """The graded criterion of one toy model: the SAE selected without ground truth recovers
+    enough of the represented features (D-R04)."""
+    column = f"recovered_{spec.cos_threshold:g}"
+    chosen, n_qualified = select_without_ground_truth(frame, fvu_max)
+    ok = n_rep >= spec.min_represented and float(chosen[column]) >= spec.min_fraction - 1e-9
+    return check(
+        f"{spec.label}_selected_sae_recovers",
+        f"{spec.label} ({spec.source}, n = {spec.n_features}, m = {spec.n_hidden}, "
+        f"1 − S = {spec.feature_probability:g}): the SAE selected without ground truth "
+        f"(sparsest with held-out FVU ≤ {fvu_max:g}) recovers ≥ {spec.min_fraction:.0%} of the "
+        f"represented features at cos > {spec.cos_threshold:g}"
+        + (f"; needs ≥ {spec.min_represented} represented" if spec.min_represented else ""),
+        PAGE,
+        ok,
+        {
+            "represented": n_rep,
+            **sae_summary(chosen, column),
+            "sae_meeting_fvu_bar": f"{n_qualified}/{len(frame)}",
+        },
+        f"≥ {spec.min_fraction}",
+        group=spec.label,
+    )
+
+
+def report(config: SAERecoveryConfig, table: pd.DataFrame) -> list[Criterion]:
+    """INFO rows: the oracle upper bound, pass rates, the ungraded toy models, the TopK k
+    contrast, resampling, TopK vs L1, reconstruction vs recovery."""
     out: list[Criterion] = []
+    oracle, rates, ungraded, k_contrast = {}, {}, {}, {}
+    for spec in config.toy_models:
+        frame = table.loc[(table["toy_model"] == spec.label).to_numpy()]
+        col = f"recovered_{spec.cos_threshold:g}"
+        oracle[spec.label] = sae_summary(best_row(frame, spec.cos_threshold), col)
+        passes = frame[col] >= spec.min_fraction - 1e-9
+        kinds = {
+            "l1_resample_off": (frame["topk"] == 0) & ~frame["resample"].astype(bool),
+            "l1_resample_on": (frame["topk"] == 0) & frame["resample"].astype(bool),
+            "topk": frame["topk"] > 0,
+        }
+        rates[spec.label] = {
+            "all": f"{int(passes.sum())}/{len(frame)}",
+            **{k: f"{int(passes[m].sum())}/{int(m.sum())}" for k, m in kinds.items() if m.any()},
+        }
+        if not spec.graded:
+            chosen, n_qualified = select_without_ground_truth(frame, config.selection_fvu_max)
+            ungraded[spec.label] = {
+                "represented": int(frame["represented"].iloc[0]),
+                "selected": sae_summary(chosen, col),
+                "sae_meeting_fvu_bar": f"{n_qualified}/{len(frame)}",
+            }
+        topk = frame.loc[(frame["topk"] > 0).to_numpy()]
+        if topk["topk"].nunique() >= 2:
+            k_contrast[spec.label] = {
+                f"k={int(r['topk'])}, {int(r['size'])} latents": {
+                    "recovered": round(float(r[col]), 4),
+                    "mean_max_cos": round(float(r["mean_max_cos"]), 4),
+                    "fvu": round(float(r["fvu"]), 4),
+                    "dead_fraction": round(float(r["dead_fraction"]), 4),
+                    "selected_by_rule": bool(r["selected"]),
+                }
+                for r in topk.to_dict("records")
+            } | {"true_l0": round(float(topk["true_l0"].iloc[0]), 3)}
+    out.append(
+        info(
+            "oracle_upper_bound",
+            "Upper bound: the best SAE of each sweep chosen by ground-truth recovery (a choice a "
+            "practitioner cannot make; the graded criterion before D-R04)",
+            PAGE,
+            oracle,
+        )
+    )
+    out.append(
+        info(
+            "pass_rates",
+            "SAE settings whose recovery reaches the toy model's threshold, over the whole "
+            "sweep and by kind",
+            PAGE,
+            rates,
+        )
+    )
     if ungraded:
         out.append(
             info(
                 "ungraded_models",
-                "Toy models reported without grading (E03 setup): best SAE of the sweep",
+                "Toy models reported without grading (E03 setup): the SAE selected without "
+                "ground truth",
                 PAGE,
                 ungraded,
+            )
+        )
+    if k_contrast:
+        out.append(
+            info(
+                "topk_k_contrast",
+                "TopK SAEs with different k on the same toy model: recovery, reconstruction, dead "
+                "latents, and which one the selection rule picks; true L0 = represented × p",
+                PAGE,
+                k_contrast,
             )
         )
     resampling, variants, recon = {}, {}, {}
@@ -328,9 +422,9 @@ def report(
                 for r in topk_rows
             },
         }
-        low_error = [r for r in rows if float(r["fvu"]) < 0.1]
+        low_error = [r for r in rows if float(r["fvu"]) <= config.selection_fvu_max]
         recon[spec.label] = {
-            "settings_with_fvu_below_0.1": len(low_error),
+            f"settings_with_fvu_at_most_{config.selection_fvu_max:g}": len(low_error),
             "of_which_recover": sum(float(r[col]) >= spec.min_fraction - 1e-9 for r in low_error),
             "true_l0": round(float(rows[0]["true_l0"]), 3) if rows else None,
         }
@@ -350,8 +444,9 @@ def report(
         ),
         info(
             "reconstruction_vs_recovery",
-            "Low reconstruction error does not imply recovery: SAEs with FVU < 0.1 and how many "
-            "of them recover the features; true L0 = represented features × p",
+            f"Low reconstruction error does not imply recovery: SAEs with FVU ≤ "
+            f"{config.selection_fvu_max:g} and how many of them recover the features; true L0 = "
+            "represented features × p",
             PAGE,
             recon,
         ),
@@ -376,13 +471,15 @@ def figures(run_dir: RunDir) -> list[Path]:
         best = max(rows, key=lambda r: (float(r[col]), float(r["mean_max_cos"])))
         smallest = [r for r in rows if int(r["size"]) == min(int(x["size"]) for x in rows)]
         worst_small = min(smallest, key=lambda r: (float(r[col]), float(r["mean_max_cos"])))
+        selected = [r for r in rows if bool(r.get("selected", False))]  # runs before D-R04: none
         decoder = state["sae_state"]["W_dec"].numpy()
         mask = state["sae_state"]["latent_mask"].numpy()
         alive = state["alive"].numpy()
         panels = [
             (title, decoder[k], mask[k], alive[k], float(row[col]))
             for title, row in (
-                (f"best: {setting_label(best)}", best),
+                *((f"selected: {setting_label(r)}", r) for r in selected),
+                (f"oracle best: {setting_label(best)}", best),
                 (setting_label(worst_small), worst_small),
             )
             for k in [int(row["instance"])]
