@@ -14,6 +14,7 @@ from superposition.config import (
     deep_merge,
     from_dict,
     load_config,
+    profile_names,
     save_config,
     to_dict,
 )
@@ -105,6 +106,23 @@ def test_config_hash_is_stable_and_content_sensitive() -> None:
     b.train = TrainConfig(steps=11)
     assert config_hash(a) != config_hash(b)
     assert to_dict(a)["train"]["steps"] == 10_000
+
+
+def test_named_variant_profiles(tmp_path: Path) -> None:
+    """A file may define documented variants beyond quick and full (D-309)."""
+    path = tmp_path / "demo.yaml"
+    path.write_text(
+        "base:\n  train: {steps: 100, batch_size: 256}\n"
+        "profiles:\n  quick: {}\n  full: {train: {steps: 500}}\n"
+        "  batch1024: {train: {batch_size: 1024}}\n"
+    )
+    assert profile_names(path) == ["quick", "full", "batch1024"]
+    variant = load_config(DemoConfig, path, "batch1024")
+    assert (variant.profile, variant.train.steps, variant.train.batch_size) == (
+        "batch1024",
+        100,
+        1024,
+    )
 
 
 def test_missing_profile_is_an_error(tmp_path: Path) -> None:

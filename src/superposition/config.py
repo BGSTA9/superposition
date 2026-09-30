@@ -13,6 +13,11 @@ A config file ``configs/<experiment>.yaml`` has this shape::
       quick: {}      # overrides merged on top of `base`
       full:  {n_restarts: 32}
 
+Every file defines ``quick`` and ``full``. A file may define further named profiles for
+documented variants (e.g. a batch-size comparison, docs/DECISIONS.md D-309); they are run the
+same way (``superposition run <exp> --profile <name>``) and the profile name is recorded with
+the run.
+
 :func:`load_config` deep-merges ``base`` with the chosen profile (and optional overrides) and
 builds the experiment's dataclass with :func:`from_dict`, which rejects unknown keys and
 wrong types. The resolved config is what a run stores in ``config.yaml``.
@@ -33,6 +38,7 @@ import yaml
 
 Schedule = Literal["constant", "cosine", "warmup_cosine"]
 Profile = Literal["quick", "full"]
+# Profiles every config file must define (SPEC §7); files may add named variants.
 PROFILES: tuple[str, ...] = ("quick", "full")
 
 C = TypeVar("C")
@@ -207,6 +213,11 @@ def read_profiles(path: Path) -> dict[str, Any]:
     return dict(raw)
 
 
+def profile_names(path: Path) -> list[str]:
+    """The profiles a config file defines, in file order (``quick`` and ``full`` included)."""
+    return list(read_profiles(path)["profiles"])
+
+
 def load_config(
     cls: type[C],
     path: Path,
@@ -219,7 +230,9 @@ def load_config(
     """
     raw = read_profiles(path)
     if profile not in raw["profiles"]:
-        raise ConfigError(f"{path}: unknown profile {profile!r}; choose from {PROFILES}")
+        raise ConfigError(
+            f"{path}: unknown profile {profile!r}; choose from {list(raw['profiles'])}"
+        )
     merged = deep_merge(raw["base"] or {}, raw["profiles"][profile] or {})
     merged = deep_merge(merged, overrides or {})
     merged["experiment"] = raw.get("experiment", merged.get("experiment", ""))

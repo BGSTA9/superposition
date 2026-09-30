@@ -5,7 +5,7 @@ SPEC §5 (CLI):
 | Command | What it does |
 |---|---|
 | ``superposition list`` | list experiments |
-| ``superposition run <exp> [--profile quick|full] [--seed N] [--device auto]`` | run one |
+| ``superposition run <exp> [--profile quick|full|…] [--seed N] [--device auto]`` | run one |
 | ``superposition figures <exp> [--run latest] [--publish]`` | redraw (and publish) figures |
 | ``superposition report`` | regenerate the tables in docs/REPRODUCTION.md |
 | ``superposition app`` | launch the Streamlit lab |
@@ -58,16 +58,26 @@ def run(
     experiment: str = typer.Argument(
         ..., help="Experiment name (e.g. intro_pentagon) or code (E00)."
     ),
-    profile: str = typer.Option("quick", "--profile", "-p", help="quick or full."),
+    profile: str = typer.Option(
+        "quick",
+        "--profile",
+        "-p",
+        help="quick, full, or another profile defined in configs/<experiment>.yaml.",
+    ),
     seed: int | None = typer.Option(None, "--seed", help="Override the config's seed."),
     device: str = typer.Option("auto", "--device", help=f"One of {', '.join(DEVICE_CHOICES)}."),
     no_figures: bool = typer.Option(False, "--no-figures", help="Skip figure generation."),
 ) -> None:
     """Run an experiment and write results/<experiment>/<run_id>/."""
-    from superposition.experiments.runner import run_experiment
+    from superposition.config import profile_names
+    from superposition.experiments.runner import config_path, get_experiment, run_experiment
 
-    if profile not in ("quick", "full"):
-        raise typer.BadParameter("profile must be 'quick' or 'full'")
+    try:
+        available = profile_names(config_path(get_experiment(experiment).name))
+    except (KeyError, FileNotFoundError) as error:
+        raise typer.BadParameter(str(error)) from error
+    if profile not in available:
+        raise typer.BadParameter(f"profile must be one of {available}")
     if device not in DEVICE_CHOICES:
         raise typer.BadParameter(f"device must be one of {DEVICE_CHOICES}")
     result = run_experiment(experiment, profile, seed=seed, device=device, figures=not no_figures)
