@@ -197,3 +197,6 @@ def test_phase_cell_shared_losses_scores_models_and_families_on_one_sample() -> 
     family = table[table["source"] == f"theory {theory.family_names[winner]}"].iloc[0]
     assert np.allclose(trained, family["shared-sample loss"], rtol=1e-5)
     assert family["shared-sample loss"] == pytest.approx(family["exact loss"], rel=0.02)
+    # n = 2, m = 1 models always have an exact loss (each output reads one other feature).
+    exact = table[table["source"].str.startswith("trained")]["exact loss"]
+    assert np.allclose(exact, family["exact loss"], rtol=1e-4)

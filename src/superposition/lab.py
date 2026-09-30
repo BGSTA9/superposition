@@ -928,15 +928,22 @@ def phase_cell_shared_losses(
     n_samples: int = 1_000_000,
     seed: int = 0,
 ) -> pd.DataFrame:
-    """Every voting model of a cell and every paper family's optimum, scored on the *same*
-    ``n_samples`` inputs (common random numbers), lowest loss first.
+    """Every voting model of a cell and every paper family's optimum, scored exactly where
+    possible and on the *same* ``n_samples`` inputs (common random numbers).
 
     A run's final losses come from independent 20,000-sample estimates, too noisy to compare
     models that differ by a few percent, and the lowest of several noisy estimates is biased
-    low. Scoring everything on one sample removes both effects. Families also carry their exact
-    loss (theory.py), which the shared-sample estimate should match within sampling noise.
+    low. The exact loss (theory.py) is used whenever every output of the model reads at most one
+    other feature: always for the families, and for every trained n = 2, m = 1 model. Otherwise
+    only the shared-sample estimate is available. It removes the noise of *differences* between
+    models whose losses come from the same inputs, but not between models whose losses come from
+    different rare events (at low density, pairing feature 0 or feature 1 with the extra feature
+    is paid for on different double activations), so use enough samples there.
+
+    Rows are sorted by exact loss where every row has one, else by the shared-sample loss.
     """
     from superposition.data import IndependentSparse
+    from superposition.theory import relu_output_expected_loss as theory_exact_loss
     from superposition.utils import make_generator
 
     models = phase_cell_models(problem, d, i, discard_worst)
@@ -964,11 +971,19 @@ def phase_cell_shared_losses(
             total += (importance * (x - model(x)) ** 2).sum(-1).double().sum(0)
             done += size
     shared = (total / n_samples).numpy()
+
+    def exact(W: list, b: list) -> float:
+        try:
+            return theory_exact_loss(np.array(W), np.array(b), importance.numpy(), density)
+        except NotImplementedError:  # an output reads two or more other features
+            return float("nan")
+
+    density = float(problem.density[d])
     rows = [
         {
             "source": f"trained model {int(r['model'])}",
             "regime": r["regime"],
-            "exact loss": np.nan,
+            "exact loss": exact(r["W"], r["b"]),
             "shared-sample loss": float(shared[k]),
             "W": r["W"],
             "b": r["b"],
@@ -987,7 +1002,8 @@ def phase_cell_shared_losses(
         for k, r in enumerate(families.to_dict("records"))
     ]
     frame = pd.DataFrame(rows)
-    return frame.sort_values(by="shared-sample loss", kind="stable").reset_index(drop=True)
+    key = "exact loss" if bool(frame["exact loss"].notna().all()) else "shared-sample loss"
+    return frame.sort_values(by=key, kind="stable").reset_index(drop=True)
 
 
 @dataclass
