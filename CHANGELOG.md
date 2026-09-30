@@ -53,6 +53,10 @@ Drafted on 2026-09-29 and finished in a rectification session after Phases 4 and
   counts its voters.
 - The lab launch test no longer leaks a Streamlit server per run (it terminated only the CLI,
   and the server's output pipe lost its reader).
+- Notebooks 04–10 reuse only quick runs that have figures, so they no longer fail after the
+  replication tests (which run without figures) in the same paper-tier session.
+- The Phase diagrams page picks cells with sliders: click selection arrived one click late in
+  Streamlit 1.64.0 (D-311).
 
 ### Phase 5: mechanistic interpretability (2026-09-30)
 
