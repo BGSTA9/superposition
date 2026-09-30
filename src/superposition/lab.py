@@ -920,6 +920,76 @@ def phase_cell_theory(problem: PhaseProblem, d: int, i: int) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("optimal loss", kind="stable").reset_index(drop=True)
 
 
+def phase_cell_shared_losses(
+    problem: PhaseProblem,
+    d: int,
+    i: int,
+    discard_worst: int,
+    n_samples: int = 1_000_000,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Every voting model of a cell and every paper family's optimum, scored on the *same*
+    ``n_samples`` inputs (common random numbers), lowest loss first.
+
+    A run's final losses come from independent 20,000-sample estimates, too noisy to compare
+    models that differ by a few percent, and the lowest of several noisy estimates is biased
+    low. Scoring everything on one sample removes both effects. Families also carry their exact
+    loss (theory.py), which the shared-sample estimate should match within sampling noise.
+    """
+    from superposition.data import IndependentSparse
+    from superposition.utils import make_generator
+
+    models = phase_cell_models(problem, d, i, discard_worst)
+    voting = pd.DataFrame(models[models["votes"]])
+    all_families = phase_cell_theory(problem, d, i)
+    families = pd.DataFrame(all_families[all_families["paper family"]])
+    W = np.array([*voting["W"], *families["W"]], dtype=np.float32)
+    b = np.array([*voting["b"], *families["b"]], dtype=np.float32)
+    n_inst = len(W)
+    model = TiedModel.from_kind("relu_output", problem.n_features, problem.n_hidden, n_inst)
+    with torch.no_grad():
+        model.W.copy_(torch.from_numpy(W))
+        model.b.copy_(torch.from_numpy(b))
+    importance = torch.ones(problem.n_features)
+    importance[-1] = float(problem.importance[i])
+    dist = IndependentSparse(float(problem.density[d]), 1, problem.n_features)
+    generator = make_generator(seed)
+    chunk = min(n_samples, 100_000)
+    total = torch.zeros(n_inst, dtype=torch.float64)
+    done = 0
+    with torch.no_grad():
+        while done < n_samples:
+            size = min(chunk, n_samples - done)
+            x = dist.sample(size, generator).expand(-1, n_inst, -1)  # one input for all
+            total += (importance * (x - model(x)) ** 2).sum(-1).double().sum(0)
+            done += size
+    shared = (total / n_samples).numpy()
+    rows = [
+        {
+            "source": f"trained model {int(r['model'])}",
+            "regime": r["regime"],
+            "exact loss": np.nan,
+            "shared-sample loss": float(shared[k]),
+            "W": r["W"],
+            "b": r["b"],
+        }
+        for k, r in enumerate(voting.to_dict("records"))
+    ]
+    rows += [
+        {
+            "source": f"theory {r['family']}",
+            "regime": r["regime"],
+            "exact loss": float(r["optimal loss"]),
+            "shared-sample loss": float(shared[len(voting) + k]),
+            "W": r["W"],
+            "b": r["b"],
+        }
+        for k, r in enumerate(families.to_dict("records"))
+    ]
+    frame = pd.DataFrame(rows)
+    return frame.sort_values(by="shared-sample loss", kind="stable").reset_index(drop=True)
+
+
 @dataclass
 class UniformGeometryRun:
     """An E03 run for the Geometry page: per sparsity point, the best model's weights and its

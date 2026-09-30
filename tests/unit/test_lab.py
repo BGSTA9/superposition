@@ -160,3 +160,40 @@ def test_phase_cell_models_orders_by_loss_and_marks_the_non_voter() -> None:
     assert list(models["loss"]) == sorted(models["loss"])
     assert list(models["votes"]) == [True, True, False]
     assert list(models["regime"]) == ["not_learned", "dedicated", "superposition"]
+
+
+def test_phase_cell_shared_losses_scores_models_and_families_on_one_sample() -> None:
+    """A model set to a family's optimum scores exactly what the family scores on the shared
+    sample, and the family's shared-sample loss matches its exact loss."""
+    from superposition.experiments import phase_change as e02
+
+    config = e02.PhaseChangeConfig(grid=e02.PhaseGrid(n_importance=2, n_density=2))
+    setting = config.settings[0]
+    theory = e02.compute_theory(setting, config)
+    # Dense cell, important extra feature (it gets the dimension). At density 1 a 200,000-sample
+    # estimate is precise; at 0.01 almost all the loss comes from rare double activations.
+    d, i = 1, 1
+    winner = int(theory.losses[d, i, :3].argmin())
+    per_cell, n_cells = 3, 4
+    W = np.repeat(theory.W[winner].reshape(n_cells, 1, 1, 2), per_cell, axis=1).reshape(-1, 1, 2)
+    b = np.repeat(theory.b[winner].reshape(n_cells, 1, 2), per_cell, axis=1).reshape(-1, 2)
+    problem = lab.PhaseProblem(
+        label="n2_m1",
+        n_features=2,
+        n_hidden=1,
+        importance=config.grid.importance(),
+        density=config.grid.density(),
+        regime=np.array(["superposition"] * len(W)),
+        W=W,
+        b=b,
+        loss=np.zeros(len(W)),
+        models_per_cell=per_cell,
+        cells=pd.DataFrame(),
+        theory=theory,
+    )
+    table = lab.phase_cell_shared_losses(problem, d, i, discard_worst=1, n_samples=200_000)
+    assert len(table) == 2 + 3  # two voting models and the three paper families
+    trained = table[table["source"].str.startswith("trained")]["shared-sample loss"]
+    family = table[table["source"] == f"theory {theory.family_names[winner]}"].iloc[0]
+    assert np.allclose(trained, family["shared-sample loss"], rtol=1e-5)
+    assert family["shared-sample loss"] == pytest.approx(family["exact loss"], rel=0.02)
