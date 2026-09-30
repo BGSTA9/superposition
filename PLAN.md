@@ -149,8 +149,10 @@ rectification session on 2026-09-30 (docs/progress/phase-3.md).
 
 - [x] **E05 learning_dynamics (pp. 26–28)**: energy-level jump coinciding with a loss drop;
       n = 6, m = 3 octahedron final state in ≥ 1 restart; trajectory types reported.
-  - **Result: PASS 2/2** (quick, CPU, run `20260929T172920Z-2fae0fc5`): every restart jumps
-    late (a 30th digon forms) with a 0.04–0.05 loss drop; 48/48 runs end as octahedra.
+  - **Result: PASS 2/2** (quick, CPU, run `20260930T190604Z-2fae0fc5`, re-run in
+    rectification 2): every restart jumps late (a 30th digon forms) with a 0.04–0.05 loss
+    drop; 48/48 runs end as octahedra; stage B's near-orthogonal sets are a documented variant
+    (D-R02).
 - [~] `adversarial.py` + **E06 adversarial (pp. 29–30)**: vulnerability rises > 2× (report
       actual); Spearman ≥ 0.8 with 1/D*.
   - **Result: PARTIAL 2/4** (run `20260929T173800Z-e84cec26`): uniform setup 8.5×, ρ = 1.0;
@@ -160,11 +162,14 @@ rectification session on 2026-09-30 (docs/progress/phase-3.md).
   - **Result: PASS 3/3** (run `20260929T174443Z-d54df07e`); with a hidden bias all biases go
     positive and the ReLU clips < 0.3% of the time.
 - [~] **E08 abs_computation (pp. 34–39)**: (a) n = 3, m = 6 positive/negative-side neurons,
-      per-feature loss < 5% of mean baseline; (b) n = 100, m = 40 stack plots, features
-      computed well > m/2 when sparse.
-  - **Result: PARTIAL 2/4** (run `20260929T175145Z-5a0a35cf`): (a) exact; (b) 39/40
-    monosemantic when dense; 3 features computed well at 1 − S = 0.001 (dead output sides at
-    initialization; D-409).
+      per-feature loss < 5% of mean baseline; (b) n = 100, m = 40 stack plots, more than m
+      features usefully computed when sparse (re-derived from p. 37, D-R01; SPEC's > m/2
+      computed well reported).
+  - **Result: PARTIAL 2/4** (run `20260930T191445Z-49fd30ed`, rectification 2): (a) exact;
+    (b) 39/40 monosemantic when dense; 23 features usefully computed (> 40 needed) and 3
+    computed well at 1 − S = 0.001, with a loss 54× the no-superposition reference there. Dead
+    output sides at initialization (D-409); the reference implementations' smaller init helps
+    at 0.01, not at 0.001 (D-R01).
 - [x] Notebooks 06–08, app pages Dynamics, Neurons, Adversarial.
 - [x] **Exit:** E05–E08 implemented with notebooks and app pages; quick profiles run from a
       clean tree (each ≤ 10 min on CPU) and reported honestly; lint and unit tier green.
@@ -176,20 +181,43 @@ rectification session on 2026-09-30 (docs/progress/phase-3.md).
 - [x] `sae.py`: ReLU and TopK SAEs, unit-norm decoder, resampling, ground-truth metrics (D-503).
 - [x] **E09 mech_interp_abs**: ≥ 90% neurons named; ablations agree; motif found; rebuild
       reported.
-  - **Result: PASS 3/3** (quick, CPU, run `20260929T211826Z-3fdd1d10`): 48/48 live neurons
-    named, 48/48 ablations agree, the motif in 134 of 240 models; rebuild recovers 90–97%.
-- [x] **E10 sae_recovery**: pentagon 5/5 at cos > 0.95; n = 20, m = 5 ≥ 90% at cos > 0.9.
-  - **Result: PASS 3/3** (run `20260929T212259Z-fa564b17`): best SAEs recover every
-    represented feature; 10/27, 16/18 and 6/18 settings pass; on the E03 model TopK 8
-    recovers 100% and TopK 16 2% (INFO).
-- [x] **E11 l1_removes_superposition**: superposition → none as λ grows; trade-off curve.
-  - **Result: PASS 8/8** (run `20260929T212948Z-027b0327`): n = 20 keeps 4 orthogonal
-    features at λ = 0.2 (8.4× the loss); the pentagon is free of superposition only with one
-    feature left (λ = 0.65).
+  - **Result: PASS 3/3** (quick, CPU, run `20260930T184323Z-3fdd1d10`, re-run in
+    rectification 2): 48/48 live neurons named, 48/48 ablations agree, the motif in 134 of 240
+    models; rebuild recovers 90–97%. Discrepancy on the inhibition sub-claim (net interference
+    ≈ 0, not negative); the density pilot is a cited run (D-R03).
+- [~] **E10 sae_recovery**: pentagon 5/5 at cos > 0.95; n = 20, m = 5 ≥ 90% at cos > 0.9, by
+      the SAE selected without ground truth (sparsest with FVU ≤ 0.1; D-R04).
+  - **Result: PARTIAL 1/3** (run `20260930T192302Z-13117b27`, rectification 2): the selected
+    SAE recovers 3/5, 11/11 and 10/13; the oracle-best SAE recovers everything (upper bound);
+    10/27, 16/18 and 6/18 settings pass; on the E03 model the rule picks TopK 16 (2%) over
+    TopK 8 (100%).
+- [~] **E11 l1_removes_superposition**: superposition → none as λ grows; trade-off curve.
+  - **Result: PARTIAL 7/8** (run `20260930T185653Z-c4feb0cf`, rectification 2): n = 20 keeps
+    4 orthogonal features at λ = 0.2 (8.4× the loss); the pentagon is free of superposition
+    only with one feature left (λ = 0.65), PARTIAL by D-R05. Held-out seed: n = 20 confirmed,
+    the pentagon's λ window not (PARTIAL 5/8).
 - [x] Notebooks 09–10, app pages Neurons (roles), SAE lab.
 - [x] **Exit:** interp.py, sae.py and E09–E11 implemented with notebooks and app pages; quick
       profiles run from a clean tree (each ≤ 10 min on CPU) and reported; lint and unit tier
       green.
+
+## Rectification session 2 (2026-09-30; owner decisions D-R01–D-R06)
+
+Not Phase 6. Report: docs/progress/rectification.md.
+
+- [x] E08: reference implementations consulted for diagnosis only (D-R01); sparse criterion
+      re-derived from p. 37, original reported; init-scale diagnostic variant.
+- [x] E05: octahedron fraction and trajectory types reported; stage B a documented variant
+      (D-R02).
+- [x] E09: density pilot re-run through the CLI and cited (`mech_interp_abs:pilot`); inhibitor
+      result reported as a discrepancy on that sub-claim (D-R03).
+- [x] E10: graded on an SAE selected without ground truth; oracle upper bound, pass rates, TopK
+      k = 8 vs 16 reported (D-R04).
+- [x] E11: pentagon PARTIAL; refined λ grid checked on a held-out seed
+      (`l1_removes_superposition:heldout`); framed against p. 42 (D-R05).
+- [x] Full profiles not run; every unmeasured runtime labeled as an estimate (D-R06).
+- [x] Graded PARTIAL criteria and supplementary citations (D-R07); quick profiles of E05 and
+      E08–E11 re-run from a clean tree (`fd32b02`) and pinned; `make lint test` green.
 
 ## Phase 6: extensions, review, polish (SPEC §7 E12, §10, §11, §12)
 

@@ -6,6 +6,40 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Rectification session 2 (2026-09-30)
+
+Six owner decisions (docs/DECISIONS.md D-R01–D-R06), applied before Phase 6. The quick profiles
+of E05 and E08–E11 were re-run from the clean commit `fd32b02`: every earlier number reproduces
+bit for bit, and only grading and new rows changed. Report: docs/progress/rectification.md.
+
+#### Changed
+- **E08** grades its sparse setting on the criterion re-derived from p. 37: more than m
+  features usefully computed (loss below 75% of predicting the mean), rather than SPEC's more
+  than m/2 computed well, which is still reported (D-R01). The result is still **PARTIAL 2/4**:
+  23 features usefully computed at 1 − S = 0.001, and 3 computed well.
+- **E10** grades the SAE a practitioner would pick without ground truth: the sparsest with
+  held-out FVU ≤ 0.1 (D-R04). **PASS 3/3 → PARTIAL 1/3.** The oracle-best SAE, graded before,
+  is now an upper bound.
+- **E11**'s "falls to none" is PARTIAL when the only superposition-free model keeps a single
+  feature (D-R05). **PASS 8/8 → PARTIAL 7/8** (the pentagon).
+- Every runtime that was not measured is labeled as an estimate (D-R06).
+
+#### Added
+- Graded PARTIAL criteria (`acceptance.graded`) and supplementary cited runs
+  (`superposition report --pin EXP --run ID --label L`, `AUTO:<code>:<label>` blocks; D-R07).
+- E08: a within-sparsity comparison with the mean and no-superposition references (footnote
+  17), and a diagnostic variant at the smaller init scale of ARENA's |x| model, which was
+  consulted for diagnosis only (D-R01). The capacity figure and the Neurons page show the
+  features usefully computed.
+- E05: the fraction of restarts reaching the octahedron, and INFO `stage_b_placement` (stage B
+  is a documented variant, D-R02).
+- E09: a `pilot` profile, run and cited as `mech_interp_abs:pilot`, and the spread of the net
+  interference on the victim (the inhibitor discrepancy, D-R03).
+- E10: the selected SAE in the pentagon figure and the SAE lab, plus INFO `oracle_upper_bound`,
+  `pass_rates` and `topk_k_contrast`.
+- E11: a held-out run on seed 1, cited as `l1_removes_superposition:heldout`. It confirms the
+  n = 20 setup but not the pentagon's λ window (PARTIAL 5/8).
+
 ### Phase 3: theory and geometry (closed 2026-09-30)
 
 Drafted on 2026-09-29 and finished in a rectification session after Phases 4 and 5.

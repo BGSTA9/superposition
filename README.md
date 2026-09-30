@@ -16,7 +16,9 @@ The repository does four things (see [SPEC.md](SPEC.md)):
 
 > **Status:** Phases 0–5 of 6 complete (engine; theory; E00–E11; notebooks 00–10; lab Home,
 > Playground, Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons, Adversarial, SAE lab).
-> Phase 6 (E12, the independent review, polish) is next. Build progress is tracked in
+> Phase 6 (E12, the independent review, polish) is next. A second rectification session
+> (2026-09-30) regraded E08, E10 and E11 on the owner's decisions; the current statuses are in
+> [docs/REPRODUCTION.md](docs/REPRODUCTION.md). Build progress is tracked in
 > [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
 
 ## Quickstart

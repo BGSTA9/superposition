@@ -1,16 +1,17 @@
-# Runs cited by docs/REPRODUCTION.md, one per experiment (written by
-# `superposition report --pin <experiment>`; do not edit by hand).
+# Runs cited by docs/REPRODUCTION.md, one per experiment, plus supplementary runs keyed
+# <experiment>:<label> (written by `superposition report --pin <experiment>
+# [--run <id> --label <label>]`; do not edit by hand).
 abs_computation:
-  run_id: 20260929T175145Z-5a0a35cf
+  run_id: 20260930T191445Z-49fd30ed
   profile: quick
   device: cpu
   seed: 0
-  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
   dirty: false
   overall: PARTIAL
   n_passed: 2
   n_graded: 4
-  wall_clock_s: 369.381
+  wall_clock_s: 492.778
 adversarial:
   run_id: 20260929T173800Z-e84cec26
   profile: quick
@@ -45,38 +46,60 @@ intro_pentagon:
   n_graded: 11
   wall_clock_s: 61.905
 l1_removes_superposition:
-  run_id: 20260929T212948Z-027b0327
+  run_id: 20260930T185653Z-c4feb0cf
   profile: quick
   device: cpu
   seed: 0
-  commit: dbe87c8b183a3c9d857cd69265bded3783b9c31c
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
   dirty: false
-  overall: PASS
-  n_passed: 8
+  overall: PARTIAL
+  n_passed: 7
   n_graded: 8
-  wall_clock_s: 533.046
+  wall_clock_s: 548.382
+l1_removes_superposition:heldout:
+  run_id: 20260930T184744Z-e8c803d0
+  profile: quick
+  device: cpu
+  seed: 1
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
+  dirty: false
+  overall: PARTIAL
+  n_passed: 5
+  n_graded: 8
+  wall_clock_s: 546.189
 learning_dynamics:
-  run_id: 20260929T172920Z-2fae0fc5
+  run_id: 20260930T190604Z-2fae0fc5
   profile: quick
   device: cpu
   seed: 0
-  commit: 5a825d065329b3de0e1aeb3de36ace6d7a2ea400
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
   dirty: false
   overall: PASS
   n_passed: 2
   n_graded: 2
-  wall_clock_s: 516.428
+  wall_clock_s: 517.951
 mech_interp_abs:
-  run_id: 20260929T211826Z-3fdd1d10
+  run_id: 20260930T184323Z-3fdd1d10
   profile: quick
   device: cpu
   seed: 0
-  commit: dbe87c8b183a3c9d857cd69265bded3783b9c31c
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
   dirty: false
   overall: PASS
   n_passed: 3
   n_graded: 3
-  wall_clock_s: 270.704
+  wall_clock_s: 257.997
+mech_interp_abs:pilot:
+  run_id: 20260930T183948Z-1e8bafbd
+  profile: pilot
+  device: cpu
+  seed: 0
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
+  dirty: false
+  overall: PASS
+  n_passed: 3
+  n_graded: 3
+  wall_clock_s: 212.446
 nonuniform_geometry:
   run_id: 20260930T091958Z-43c63e78
   profile: quick
@@ -111,16 +134,16 @@ privileged_basis:
   n_graded: 3
   wall_clock_s: 418.544
 sae_recovery:
-  run_id: 20260929T212259Z-fa564b17
+  run_id: 20260930T192302Z-13117b27
   profile: quick
   device: cpu
   seed: 0
-  commit: dbe87c8b183a3c9d857cd69265bded3783b9c31c
+  commit: fd32b022730d61db39e23b7919c20e1db03a506c
   dirty: false
-  overall: PASS
-  n_passed: 3
+  overall: PARTIAL
+  n_passed: 1
   n_graded: 3
-  wall_clock_s: 405.936
+  wall_clock_s: 415.275
 uniform_geometry:
   run_id: 20260930T091350Z-2cb2dc61
   profile: quick

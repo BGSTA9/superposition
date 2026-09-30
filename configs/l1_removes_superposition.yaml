@@ -39,7 +39,7 @@ base:
     log_every: 100
     eval_samples: 20000   # training's own estimate; E11 re-scores on shared samples
 profiles:
-  # quick: the setups above. Measured: 533 s on an Apple M2 CPU (--device cpu).
+  # quick: the setups above. Measured: 548 s on an Apple M2 CPU (--device cpu).
   quick: {}
   # full: 4× the restarts and 3× the steps. Estimated ≈ 12× the quick profile (≈ 1.8 hours on a
   # laptop CPU; use --device mps or cuda); not yet measured.

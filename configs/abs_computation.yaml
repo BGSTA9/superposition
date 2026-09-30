@@ -45,8 +45,7 @@ base:
     eval_samples: 20000
 profiles:
   # quick: 4 restarts per sparsity, plus the bias-init (D-409) and init-scale (D-R01)
-  # diagnostic variants. Measured: 369 s on an Apple M2 CPU (--device cpu) before the
-  # init-scale variant was added.
+  # diagnostic variants. Measured: 493 s on an Apple M2 CPU (--device cpu).
   quick: {}
   # full: more restarts and longer training. Measured: 981 s on an Apple M2 (--device mps),
   # before the init-scale variant was added.
