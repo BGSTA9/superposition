@@ -1,0 +1,71 @@
+# E04 nonuniform_geometry (Paper: pp. 21–26). SPEC §7 E04; decisions D-307, D-309.
+# ReLU output model, Iᵢ = 1 everywhere.
+# (a) n = 5, m = 2: four features at 1 − S = 0.05, the fifth (feature 0) at 0.1× … 10× that.
+# (b) m = 2: 2 correlated pairs, 2 anticorrelated pairs, 3 correlated pairs (p. 24).
+# (c) 2 correlated sets of 10 features in m = 10 (pp. 24–25).
+# (d) 3 correlated pairs in m = 2, set density swept (p. 25).
+# The paper states no density for (b)–(d); the choices are in D-307.
+experiment: nonuniform_geometry
+base:
+  seed: 0
+  device: auto
+  perturbed:
+    n_features: 5
+    n_hidden: 2
+    base_density: 0.05
+    ratio_min: 0.1
+    ratio_max: 10.0
+    n_ratios: 21
+    n_restarts: 32
+    eval_samples: 200000
+  correlation:
+    density: 0.02
+    n_restarts: 16
+    local_basis_sets: 2
+    local_basis_set_size: 10
+    local_basis_hidden: 10
+    local_basis_restarts: 8
+  collapse:
+    n_sets: 3
+    set_size: 2
+    density_min: 0.01
+    density_max: 0.5
+    n_densities: 12
+    n_restarts: 16
+  thresholds:
+    represented_norm: 0.5
+    antipodal_cos: -0.95
+    orthogonal_abs_cos: 0.1
+    collapsed_cos: 0.95
+    zero_norm: 0.1
+    trend_min_spearman: 0.8
+    angle_margin_deg: 1.0
+  train:
+    steps: 10000
+    batch_size: 256
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 500
+    eval_samples: 20000
+profiles:
+  # quick: (a) 21 ratios × 32 restarts; (b) 3 × 16 restarts; (c) 8 restarts; (d) 12 densities
+  # × 16 restarts; all at batch 256.
+  quick: {}
+  # full: twice the restarts, a finer ratio grid, SPEC §6's default batch 1024, twice the steps.
+  full:
+    perturbed:
+      n_ratios: 41
+      n_restarts: 64
+    correlation:
+      n_restarts: 32
+      local_basis_restarts: 16
+    collapse:
+      n_densities: 24
+      n_restarts: 32
+    train:
+      steps: 20000
+      batch_size: 1024
+  # batch1024: the quick setup at SPEC §6's default batch 1024; compared with quick in D-309.
+  batch1024:
+    train:
+      batch_size: 1024

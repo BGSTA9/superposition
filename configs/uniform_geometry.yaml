@@ -1,0 +1,54 @@
+# E03 uniform_geometry (Paper: pp. 16–21). SPEC §7 E03; decisions D-306, D-309.
+# ReLU output model, n = 400 features of equal importance (Iᵢ = 1) in m = 30 dimensions, with
+# 1/(1 − S) log-spaced over [1, 10] (quick: 20 points, full: 60; SPEC) and 2 restarts. The
+# thresholds are readings of the p. 17 figure (D-306).
+experiment: uniform_geometry
+base:
+  seed: 0
+  device: auto
+  n_features: 400
+  n_hidden: 30
+  inverse_density_min: 1.0
+  inverse_density_max: 10.0
+  n_points: 20
+  n_restarts: 2
+  graph_at: [1.4, 1.7, 2.9, 4.3, 5.0, 9.0]
+  thresholds:
+    represented_norm: 0.5
+    superposition_score: 0.05
+    dense_until: 1.2
+    dense_min_dstar: 0.95
+    plateau_value: 0.5
+    plateau_tol: 0.03
+    plateau_min_span: 1.25
+    tail_at: 8.0
+    tail_value: 0.25
+    tail_tol: 0.05
+    fraction_tol: 0.02
+    cluster_min_share: 0.2
+    cluster_min_count: 8
+    min_clusters: 3
+    edge_threshold: 0.05
+    rank_rtol: 0.1
+    uniform_tol: 0.05
+  train:
+    steps: 10000
+    batch_size: 256
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 500
+    eval_samples: 20000
+profiles:
+  # quick: 20 sparsities × 2 restarts (40 models of 400 × 30) at batch 256.
+  quick: {}
+  # full: SPEC's ≥ 60 points, 4 restarts, SPEC §6's default batch 1024, twice the steps.
+  full:
+    n_points: 60
+    n_restarts: 4
+    train:
+      steps: 20000
+      batch_size: 1024
+  # batch1024: the quick grid at SPEC §6's default batch 1024; compared with quick in D-309.
+  batch1024:
+    train:
+      batch_size: 1024

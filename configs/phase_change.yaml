@@ -1,0 +1,55 @@
+# E02 phase_change (Paper: pp. 14–16, 51–53). SPEC §7 E02; decisions D-301 – D-305, D-309.
+# ReLU output model; feature 0 (and 1) have importance 1, the last ("extra") feature's relative
+# importance runs over [0.1, 10] and every feature's density 1 − S over [0.01, 1], both on log
+# grids. Ten models per cell; the highest-loss one is discarded and the other nine vote (p. 14).
+# The theoretical diagrams minimize each family's exact expected loss (theory.py).
+experiment: phase_change
+base:
+  seed: 0
+  device: auto
+  settings:
+    - {label: n2_m1, n_features: 2, n_hidden: 1, paper_page: p. 15}
+    - {label: n3_m2, n_features: 3, n_hidden: 2, paper_page: p. 16}
+  grid:
+    importance_min: 0.1
+    importance_max: 10.0
+    n_importance: 12
+    density_min: 0.01
+    density_max: 1.0
+    n_density: 12
+  models_per_cell: 10
+  discard_worst: 1
+  base_importance: 1.0
+  theory:
+    scale_max: 2.0
+    scale_grid: 41
+    bias_min: -1.5
+    bias_max: 1.5
+    bias_grid: 121
+    golden_iterations: 40
+  thresholds:
+    represented_norm: 0.5
+    superposition_score: 0.05
+    agreement_min: 0.8
+    near_boundary_relative_gap: 0.05
+  train:
+    steps: 10000
+    batch_size: 256
+    lr: 1.0e-3
+    schedule: constant
+    log_every: 500
+    eval_samples: 20000
+profiles:
+  # quick: 12 × 12 cells × 10 models for each problem (1,440 models each) at batch 256.
+  quick: {}
+  # full: a finer 24 × 24 grid at SPEC §6's default batch 1024.
+  full:
+    grid:
+      n_importance: 24
+      n_density: 24
+    train:
+      batch_size: 1024
+  # batch1024: the quick grid at SPEC §6's default batch 1024; compared with quick in D-309.
+  batch1024:
+    train:
+      batch_size: 1024

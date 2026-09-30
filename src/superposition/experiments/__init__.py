@@ -13,8 +13,11 @@ from superposition.experiments import (
     l1_removes_superposition,
     learning_dynamics,
     mech_interp_abs,
+    nonuniform_geometry,
+    phase_change,
     privileged_basis,
     sae_recovery,
+    uniform_geometry,
 )
 from superposition.experiments.base import Experiment
 
@@ -23,6 +26,9 @@ REGISTRY: dict[str, Experiment] = {
     for exp in (
         intro_pentagon.EXPERIMENT,
         basic_results.EXPERIMENT,
+        phase_change.EXPERIMENT,
+        uniform_geometry.EXPERIMENT,
+        nonuniform_geometry.EXPERIMENT,
         learning_dynamics.EXPERIMENT,
         adversarial.EXPERIMENT,
         privileged_basis.EXPERIMENT,
