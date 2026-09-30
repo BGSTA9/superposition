@@ -68,14 +68,11 @@ with left:
     )
 
 n_dens, n_imp = len(problem.density), len(problem.importance)
-# A click on the map selects a cell: apply it once, before the sliders are drawn.
-event = st.session_state.get("pc_map")
-points = event["selection"]["points"] if event and event.get("selection") else []
-if points:
-    clicked = (round(float(points[0]["y"])), round(float(points[0]["x"])))
-    if clicked != st.session_state.get("pc_last_click"):
-        st.session_state["pc_last_click"] = clicked
-        st.session_state["pc_density"], st.session_state["pc_importance"] = clicked
+# A click on the map (handled below the map) leaves the clicked cell here for this rerun;
+# widget state can only be set before the sliders are drawn.
+pending = st.session_state.pop("pc_pending", None)
+if pending is not None:
+    st.session_state["pc_density"], st.session_state["pc_importance"] = pending
 for key, size, default in (("pc_density", n_dens, 0), ("pc_importance", n_imp, n_imp // 2)):
     if st.session_state.get(key, size) >= size:
         st.session_state[key] = default
@@ -93,11 +90,15 @@ with right:
         key="pc_importance",
     )
     row = problem.cells.iloc[d * n_imp + i]
-    st.metric("empirical majority", REGIME_NAMES[str(row["empirical"])])
-    st.metric("theory (paper families)", REGIME_NAMES[str(row["theory"])])
+    gap = float(row["theory_relative_gap"])
+    gap_text = f"{100 * gap:.1f}% above" if gap < 1 else f"{1 + gap:.3g}× as large as"
+    st.markdown(
+        f"**Empirical majority:** {REGIME_NAMES[str(row['empirical'])]}  \n"
+        f"**Theory (paper families):** {REGIME_NAMES[str(row['theory'])]}"
+    )
     st.caption(
-        f"Votes of the nine kept models: {row['counts']}. The theory's two best families differ "
-        f"by {100 * float(row['theory_relative_gap']):.1f}% of the best loss"
+        f"Votes of the nine kept models: {row['counts']}. The theory's second-best family's "
+        f"loss is {gap_text} the best one's"
         + (" (next to a theoretical boundary)." if bool(row["near_theory_boundary"]) else ".")
     )
 
@@ -110,9 +111,19 @@ with left:
         selected=(d, i),
         title=f"E02 · {titles[label]}: {view}",
     )
-    st.plotly_chart(
+    event = st.plotly_chart(
         figure, key="pc_map", on_select="rerun", selection_mode="points", width="stretch"
     )
+    points = event.selection.points if event and event.selection else []
+    if points:
+        clicked = (round(float(points[0]["y"])), round(float(points[0]["x"])))
+        # The selection persists across reruns: act on a click only once, so that moving the
+        # sliders afterwards is not undone by the old selection.
+        if clicked != st.session_state.get("pc_last_click"):
+            st.session_state["pc_last_click"] = clicked
+            if clicked != (d, i):
+                st.session_state["pc_pending"] = clicked
+                st.rerun()
 
 st.subheader(
     f"The cell at 1 − S = {problem.density[d]:.3g}, importance {problem.importance[i]:.3g}×"

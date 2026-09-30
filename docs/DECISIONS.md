@@ -516,10 +516,12 @@ what the draft session had seen before each choice (its transcript is the eviden
 ### D-310 · 2026-09-30 · Test tiers: slow under 15 minutes, and an opt-in paper tier
 - **Decision:** three tiers. Unmarked tests are the fast unit and property tier (CI,
   `make test`). `slow` trains small models or runs short notebooks and must stay under 15
-  minutes in total on a laptop CPU (`make test-slow`): E00's replication test, the lab tests
-  and notebooks 00–03. `paper` re-runs an experiment's whole quick profile, or a notebook that
-  does (`make test-paper`): the replication tests of E01–E11 and notebooks 04–10. Paper tests
-  are deselected unless the `-m` expression names `paper` (`conftest.py`).
+  minutes in total on a laptop CPU (`make test-slow`): E00's replication test, reduced
+  replication tests of E02–E04 (about a minute each; each checks the claims that do not depend
+  on a fine sweep), the lab tests and notebooks 00–03. `paper` re-runs an experiment's whole
+  quick profile, or a notebook that does (`make test-paper`): the replication tests of E01–E11
+  and notebooks 04–10. Paper tests are deselected unless the `-m` expression names `paper`
+  (`conftest.py`).
 - **Rationale:** the slow tier had grown to more than an hour (Phase 4 open issue 6), which
   made it useless as a routine check. Opt-in keeps SPEC's commands meaning what they meant:
   `pytest -m "not slow"` (CI, and the fresh-clone test of SPEC §11) and a bare `pytest` never

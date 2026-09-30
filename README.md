@@ -14,10 +14,10 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** Phases 0–2, 4 and 5 of 6 complete (engine; E00, E01, E05–E11; notebooks 00–02
-> and 06–10; lab Home, Playground, Dynamics, Neurons, Adversarial, SAE lab). Phase 3 (theory and
-> geometry, E02–E04) is in progress. Build progress is tracked in [PLAN.md](PLAN.md) and
-> [docs/progress/](docs/progress/).
+> **Status:** Phases 0–5 of 6 complete (engine; theory; E00–E11; notebooks 00–10; lab Home,
+> Playground, Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons, Adversarial, SAE lab).
+> Phase 6 (E12, the independent review, polish) is next. Build progress is tracked in
+> [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
 
 ## Quickstart
 
@@ -33,8 +33,9 @@ uv run superposition report                   # refresh the tables in docs/REPRO
 uv run superposition app                      # launch the lab in your browser
 ```
 
-Developer commands: `make lint`, `make test` (fast tier), `make test-slow` (replication and
-notebook tests). See [CLAUDE.md](CLAUDE.md) for the full list and conventions.
+Developer commands: `make lint`, `make test` (fast tier), `make test-slow` (short replication
+and notebook tests, under 15 minutes), `make test-paper` (every quick profile re-run and checked,
+hours). See [CLAUDE.md](CLAUDE.md) for the full list and conventions.
 
 ## Results gallery
 
@@ -48,6 +49,25 @@ top two features throughout.
 superposition, from dense (left) to sparse (right).
 
 ![E01: n = 20, m = 5 across sparsity](docs/figures/basic_results/weights_n20_m5.png)
+
+**E02 · superposition as a phase change (p. 15).** Two features in one dimension: whether the
+extra feature is dropped (gray), stored as an antipodal pair (red) or given the dimension (blue)
+depends on its importance and on sparsity. The panels show trained models colored by norm and
+superposition, their majority vote, the exact theory, and the cells where vote and theory
+disagree (most of their models are stuck in a worse minimum).
+
+![E02: empirical and theoretical phase diagrams, n = 2, m = 1](docs/figures/phase_change/phase_n2_m1.png)
+
+**E03 · feature dimensionality (p. 19).** 400 features in 30 dimensions: every feature's Dᵢ,
+sticky at 1/2 (antipodal pairs) and clustering at the fractions of triangles, pentagons and
+square antiprisms.
+
+![E03: Dᵢ of every feature across sparsity](docs/figures/uniform_geometry/dimensionality.png)
+
+**E04 · non-uniform superposition (p. 22).** Making one of five features sparser deforms the
+pentagon until it snaps to two digons, where the loss curves of the two geometries cross.
+
+![E04: every restart's loss by geometry](docs/figures/nonuniform_geometry/perturbed_losses.png)
 
 **E05 · energy-level jumps (p. 26).** 400 features in 30 dimensions settle into antipodal
 pairs; long after the loss has flattened, two features jump to Dᵢ = 1/2 to fill the last badly
@@ -99,6 +119,13 @@ survive until almost nothing is left.
   bias, the ReLU and the reconstruction, feature by feature. The default setting (the p. 2
   pentagon) trains in about 4 seconds on a laptop CPU.
 
+- **Phase diagrams:** E02's empirical and theoretical diagrams for n = 2, m = 1 and n = 3,
+  m = 2, with McGrath's confused family and the zero-bias variant; click a cell to see its ten
+  trained models, the vote, representative weights and every family's optimum.
+- **Geometry:** E03's D* and Dᵢ curves; pick a sparsity to see its geometry graph, Dᵢ histogram
+  and tegum factors.
+- **Non-uniform:** E04 with a density slider for the perturbed feature and the crossing loss
+  curves; correlated and anticorrelated sets, local bases, and the collapse of correlated pairs.
 - **Dynamics:** feature dimensionalities over training with a step scrubber (E05), and
   rotatable 3D trajectories of a model learning an octahedron.
 - **Neurons:** W and neuron stack plots across sparsity for the ReLU hidden layer model (E07)
@@ -108,8 +135,6 @@ survive until almost nothing is left.
 - **SAE lab:** train a sparse autoencoder live on the pentagon or a sparse n = 20 model and
   compare its decoder with the true features (2D view, per-feature cosines); E10's sweeps and
   E11's λ trade-off with a λ slider.
-
-Further pages (phase diagrams, geometry, non-uniform) arrive with their experiments.
 
 ## Reproduction status
 

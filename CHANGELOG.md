@@ -6,6 +6,54 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Phase 3: theory and geometry (closed 2026-09-30)
+
+Drafted on 2026-09-29 and finished in a rectification session after Phases 4 and 5.
+
+#### Added
+- `superposition.theory` (pp. 13–16): the linear decomposition into feature benefit,
+  interference and a bias term; the exact 0- and 1-sparse terms; the exact expected loss of a
+  ReLU output model whose outputs each read at most one other feature (closed form, D-301);
+  weight families W ⊥ v, their exact optima over scale and biases (D-302), and theoretical phase
+  diagrams for n = 2, m = 1 and n = 3, m = 2, with McGrath's confused family and a zero-bias
+  variant.
+- `metrics.component_geometry` and `metrics.geometry_census`: tegum factors named by features,
+  dimensions spanned and uniformity (D-308; resolves Phase 2 open issue 1).
+- **E02 phase_change** (pp. 14–16). PASS 6/6: all three regions in both diagrams, agreement
+  0.875 (n = 2) and 0.819 (n = 3); every disagreement is a majority of stuck models.
+- **E03 uniform_geometry** (pp. 16–21). PASS 4/4: D* plateau at 1/2 over 2.34–3.79, 0.264 at
+  1/(1 − S) = 7.85, Dᵢ clusters at 2/3, 1/2, 2/5 and 3/8.
+- **E04 nonuniform_geometry** (pp. 21–25). PASS 9/9: the perturbed pentagon, correlated and
+  anticorrelated sets, local bases, collapse to principal components. The quick profiles take
+  487, 365 and 287 s on a laptop CPU.
+- Named variant profiles in config files (`superposition run <exp> --profile batch1024`), used
+  for the logged batch-size comparison behind D-309.
+- Plotting: `plotting/phase.py` (phase diagrams, family loss curves), `plotting/geometry.py`
+  (D* and Dᵢ figures, geometry graphs, factor census); `plotly` phase map for the lab.
+- Lab: **Phase diagrams** (click a cell for its models and every family's optimum),
+  **Geometry** (geometry graph and Dᵢ histogram per sparsity) and **Non-uniform** (the
+  perturbed-feature density slider, correlated sets, local bases, collapse);
+  `lab.phase_cell_shared_losses` compares a cell's models with the families exactly where
+  possible and on shared samples otherwise.
+- Notebooks `03_the_math`, `04_phase_change`, `05_geometry`.
+- Tests: `theory.py` against Monte Carlo and adaptive quadrature; E02–E04 criteria on
+  hand-built weights; polytope naming; reduced replication tests in the slow tier and full
+  quick-profile tests in the paper tier.
+
+#### Changed
+- Test tiers (D-310): `slow` keeps E00, the lab tests, the reduced E02–E04 tests and notebooks
+  00–03 under 15 minutes; replication tests that re-run a whole quick profile, and notebooks
+  04–10, move to a new opt-in `paper` marker (`make test-paper`).
+- E04 picks its best restarts on 200,000 evaluation samples in every part.
+
+#### Fixed
+- E04's lint suppressions replaced by real fixes; its Spearman helper returns NaN on constant
+  input instead of dividing by zero.
+- E02 figures: the two "dedicated" families of n = 3 are told apart, and the empirical panel
+  counts its voters.
+- The lab launch test no longer leaks a Streamlit server per run (it terminated only the CLI,
+  and the server's output pipe lost its reader).
+
 ### Phase 5: mechanistic interpretability (2026-09-30)
 
 #### Added

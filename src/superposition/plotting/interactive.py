@@ -228,7 +228,12 @@ def phase_map(
                 x=[selected[1]],
                 y=[selected[0]],
                 mode="markers",
-                marker={"symbol": "square-open", "size": 22, "line": {"width": 2.5, "color": INK}},
+                marker={
+                    "symbol": "square-open",
+                    "size": 22,
+                    "color": INK,
+                    "line": {"width": 2.5, "color": INK},
+                },
                 hoverinfo="skip",
                 name="selected cell",
             )

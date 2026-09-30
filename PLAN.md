@@ -117,17 +117,33 @@ Close (SPEC §11):
 
 ## Phase 3: theory and geometry (SPEC §6 theory.py, §7 E02–E04)
 
-- [ ] `theory.py`: linear-model loss decomposition, 1-sparse ReLU decomposition (validated
-      against Monte-Carlo), exact expected-loss phase diagrams for n = 2, m = 1 (3 families +
-      optional confused family) and n = 3, m = 2 (4 families). Record closed-form vs quadrature.
-- [ ] **E02 phase_change (pp. 14–15)**: 10 models per cell, drop highest-loss, majority label;
+Drafted on 2026-09-29 (commits `4355d5d`, `acec078`), left unfinished, and closed in a
+rectification session on 2026-09-30 (docs/progress/phase-3.md).
+
+- [x] `theory.py`: linear-model loss decomposition, 1-sparse ReLU decomposition, exact expected
+      loss (closed form, D-301), families and their optima (D-302), theoretical phase diagrams
+      for n = 2, m = 1 (3 families + McGrath's confused family) and n = 3, m = 2 (4 families +
+      confused); validated against Monte Carlo and adaptive quadrature (`tests/unit/test_theory.py`).
+- [x] **E02 phase_change (pp. 14–16)**: 10 models per cell, drop highest-loss, majority label;
       all three regions in both diagrams; ≥ 80% empirical/theory agreement; disagreement map.
-- [ ] **E03 uniform_geometry (pp. 16–21)**: n = 400, m = 30; D* ≈ 1 to 1/(1 − S) ≈ 1.2;
+  - **Result: PASS 6/6** (quick, CPU, run `20260930T090540Z-4e3325bf`): agreement 0.875
+    (n = 2) and 0.819 (n = 3); every disagreement is a majority of stuck models (the best model
+    has the theory's label); asymmetric pairs beat the paper's symmetric family in 4 cells.
+- [x] **E03 uniform_geometry (pp. 16–21)**: n = 400, m = 30; D* ≈ 1 to 1/(1 − S) ≈ 1.2;
       plateau 0.5 ± 0.03 (report span); ≈ 0.25 at 8; Dᵢ clusters at ≥ 3 fractions; ΣDᵢ vs m.
-- [ ] **E04 nonuniform_geometry (pp. 21–25)**: (a) perturbed pentagon; (b) correlated vs
+  - **Result: PASS 4/4** (run `20260930T091350Z-2cb2dc61`): plateau 2.34–3.79, D* 0.264 at
+    7.85, clusters at 2/3, 1/2, 2/5, 3/8 (no tetrahedra), ΣDᵢ 29.84–29.99.
+- [x] **E04 nonuniform_geometry (pp. 21–26)**: (a) perturbed pentagon; (b) correlated vs
       anticorrelated in m = 2; (c) local almost-orthogonal bases; (d) collapse to principal
       components.
-- [ ] Notebooks 03–05, app pages Phase diagrams, Geometry, Non-uniform.
+  - **Result: PASS 9/9** (run `20260930T091958Z-43c63e78`): the pentagon snaps to two digons
+    at ≤ 0.25× (paper ≈ 0.4×); pairs collapse one by one onto their principal components.
+- [x] Batch-256 quick profiles settled by logged CLI runs against a batch-1024 variant (D-309).
+- [x] Notebooks 03–05, app pages Phase diagrams, Geometry, Non-uniform.
+- [x] Test tiers: `slow` under 15 minutes, opt-in `paper` tier with `make test-paper` (D-310).
+- [x] **Exit:** E02–E04 registered with configs, tests, notebooks and app pages; quick profiles
+      run from a clean tree (each ≤ 10 min on CPU), figures published, runs pinned; lint and
+      unit tier green.
 
 ## Phase 4: dynamics, robustness, neurons (SPEC §7 E05–E08)
 
