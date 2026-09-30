@@ -2,6 +2,8 @@
 n = 5, m = 2 in ≤ 10 s on CPU. Slow: they start a server and train real models.
 """
 
+import os
+import signal
 import socket
 import subprocess
 import sys
@@ -52,10 +54,18 @@ def _free_port() -> int:
 
 @pytest.mark.slow
 def test_superposition_app_launches() -> None:
-    """`superposition app` starts Streamlit and serves the Home page."""
+    """`superposition app` starts Streamlit and serves the Home page.
+
+    The CLI runs Streamlit as a child process. Earlier versions of this test terminated only
+    the CLI and piped the server's output to a reader that then went away, so each run left an
+    orphaned server that could not even log its own shutdown. The command now runs in its own
+    process group with its output discarded, and the whole group is stopped.
+    """
     port = _free_port()
     command = [sys.executable, "-m", "superposition.cli", "app", "--headless", "--port", str(port)]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(
+        command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+    )
     try:
         deadline = time.monotonic() + 60
         health = None
@@ -72,8 +82,22 @@ def test_superposition_app_launches() -> None:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as page:
             assert page.status == 200
     finally:
-        process.terminate()
+        _stop_process_group(process)
+
+
+def _stop_process_group(leader: subprocess.Popen, timeout: float = 10.0) -> None:
+    """SIGTERM every process in the leader's group, wait until all have exited, then SIGKILL."""
+    pgid = leader.pid
+    os.killpg(pgid, signal.SIGTERM)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        leader.poll()  # reap the leader, or the group never looks empty
         try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
+            os.killpg(pgid, 0)  # raises ProcessLookupError once the group is empty
+        except ProcessLookupError:
+            return
+        except PermissionError:  # macOS: only exited, not yet reaped members remain
+            pass
+        time.sleep(0.2)
+    os.killpg(pgid, signal.SIGKILL)
+    leader.wait(timeout=5)
