@@ -90,7 +90,12 @@ class PerturbedSetting:
 
 @dataclass
 class CorrelationSetting:
-    """Parts (b) and (c): set sizes, density and restarts (D-307)."""
+    """Parts (b) and (c): set sizes, density and restarts (D-307).
+
+    ``eval_samples`` sizes the final-loss estimate that picks the best restart: at these
+    densities a set is active a few hundred times in 20,000 samples, too few to rank competing
+    geometries whose losses differ by a few percent.
+    """
 
     density: float = 0.02
     n_restarts: int = 16
@@ -98,6 +103,7 @@ class CorrelationSetting:
     local_basis_set_size: int = 10
     local_basis_hidden: int = 10
     local_basis_restarts: int = 8
+    eval_samples: int = 200_000
 
 
 @dataclass
@@ -110,6 +116,7 @@ class CollapseSetting:
     density_max: float = 0.5
     n_densities: int = 12
     n_restarts: int = 16
+    eval_samples: int = 200_000
 
 
 @dataclass
@@ -291,12 +298,14 @@ def train_correlation(config: NonuniformGeometryConfig, device: torch.device) ->
     }
     out = {}
     for name, dist in setups.items():
-        out[name] = _train(dist, dist.n_features, 2, config, device)
+        out[name] = _train(dist, dist.n_features, 2, config, device, c.eval_samples)
         out[name].update(n_sets=dist.n_sets, set_size=dist.set_size)
     dist = CorrelatedSets(
         c.local_basis_sets, c.local_basis_set_size, c.density, c.local_basis_restarts
     )
-    out["local_bases"] = _train(dist, dist.n_features, c.local_basis_hidden, config, device)
+    out["local_bases"] = _train(
+        dist, dist.n_features, c.local_basis_hidden, config, device, c.eval_samples
+    )
     out["local_bases"].update(n_sets=dist.n_sets, set_size=dist.set_size)
     return out
 
@@ -307,7 +316,7 @@ def train_collapse(config: NonuniformGeometryConfig, device: torch.device) -> di
     n_inst = s.n_densities * s.n_restarts
     p = torch.tensor(np.repeat(densities, s.n_restarts), dtype=torch.float32)
     dist = CorrelatedSets(s.n_sets, s.set_size, p, n_inst)
-    state = _train(dist, dist.n_features, 2, config, device)
+    state = _train(dist, dist.n_features, 2, config, device, s.eval_samples)
     state.update(
         densities=densities,
         condition=torch.arange(s.n_densities).repeat_interleave(s.n_restarts),
