@@ -203,7 +203,8 @@ criteria (a case that passes on m but not m/2) and its reference losses; E10's s
 6. **The paper tier was not re-run as a whole.** The last full pass of each paper test is in
    its own phase report, and E02–E04's is in Phase 3's.
 7. **Carried over:**
-   - CI is still broken (`astral-sh/setup-uv@v10` in both workflows);
+   - CI was broken (`astral-sh/setup-uv@v10` in both workflows). Fixed after this report, at the
+     owner's request, by pinning `v10.2.0`;
    - E06's n = 20, m = 5 setting;
    - E02's narrow n = 3 agreement;
    - E07 at 1 − S = 0.12;

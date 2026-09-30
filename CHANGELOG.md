@@ -40,6 +40,11 @@ bit for bit, and only grading and new rows changed. Report: docs/progress/rectif
 - E11: a held-out run on seed 1, cited as `l1_removes_superposition:heldout`. It confirms the
   n = 20 setup but not the pentagon's λ window (PARTIAL 5/8).
 
+#### Fixed
+- CI: both workflows pinned `astral-sh/setup-uv@v10`, a tag that does not exist (setup-uv
+  publishes no floating major tags after v7), so every CI run since the first push failed at job
+  setup. They now pin the exact release `v10.2.0`.
+
 ### Phase 3: theory and geometry (closed 2026-09-30)
 
 Drafted on 2026-09-29 and finished in a rectification session after Phases 4 and 5.
