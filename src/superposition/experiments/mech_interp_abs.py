@@ -393,6 +393,15 @@ def _total(rows: list[dict], key: str) -> int:
     return int(sum(int(r[key]) for r in rows))
 
 
+def spread(values: list[float]) -> dict[str, float] | None:
+    """Min, quartiles and max of a list of numbers (None if empty)."""
+    if not values:
+        return None
+    q = np.quantile(np.asarray(values, dtype=float), [0.0, 0.25, 0.5, 0.75, 1.0])
+    names = ("min", "q25", "median", "q75", "max")
+    return dict(zip(names, (round(float(v), 4) for v in q), strict=True))
+
+
 def evaluate(
     config: MechInterpConfig, summary: pd.DataFrame, motifs: pd.DataFrame
 ) -> list[Criterion]:
@@ -476,12 +485,20 @@ def evaluate(
                 "motif_details",
                 "Motifs in the best models: input and output size ratios, the positive "
                 "interference, the inhibition, and the net 1-sparse interference on the victim "
-                "(< 0: converted into negative interference, p. 39)",
+                "(< 0: converted into negative interference, p. 39); its spread, also relative "
+                "to the interference it cancels (D-R03)",
                 PAGE,
                 {
                     "motifs_in_best_models": len(best),
                     "net_interference_negative": f"{sum(m['net_interference'] < 0 for m in best)}/{len(best)}",
                     "all_restarts_net_negative": f"{sum(m['net_interference'] < 0 for m in motif_rows)}/{len(motif_rows)}",
+                    "net_interference_best_models": spread([m["net_interference"] for m in best]),
+                    "net_over_interference_best_models": spread(
+                        [m["net_interference"] / m["interference"] for m in best]
+                    ),
+                    "net_interference_all_restarts": spread(
+                        [m["net_interference"] for m in motif_rows]
+                    ),
                     "examples": [
                         {
                             "model": f"{m['shape']} 1-S={format_probability(m['feature_probability'])}",

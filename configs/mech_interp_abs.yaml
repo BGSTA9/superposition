@@ -1,4 +1,4 @@
-# E09 mech_interp_abs (Paper: pp. 38–39). SPEC §7 E09; decisions D-501, D-502.
+# E09 mech_interp_abs (Paper: pp. 38–39). SPEC §7 E09; decisions D-501, D-502, D-R03.
 # Absolute-value models with m = 2n − 2 neurons (the p. 39 model: 6 features, 10 neurons).
 # Graded: the limited-superposition densities (1 − S); context densities are only reported.
 # Inputs are 0 w.p. S, else U[−1, 1]; target |x|; Iᵢ = 1.
@@ -37,9 +37,15 @@ base:
 profiles:
   # quick: 20 restarts per density. Measured: 271 s on an Apple M2 CPU (--device cpu).
   quick: {}
-  # full: more restarts (a denser motif census) and longer training. Estimated ≈ 10× the quick
-  # profile (≈ 45 minutes on a laptop CPU); not yet measured.
+  # full: more restarts (a denser motif census) and longer training. Not yet measured;
+  # estimated ≈ 10× the quick profile (≈ 45 minutes on a laptop CPU).
   full:
     n_restarts: 64
     train:
       steps: 30000
+  # pilot: the density pilot that chose the graded densities (D-502), re-run through the CLI
+  # so that it is a cited run (D-R03): the same three sizes and four densities, 16 restarts
+  # each, 10,000 steps, every density analyzed the same way. Not yet measured; estimated
+  # ≈ 16/20 of the quick profile (≈ 4 minutes on a laptop CPU).
+  pilot:
+    n_restarts: 16

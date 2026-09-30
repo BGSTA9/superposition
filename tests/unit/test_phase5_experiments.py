@@ -60,6 +60,10 @@ def test_e09_criteria_pass_and_fail() -> None:
     assert by_id["motif_found"].status == "PASS"
     assert by_id["motif_found"].value["models_with_motif"] == 3
     assert by_id["motif_details"].value["net_interference_negative"] == "1/1"
+    net = by_id["motif_details"].value["net_interference_all_restarts"]
+    assert net == {"min": -0.05, "q25": -0.05, "median": -0.05, "q75": -0.05, "max": -0.05}
+    relative = by_id["motif_details"].value["net_over_interference_best_models"]
+    assert relative["median"] == pytest.approx(-0.05 / 3.9, abs=1e-4)
     assert by_id["context_densities"].status == "INFO"
     # Named fraction and agreement are pooled over graded models only (context ignored).
     by_id = {c.id: c for c in e09.evaluate(config, e09_summary(8, 10, 8), motif_rows(0))}
