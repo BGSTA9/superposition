@@ -144,8 +144,14 @@ class NonuniformGeometryConfig(ExperimentConfig):
 
 
 def spearman(x: np.ndarray, y: np.ndarray) -> float:
-    """Spearman rank correlation: the Pearson correlation of the ranks (ties get mean ranks)."""
-    return float(np.corrcoef(rankdata(x), rankdata(y))[0, 1])
+    """Spearman rank correlation: the Pearson correlation of the ranks (ties get mean ranks).
+
+    NaN when either input is constant (no trend is defined), which fails every trend criterion.
+    """
+    rx, ry = rankdata(x), rankdata(y)
+    if np.ptp(rx) == 0 or np.ptp(ry) == 0:
+        return float("nan")
+    return float(np.corrcoef(rx, ry)[0, 1])
 
 
 def cyclic_neighbours(W: torch.Tensor, feature: int, features: list[int]) -> tuple[int, int]:
