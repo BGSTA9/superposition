@@ -1,11 +1,13 @@
 """Replication test for E11 l1_removes_superposition (Paper: p. 42). Paper tier: about 9 minutes on a
-laptop CPU.
+laptop CPU (548 s measured for the quick profile).
 
 Re-runs the quick profile from scratch. The n = 20, m = 5 setup shows the paper's claim as
 stated (superposition gone with several orthogonal features left), so all its criteria are
-required. The pentagon's "falls to none" passes only in a narrow λ window with one feature left
-(docs/REPRODUCTION.md, D-505); this test requires its other criteria and leaves that one free to
-change status, so that a change there shows up in the acceptance record and the docs.
+required. The pentagon is free of superposition only with one feature left, in a narrow λ
+window, which scores "falls to none" as PARTIAL (D-505, D-R05); on a held-out seed its λ
+ordering is not stable either (docs/REPRODUCTION.md). This test requires the pentagon's other
+criteria on the cited seed and leaves "falls to none" free to change status, so that a change
+there shows up in the acceptance record and the docs.
 """
 
 import pytest
