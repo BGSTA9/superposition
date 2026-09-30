@@ -10,7 +10,8 @@ After any context reset, re-read this file, `PLAN.md` and the latest `docs/progr
 uv sync                                    # create/refresh the env from uv.lock
 make lint                                  # ruff check + ruff format --check + pyright (basic)
 make test                                  # fast tier: pytest -m "not slow" (CI)
-make test-slow                             # replication tests + notebook smoke tests
+make test-slow                             # slow tier (< 15 min): E00, lab, notebooks 00–03
+make test-paper                            # paper tier (hours): every quick profile + notebooks 04–10
 uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish
@@ -27,7 +28,8 @@ uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Pla
   + registry), `cli`.
 - `configs/<experiment>.yaml`: `base` block + `profiles: {quick, full}` overrides.
 - `results/<experiment>/<run_id>/`: run outputs (git-ignored). `docs/figures/<exp>/`: published.
-- `tests/unit/` (fast, CI) · `tests/replication/` (`@pytest.mark.slow`).
+- `tests/unit/` (fast, CI) · `tests/replication/` (`slow`, or `paper` for a whole quick
+  profile; `paper` is opt-in: deselected unless `-m` names it, see `conftest.py`).
 - `notebooks/`: learning path, committed without outputs (nbstripout).
 - `docs/`: REPRODUCTION, PAPER_MAP, DESIGN, DECISIONS, STUDY_GUIDE, GLOSSARY, REVIEW,
   `progress/phase-N.md`.

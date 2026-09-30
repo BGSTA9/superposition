@@ -1,4 +1,4 @@
-"""Replication test for E07 privileged_basis (Paper: pp. 31–34). Slow: about 7 minutes on a
+"""Replication test for E07 privileged_basis (Paper: pp. 31–34). Paper tier: about 7 minutes on a
 laptop CPU (800 ReLU hidden layer models plus the hidden-bias variant).
 
 Runs the quick profile end to end on CPU and requires every graded criterion of SPEC §7 E07
@@ -11,7 +11,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_privileged_basis_quick_profile_passes() -> None:
     run = run_experiment("privileged_basis", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()

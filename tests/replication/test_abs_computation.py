@@ -1,4 +1,4 @@
-"""Replication test for E08 abs_computation (Paper: pp. 34–39). Slow: about 6 minutes on a
+"""Replication test for E08 abs_computation (Paper: pp. 34–39). Paper tier: about 6 minutes on a
 laptop CPU.
 
 E08 is a PARTIAL reproduction (docs/REPRODUCTION.md): part (a), side neurons computing |x|
@@ -14,7 +14,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_abs_computation_quick_profile() -> None:
     run = run_experiment("abs_computation", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()

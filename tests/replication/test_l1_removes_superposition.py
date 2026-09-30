@@ -1,4 +1,4 @@
-"""Replication test for E11 l1_removes_superposition (Paper: p. 42). Slow: about 9 minutes on a
+"""Replication test for E11 l1_removes_superposition (Paper: p. 42). Paper tier: about 9 minutes on a
 laptop CPU.
 
 Re-runs the quick profile from scratch. The n = 20, m = 5 setup shows the paper's claim as
@@ -13,7 +13,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_l1_removes_superposition_quick_profile() -> None:
     run = run_experiment(
         "l1_removes_superposition", "quick", device="cpu", echo=False, figures=False

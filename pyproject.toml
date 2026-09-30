@@ -102,5 +102,6 @@ venv = ".venv"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
-    "slow: trains models or executes notebooks; excluded from CI via -m 'not slow'",
+    "slow: trains small models or runs short notebooks; the whole tier stays under 15 minutes (make test-slow)",
+    "paper: re-runs an experiment's whole quick profile; opt-in with -m paper (make test-paper), deselected otherwise",
 ]

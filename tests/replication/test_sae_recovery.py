@@ -1,4 +1,4 @@
-"""Replication test for E10 sae_recovery (Paper: pp. 42–44). Slow: about 7 minutes on a laptop
+"""Replication test for E10 sae_recovery (Paper: pp. 42–44). Paper tier: about 7 minutes on a laptop
 CPU.
 
 Re-runs the quick profile from scratch and requires every graded criterion: the pentagon's
@@ -12,7 +12,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_sae_recovery_quick_profile() -> None:
     run = run_experiment("sae_recovery", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()

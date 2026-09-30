@@ -1,4 +1,4 @@
-"""Replication test for E06 adversarial (Paper: pp. 29–30). Slow: about 7 minutes on a laptop
+"""Replication test for E06 adversarial (Paper: pp. 29–30). Paper tier: about 7 minutes on a laptop
 CPU.
 
 E06 is a PARTIAL reproduction (docs/REPRODUCTION.md): the paper's claim holds on the uniform
@@ -12,7 +12,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_adversarial_quick_profile_uniform_setup_passes() -> None:
     run = run_experiment("adversarial", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()

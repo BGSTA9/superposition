@@ -1,4 +1,4 @@
-"""Replication test for E09 mech_interp_abs (Paper: pp. 38–39). Slow: about 5 minutes on a
+"""Replication test for E09 mech_interp_abs (Paper: pp. 38–39). Paper tier: about 5 minutes on a
 laptop CPU.
 
 Re-runs the quick profile from scratch and requires every graded criterion: at least 90% of
@@ -11,7 +11,7 @@ import pytest
 from superposition.experiments.runner import run_experiment
 
 
-@pytest.mark.slow
+@pytest.mark.paper
 def test_mech_interp_abs_quick_profile() -> None:
     run = run_experiment("mech_interp_abs", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()
