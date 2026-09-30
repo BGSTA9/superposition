@@ -120,7 +120,7 @@ survive until almost nothing is left.
   pentagon) trains in about 4 seconds on a laptop CPU.
 
 - **Phase diagrams:** E02's empirical and theoretical diagrams for n = 2, m = 1 and n = 3,
-  m = 2, with McGrath's confused family and the zero-bias variant; click a cell to see its ten
+  m = 2, with McGrath's confused family and the zero-bias variant; pick a cell to see its ten
   trained models, the vote, representative weights and every family's optimum.
 - **Geometry:** E03's D* and Dᵢ curves; pick a sparsity to see its geometry graph, Dᵢ histogram
   and tegum factors.

@@ -82,9 +82,9 @@ open questions (pp. 45–46) is written in Phase 6.
 - **Read:** pp. 14–16, then McGrath's comment on pp. 51–53.
 - **Notebook:** `notebooks/04_phase_change.ipynb` (runs E02, or reuses your latest quick run).
 - **Results:** `docs/REPRODUCTION.md`, section E02.
-- **App:** **Phase diagrams**. Switch between the empirical and theoretical views, click cells
-  marked × and compare the losses of the trained models with the winning family's optimum.
-  Then show the theory with every bias fixed at 0.
+- **App:** **Phase diagrams**. Switch between the empirical and theoretical views, pick cells
+  marked × with the two sliders, and compare the losses of the trained models with the winning
+  family's optimum. Then show the theory with every bias fixed at 0.
 - **Explain it back:**
   1. How is each empirical cell labeled, and why does the paper discard the highest-loss model?
   2. What are the three (and, for n = 3, four) families of the theoretical diagram, and which

@@ -530,6 +530,20 @@ what the draft session had seen before each choice (its transcript is the eviden
   (then `-m slow` alone runs everything); a `--runpaper` command-line flag (a second mechanism
   besides markers).
 
+### D-311 · 2026-09-30 · Phase diagrams page: sliders pick the cell, not clicks
+- **Decision:** the lab's Phase diagrams page picks a cell with two sliders (density,
+  importance), outlines it on the map, and shows every cell's labels on hover. SPEC §8 asks for
+  "clicking a cell"; the page does not use clicks.
+- **Rationale:** click selection through `st.plotly_chart(on_select="rerun",
+  selection_mode="points")` was built and checked in a browser against the cited E02 run
+  (Streamlit 1.64.0, Plotly 7.1.0). Plotly fired `plotly_selected` with the right point, but the
+  page received each click one click late: the first click after loading did nothing, and every
+  later click applied the previous one, whether or not the figure changed between reruns. A
+  selection that shows the wrong cell is worse than none, and the fault is outside this
+  repository. Sliders are exact, and AppTest can drive them.
+- **Alternatives:** box selection (a drag instead of a click); a grid of 144 buttons (no
+  colors); revisiting clicks when a later Streamlit release fixes the ordering.
+
 ## Phase 4: dynamics, robustness, neurons
 
 ### D-401 · 2026-09-29 · Phase 4 built while Phase 3 is unfinished

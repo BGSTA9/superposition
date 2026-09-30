@@ -30,7 +30,7 @@ Drafted on 2026-09-29 and finished in a rectification session after Phases 4 and
   for the logged batch-size comparison behind D-309.
 - Plotting: `plotting/phase.py` (phase diagrams, family loss curves), `plotting/geometry.py`
   (D* and Dᵢ figures, geometry graphs, factor census); `plotly` phase map for the lab.
-- Lab: **Phase diagrams** (click a cell for its models and every family's optimum),
+- Lab: **Phase diagrams** (pick a cell for its models and every family's optimum),
   **Geometry** (geometry graph and Dᵢ histogram per sparsity) and **Non-uniform** (the
   perturbed-feature density slider, correlated sets, local bases, collapse);
   `lab.phase_cell_shared_losses` compares a cell's models with the families exactly where
