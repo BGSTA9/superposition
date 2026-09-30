@@ -473,6 +473,55 @@ def stage_codes(
     return codes.numpy()
 
 
+def centroid_cosines(W: Float[Tensor, "... hidden feat"], sets: np.ndarray) -> np.ndarray:
+    """Cosine between the centroid directions of the two correlated sets, shape ``W.shape[:-2]``.
+
+    Paper: p. 27, stage B ("the sets push apart"): opposed centroids (cos ≈ −1) are the
+    paper's picture, near-orthogonal ones the linear PCA-like solution (pp. 23–24, 28; D-R02).
+    """
+    labels = np.unique(sets)
+    if len(labels) != 2:
+        raise ValueError(f"centroid_cosines supports exactly two sets, got {len(labels)}")
+    a, b = (W[..., torch.as_tensor(sets == label)].mean(dim=-1) for label in labels)
+    return torch.nn.functional.cosine_similarity(a, b, dim=-1).numpy()
+
+
+def stage_b_placement(
+    stages: np.ndarray, cosines: np.ndarray, spacing: int, opposed_cos: float
+) -> dict[str, Any]:
+    """Where the two collapsed sets sit relative to each other, for a group of runs (D-R02).
+
+    ``stages`` is ``(inst, time)``, ``cosines`` ``(time, inst)`` (:func:`centroid_cosines`).
+    Reports the runs that visit the collapsed stage, how long they stay, the centroid cosine
+    over every collapsed snapshot and at each run's last collapsed snapshot (the geometry the
+    run is closest to "when step B ends", p. 28), and the share of collapsed snapshots whose
+    centroids are opposed (cos ≤ ``opposed_cos``), the paper's panel B.
+    """
+    collapsed = stages == COLLAPSED  # (inst, time)
+    visiting = np.flatnonzero(collapsed.any(axis=1))
+    values = cosines.T[collapsed]
+    last = [float(cosines[np.flatnonzero(collapsed[k])[-1], k]) for k in visiting]
+    out: dict[str, Any] = {
+        "runs_visiting_collapsed": f"{len(visiting)}/{stages.shape[0]}",
+        "median_steps_collapsed": int(np.median(collapsed.sum(axis=1) * spacing)),
+    }
+    if len(values):
+        out |= {
+            "centroid_cos_while_collapsed": {
+                "median": round(float(np.median(values)), 3),
+                "q25": round(float(np.quantile(values, 0.25)), 3),
+                "q75": round(float(np.quantile(values, 0.75)), 3),
+            },
+            "centroid_cos_at_end_of_collapsed": {
+                "median": round(float(np.median(last)), 3),
+                "min": round(float(np.min(last)), 3),
+                "max": round(float(np.max(last)), 3),
+            },
+            "collapsed_snapshots_opposed": round(float((values <= opposed_cos).mean()), 4),
+        }
+    return out
+
+
 def trajectory_type(codes: np.ndarray, spacing: int, min_steps: int) -> list[int]:
     """The stages one run passes through, leaving out stages shorter than ``min_steps``.
 
@@ -612,16 +661,21 @@ def evaluate_transformations(
         for (scale, p), g in groups.items()
         if scale == primary_scale
     }
-    any_octahedron = any(r["octahedron"] for r in rows if r["init_scale"] == primary_scale)
+    primary = [r for r in rows if r["init_scale"] == primary_scale]
+    n_octahedra = sum(r["octahedron"] for r in primary)
     criteria = [
         check(
             "octahedron_final_state",
             "(b) At least one restart ends in the octahedron: three orthogonal antipodal pairs, "
             f"each joining features of different correlated sets (init scale "
-            f"{primary_scale:g}× Xavier)",
+            f"{primary_scale:g}× Xavier); fraction of restarts that reach it",
             PAGE_B,
-            any_octahedron,
-            {"octahedra_per_set_density": per_density},
+            n_octahedra >= 1,
+            {
+                "octahedra_per_set_density": per_density,
+                "octahedra_total": f"{n_octahedra}/{len(primary)}",
+                "fraction": round(n_octahedra / len(primary), 4) if primary else 0.0,
+            },
             "≥ 1 restart",
             group="b_transformations",
         )
@@ -648,6 +702,24 @@ def evaluate_transformations(
             "restarts_with_prism_stage": sum(r["prism_steps"] >= thr.min_stage_steps for r in g),
             "median_prism_steps": int(np.median([r["prism_steps"] for r in g])),
         }
+    cosines = centroid_cosines(trans["W"], trans["sets"])  # (time, inst)
+    placement = {}
+    for (scale, p), g in groups.items():
+        members = [r["instance"] for r in g]
+        placement[f"init {scale:g}× · 1-S={p:g}"] = stage_b_placement(
+            stages[members], cosines[:, members], spacing, thr.opposed_cos
+        )
+    criteria.append(
+        info(
+            "stage_b_placement",
+            "(b) Stage B: where each set's centroid points while the sets are collapsed. Opposed "
+            f"(cos ≤ {thr.opposed_cos:g}) is the paper's panel B; near 0 is the linear PCA-like "
+            "solution, a documented variant (pp. 23–24, 27–28; D-R02)",
+            PAGE_B,
+            placement,
+            group="b_transformations",
+        )
+    )
     table = pd.DataFrame(rows)
     criteria.append(
         info(

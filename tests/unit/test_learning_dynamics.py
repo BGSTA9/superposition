@@ -14,9 +14,11 @@ from superposition.experiments.learning_dynamics import (
     JumpThresholds,
     StageThresholds,
     canonical_frame_3d,
+    centroid_cosines,
     find_jumps,
     level_census,
     set_index,
+    stage_b_placement,
     stage_codes,
     trajectory_type,
 )
@@ -147,3 +149,32 @@ def test_canonical_frame_is_a_rotation_putting_set_a_on_top() -> None:
     assert np.allclose(R @ R.T, np.eye(3), atol=1e-6)
     centroid = (R @ W)[:, :3].mean(axis=1)
     assert np.allclose(centroid / np.linalg.norm(centroid), [0, 0, 1], atol=1e-6)
+
+
+def test_stage_b_placement_tells_opposed_from_orthogonal_sets() -> None:
+    thr = StageThresholds()
+    e = torch.eye(3)
+    orthogonal = torch.cat([e[:, [0]].repeat(1, 3), e[:, [1]].repeat(1, 3)], dim=1)
+    opposed = torch.cat([e[:, [0]].repeat(1, 3), -e[:, [0]].repeat(1, 3)], dim=1)
+    # Two runs over three snapshots: run 0 collapses orthogonally, run 1 collapses opposed and
+    # then leaves the collapsed stage.
+    W = torch.stack(
+        [
+            torch.stack([orthogonal, opposed]),
+            torch.stack([orthogonal, opposed]),
+            torch.stack([octahedron(), octahedron()]),
+        ]
+    )  # fmt: skip  (time, inst, hidden, feat)
+    cosines = centroid_cosines(W, SETS)
+    assert np.allclose(cosines[:2], [[0.0, -1.0], [0.0, -1.0]], atol=1e-6)
+    stages = stage_codes(W.reshape(-1, 3, 6), SETS, thr).reshape(3, 2).T  # (inst, time)
+    assert stages[:, :2].tolist() == [[COLLAPSED, COLLAPSED], [COLLAPSED, COLLAPSED]]
+    placement = stage_b_placement(stages, cosines, spacing=50, opposed_cos=thr.opposed_cos)
+    assert placement["runs_visiting_collapsed"] == "2/2"
+    assert placement["median_steps_collapsed"] == 100
+    assert placement["collapsed_snapshots_opposed"] == 0.5
+    assert placement["centroid_cos_at_end_of_collapsed"] == {
+        "median": -0.5,
+        "min": -1.0,
+        "max": 0.0,
+    }

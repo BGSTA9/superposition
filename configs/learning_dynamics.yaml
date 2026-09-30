@@ -1,4 +1,4 @@
-# E05 learning_dynamics (Paper: pp. 26–28). SPEC §7 E05; decisions D-401 – D-404.
+# E05 learning_dynamics (Paper: pp. 26–28). SPEC §7 E05; decisions D-401 – D-404, D-R02.
 # (a) energy-level jumps: uniform setup of p. 17 (n = 400, m = 30, Iᵢ = 1) at 1/(1 − S) = 3,
 #     inside the paper's 1/2 plateau; `train` holds part (a)'s optimizer settings.
 # (b) geometric transformations: two correlated sets of three features in m = 3 (p. 27).
