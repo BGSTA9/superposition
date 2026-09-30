@@ -566,7 +566,8 @@ what the draft session had seen before each choice (its transcript is the eviden
   256, Adam 1e-3, a snapshot every 100 steps. The p. 26 figure runs to 100,000 steps; 80,000
   keeps the quick profile under 10 minutes on a laptop CPU and, in a prototype of the same
   setup, every restart's late jump came between 33,000 and 52,000 steps. Batch 256 (not 1024)
-  is for run time: 4 × 80,000 steps at batch 1024 would take about 20 minutes.
+  is for run time: 4 × 80,000 steps at batch 1024 would take about 20 minutes (estimated, not
+  measured).
 - **Loss curve:** every snapshot's loss on one fixed batch of 8,192 inputs, so that differences
   between snapshots come from the weights only. The paper's loss drops are small (≈ 0.8% on
   p. 26; ours ≈ 0.2%), well below the training-batch noise.
@@ -660,7 +661,7 @@ what the draft session had seen before each choice (its transcript is the eviden
   hidden ReLU clips (negative pre-activation on inputs with an active feature), against the
   replication model at the same sparsity. Never the replication default.
 - **Rationale:** batch 256 because 800 instances at batch 1024 would take ≈ 25 minutes on a
-  CPU; restarts compensate for the noisier optimization. The paper's second sidestepping route
+  CPU (estimated, not measured); restarts compensate for the noisier optimization. The paper's second sidestepping route
   ("simulate a bias by averaging over many features") is not tested.
 
 ### D-408 · 2026-09-29 · E08: setups and how the criteria are measured
@@ -801,7 +802,7 @@ what the draft session had seen before each choice (its transcript is the eviden
 - **Rationale:** SPEC asks whether SAEs recover the features in a sweep; a practitioner could
   not pick by ground truth, so the robustness counts are reported next to the best. The E03
   grid is small because a 256-latent SAE on 30 dimensions costs ≈ 2 minutes of the 10-minute
-  quick budget; a pilot (uncited, 5,000 steps) found ReLU + L1 SAEs at λ ∈ {0.1, 0.3, 1}
+  quick budget (estimated, not measured); a pilot (uncited, 5,000 steps) found ReLU + L1 SAEs at λ ∈ {0.1, 0.3, 1}
   recovering 0–9%, TopK 8 recovering 100% and TopK 16 0% (with lower reconstruction error),
   so λ ∈ {0.3, 1} and k ∈ {8, 16} are the informative settings.
 - **Alternatives:** an unsupervised selection rule (e.g. the sparsest SAE below a
@@ -838,3 +839,210 @@ what the draft session had seen before each choice (its transcript is the eviden
 - **Paper:** p. 42; footnote 17 (losses at one sparsity are comparable across λ); footnote 21.
 - **Alternatives:** selecting restarts by reconstruction loss alone (not what training
   minimizes); a much finer grid everywhere (over the time budget).
+
+---
+
+## Rectification session 2: owner decisions
+
+The owner's brief for the second rectification session (2026-09-30, before Phase 6) made six
+decisions. Each is recorded below as an owner decision (D-R01–D-R06), followed by how it was
+put into practice; choices that the brief left to me are marked *mine*. D-R07 is an
+implementation decision the others needed. All of these entries were committed before the runs
+that apply them.
+
+### D-R01 · 2026-09-30 · Owner decision: E08, consult the references on dead sides; re-derive the sparse criterion
+- **Owner decision:** (1) The Anthropic and ARENA reference implementations may be consulted to
+  diagnose the dead-feature-side problem (D-409). This is for diagnosis only: no code is copied,
+  and what was consulted and learned is recorded here. (2) The sparse criterion is re-derived
+  from the paper, because SPEC's "more than m/2 features computed well" came from the spec,
+  not the paper. The original criterion's result is reported next to the revised one.
+- **Consulted** (2026-09-30, pages read with a web-fetch tool; nothing was copied into the
+  repository):
+  - *Anthropic's archived notebook* `toy_models.ipynb`
+    (github.com/anthropics/toy-models-of-superposition). It has three cells and only the tied
+    intro model (ReLU output, no hidden layer ReLU):
+    - Xavier-normal W, zero bias, features U[0, 1] kept with probability p;
+    - AdamW at lr 1e-3 with no weight decay given (so PyTorch's default, 0.01);
+    - batch 1024, 10,000 steps, constant learning rate by default.
+    - Its loss compares the output with `batch.abs()`, which for its non-negative inputs is the
+      input itself. There is no absolute-value model in it.
+  - *ARENA §1.5.4*, page 2 ("superposition in a privileged basis", the neuron-computation
+    exercise), and page 1 for the base optimizer defaults:
+    - the model is h = ReLU(W₁x), y′ = ReLU(W₂h + b), with W₁ `(inst, m, n)` and W₂
+      `(inst, n, m)`;
+    - b starts at zero;
+    - W₁ and W₂ use PyTorch's Kaiming-uniform init applied to the whole 3-D tensor, whose
+      fan-in is then m·n = 4,000 for both matrices. That gives weights uniform in
+      ±√(6/4000) ≈ ±0.039 (std ≈ 0.022; SPEC §3's Xavier-normal std is √(2/140) ≈ 0.120,
+      5.3× larger);
+    - inputs are U[−1, 1] kept with probability p, and the loss is importance-weighted squared
+      error against |x|;
+    - the n = 100, m = 40 sweep at the p. 37 densities trains one instance per density, with
+      Adam at lr 1e-3, batch 1024 and 5,000 steps by default.
+
+    ARENA's remark that Anthropic "trained 1000 instances and chose the ones which achieved
+    lowest loss" is about the ReLU hidden layer model (p. 33, our E07), not the |x| model.
+- **What I learned:**
+  - Neither reference contains a remedy for dead sides. Both start the output bias at 0, as
+    SPEC §3 does, so D-409's mechanism applies to them too.
+  - The one substantive difference is the weight scale. ARENA's |x| model starts about 5.3×
+    smaller per weight, so every side's initial gain Σₕ W₂[i,h]·ReLU(±W₁[h,i]) is about 28×
+    smaller in magnitude. Which sides start dead depends only on the sign of the gain, not its
+    scale. But a tiny negative gain can be outweighed by a small positive output bias, which the
+    feature's live side pushes up, so a dead side might revive. This is a hypothesis to test,
+    not a finding.
+  - Neither reference trains restarts for the |x| sweep, and the paper gives no number for it
+    (p. 33's 1,000 models concern E07).
+  - No other training difference (optimizer, learning rate, batch, steps, data) looks large
+    enough to explain the gap. The Anthropic notebook's AdamW default weight decay shrinks
+    weights by about 10% over 10,000 steps and cannot change a gain's sign.
+- **Diagnostic added** (mine, fixed before the run): INFO `b_init_scale_variant`.
+  - It retrains 1 − S ∈ {0.01, 0.001} with both weight matrices at 0.187 × the Xavier init
+    (√((n + m)/(n·m)), which gives the reference's std), with 4 restarts, the default sweep's
+    number.
+  - It reports the loss, the features computed, and how many sides that were dead at
+    initialization end up computed, against the default runs.
+  - It is never the replication default: SPEC §3's init stays.
+- **Revised criterion** (my operationalization of the owner's decision; fixed before the run,
+  with the previous cited run's numbers known). The paper (p. 37) says "once the features become
+  sufficiently sparse, this model, too, uses superposition to represent more features than it
+  has neurons", and "gradient descent manages to find solutions that usefully approximate the
+  computation even when each neuron encodes a mix of multiple features".
+  - *Graded:* at the sparsest setting (1 − S = 0.001, as before), more than m = 40 features
+    are *usefully computed*, meaning their per-feature loss is below 75% of the loss of
+    predicting the mean.
+  - *Why 75%:* it is the midpoint between computing one side of |x| exactly and not computing
+    the feature at all. With ReLU(xᵢ) alone the model misses E[xᵢ²; xᵢ < 0] = p/6 of the
+    baseline p/3 − p²/4, a ratio of ≈ 50%; a feature that is not computed has a ratio of 100%.
+    A feature counts when it is closer to one exact side than to nothing.
+  - *Why more than m:* without superposition each neuron serves one side of one feature, so
+    more than m usefully computed features needs neurons shared between features. That is the
+    paper's "more features than it has neurons".
+  - *SPEC's original criterion* (more than m/2 features below 50%, which needs both sides) is
+    reported as INFO `b_sparse_original_criterion`, with the value it would have had.
+- **Footnotes 16 and 17.**
+  - Footnote 16: the paper chose n = 100, m = 40 for visualization, although the model "learns
+    more easily when there are more neurons". The criterion therefore stays at the paper's
+    sizes.
+  - Footnote 17: losses at different sparsities are not comparable. The new INFO
+    `b_within_sparsity_references` therefore compares each model's loss only with references
+    at its own sparsity: predicting every mean, and no superposition (both sides of the m/2 most
+    important features exact, the rest at their mean).
+- **Alternatives:** keep more than m/2 at 50% (SPEC's criterion, not the paper's); count
+  one-sided features on 1-sparse probes (the side diagnostic, kept as INFO); compare losses
+  across sparsities (ruled out by footnote 17); grade at the sparsity where superposition is
+  strongest (would pick the setting after seeing results).
+- **Supersedes:** the sparse criterion of D-408 (SPEC §7 E08).
+
+### D-R02 · 2026-09-30 · Owner decision: E05, stage B as a documented variant
+- **Owner decision:** The paper says several trajectories occur (pp. 27–28), and correlated
+  features preferring near-orthogonal placement matches pp. 23–24. Report the fraction of
+  restarts reaching the octahedron and the trajectory types seen. Treat the stage-B difference
+  (our sets collapse onto near-orthogonal directions rather than opposite ends of one axis) as a
+  documented variant, unless the octahedron criterion itself fails.
+- **Implementation (mine):**
+  - The octahedron criterion's value now includes how many restarts reach it, in total and as a
+    fraction.
+  - INFO `stage_b_placement` reports, per set density:
+    - the runs that visit the collapsed stage, and for how long;
+    - the cosine between the two sets' centroids over all collapsed snapshots (median and
+      quartiles), and at each run's last collapsed snapshot (p. 28: the trajectory "depends on
+      which feature geometry the model is closest to when step B ends");
+    - the share of collapsed snapshots whose centroids are opposed (cos ≤ −0.9, the existing
+      prism threshold).
+  - No new threshold and no criterion change.
+- **Paper:** pp. 23–24 ("The model ideally represents correlated features orthogonally"),
+  pp. 27–28 ("one of a few different learning trajectories"; "the toy network learns a linear
+  PCA solution before moving to a better nonlinear solution").
+- **Supersedes:** nothing; D-403 and D-404 stand.
+
+### D-R03 · 2026-09-30 · Owner decision: E09, the density pilot as a cited run; the inhibitor sub-claim as a discrepancy
+- **Owner decision:** Re-run the density pilot (D-502) through the CLI so that it becomes a
+  cited run. Report the inhibitor result (net interference near zero rather than negative) as a
+  discrepancy on that sub-claim. The paper says (p. 39) that inhibition "converts positive
+  interference … into negative interference".
+- **Implementation (mine):**
+  - Profile `pilot` in configs/mech_interp_abs.yaml reproduces the pilot's design, taken from
+    the pilot script in the Phase 5 scratchpad: the three sizes, 1 − S ∈ {0.5, 0.3, 0.2, 0.1},
+    16 restarts, 10,000 steps, seed 0, every density analyzed the same way.
+  - It is not bit-identical to the uncited original, because the E09 module orders the graded
+    densities first, which changes which instance seed each model gets.
+  - It is cited as the supplementary run `mech_interp_abs:pilot` (D-R07).
+  - The quick profile is re-run at the same commit so that the lab and the notebooks, which
+    show the latest run, show a quick run.
+  - `motif_details` now reports the spread of the net interference (best models and all
+    restarts), and of the net interference divided by the interference it cancels.
+  - E09's status is not changed by this decision; the discrepancy is reported on the sub-claim.
+
+### D-R04 · 2026-09-30 · Owner decision: E10, grade an SAE selected without ground truth
+- **Owner decision:** The headline result is a selection rule a practitioner could apply
+  without ground truth, fixed before looking at recovery. The oracle-best SAE is reported as an
+  upper bound, together with the pass rates across the sweep and the TopK k = 8 versus k = 16
+  contrast.
+- **Rule** (mine; fixed and committed before the run that grades it):
+  - Among the SAEs of a toy model's sweep whose held-out FVU is at most 0.1 (at least 90% of the
+    activation variance explained on the 100,000 held-out samples), pick the one with the lowest
+    held-out L0 (mean active latents per input). Break ties by lower FVU. If no SAE reaches 0.1,
+    pick the lowest FVU.
+  - It uses only reconstruction and sparsity, never recovery.
+  - 0.1 is the reconstruction bar that D-504's reconstruction-vs-recovery row already used.
+    "The sparsest dictionary that reconstructs well enough" is the standard trade-off
+    practitioners tune SAEs by.
+  - TopK SAEs have L0 = k by construction, because they also fire on all-zero inputs. Counting
+    that as measured penalizes TopK against L1 codes; the rule is kept as stated rather than
+    adjusted.
+- **Disclosure:** the previous cited run (`20260929T212259Z-fa564b17`) was known when the rule
+  was chosen. That includes its summary that 7 of 20, 10 of 12 and 2 of 10 low-FVU SAEs
+  recovered the pentagon's and the two n = 20 models' features, and that TopK k = 16
+  reconstructed the E03 model better than k = 8 while recovering almost nothing. The rule was not
+  tuned against these numbers, and its result is reported whatever it is.
+- **Criteria:**
+  - *Graded,* per graded toy model: the selected SAE must recover the share of represented
+    features SPEC asks for, unchanged: all five pentagon features at cos > 0.95 (all five
+    represented), and ≥ 90% of each n = 20 model's at cos > 0.9.
+  - *INFO:* `oracle_upper_bound` (the quantity graded before), `pass_rates` (all settings, and
+    by kind), `ungraded_models` (the rule applied to the E03 model), and `topk_k_contrast`.
+- **Supersedes:** D-504's grading by ground truth.
+
+### D-R05 · 2026-09-30 · Owner decision: E11, the pentagon is PARTIAL; a held-out check on fresh seeds
+- **Owner decision:** Mark the pentagon PARTIAL, not PASS. Confirm the refined λ grid (D-505) on
+  fresh seeds as a held-out check, and report the result either way. Frame the antipodal-pair
+  finding against p. 42, where the paper says L1 works by killing features below an importance
+  threshold.
+- **Implementation (mine):**
+  - "Falls to none" now has three outcomes:
+    - PASS if some λ > 0 gives a superposition-free model with at least 2 represented
+      features;
+    - PARTIAL if the only superposition-free models keep one feature: a single feature cannot
+      be in superposition with anything, so it is free of superposition only trivially;
+    - FAIL if there is no superposition-free model.
+  - This is how the owner's PARTIAL enters the acceptance record: a graded PARTIAL status
+    (`acceptance.graded`), which does not count as passed. It is stricter than D-505 and
+    applies to both setups alike.
+  - The held-out check is the unchanged quick profile run with `--seed 1`, which gives fresh
+    initializations, training batches and evaluation samples. It is cited as the supplementary
+    run `l1_removes_superposition:heldout` (D-R07). It is launched before the seed-0 run, so
+    that the lab, which shows the latest run, shows the cited one.
+- **Paper:** p. 42.
+- **Supersedes:** criterion (3) of D-505.
+
+### D-R06 · 2026-09-30 · Owner decision: full profiles are not run; unmeasured runtimes are labeled estimates
+- **Owner decision:** Do not run the full profiles now. Label every runtime that was not
+  measured as an estimate.
+- **Implementation:**
+  - Configs, README, CLAUDE.md, the Makefile, notebooks and the progress reports now say
+    "estimated" or "not measured" wherever a runtime does not come from a logged run.
+  - Three runtimes in earlier DECISIONS entries (D-402, D-407, D-504) were annotated in place
+    with "(estimated, not measured)"; the decisions themselves are unchanged.
+  - Notebook 07's "about 8 minutes" now gives the measured 401 s.
+
+### D-R07 · 2026-09-30 · Supplementary cited runs
+- **Decision:** docs/cited_runs.yaml accepts keys `<experiment>:<label>` for a second run that
+  the narrative rests on (E09's pilot, E11's held-out seed).
+  - Such a run is pinned with `superposition report --pin EXP --run ID --label L`, which applies
+    the same dirty-tree refusal.
+  - The experiment's main citation and the status table are unchanged.
+  - The run's criteria render into an `AUTO:<code>:<label>` block of docs/REPRODUCTION.md.
+- **Alternatives:** a separate registered experiment for each run (SPEC §7 would then ask for
+  its own notebook and app page); citing the run in prose only (it would have no status summary
+  in the record).
