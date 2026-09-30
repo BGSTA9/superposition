@@ -26,3 +26,12 @@ def test_uniform_geometry_dense_and_plateau_points() -> None:
     assert dense["D_star"] >= 0.95
     assert abs(plateau["D_star"] - 0.5) <= 0.03
     assert abs(plateau["sum_D"] - 30) <= 1.0
+
+
+@pytest.mark.paper
+def test_uniform_geometry_quick_profile_passes() -> None:
+    run = run_experiment("uniform_geometry", "quick", device="cpu", echo=False, figures=False)
+    doc = run.read_acceptance()
+    failing = [(c["id"], c["value"]) for c in doc["criteria"] if c["status"] == "FAIL"]
+    assert doc["overall"] == "PASS", failing
+    assert doc["n_graded"] == 4

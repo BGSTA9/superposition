@@ -29,3 +29,12 @@ def test_nonuniform_geometry_collapse_and_anticorrelation() -> None:
     assert best == {"0.1": "digons (perturbed dropped)", "1": "pentagon"}
     assert by_id["collapse_to_digons"]["status"] == "PASS"
     assert by_id["anticorrelated_more_negative"]["status"] == "PASS"
+
+
+@pytest.mark.paper
+def test_nonuniform_geometry_quick_profile_passes() -> None:
+    run = run_experiment("nonuniform_geometry", "quick", device="cpu", echo=False, figures=False)
+    doc = run.read_acceptance()
+    failing = [(c["group"], c["id"], c["value"]) for c in doc["criteria"] if c["status"] == "FAIL"]
+    assert doc["overall"] == "PASS", failing
+    assert doc["n_graded"] == 9

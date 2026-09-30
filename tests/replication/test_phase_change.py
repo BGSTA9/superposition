@@ -33,3 +33,15 @@ def test_phase_change_reduced_grid_finds_the_three_regions() -> None:
     # Sparse (p. 15, bottom row): stored in superposition at every importance.
     assert set(sparse["theory"]) == {theory.SUPERPOSITION}
     assert (sparse["empirical"] == theory.SUPERPOSITION).mean() >= 0.75
+
+
+@pytest.mark.paper
+def test_phase_change_quick_profile_passes() -> None:
+    """The cited outcome: PASS 6/6. The n = 3, m = 2 agreement (0.819 on the cited run) sits
+    close to SPEC's 0.80 bar, because stuck models outvote the optimum in a band of cells
+    (docs/REPRODUCTION.md, E02); a change there should be reported, not absorbed."""
+    run = run_experiment("phase_change", "quick", device="cpu", echo=False, figures=False)
+    doc = run.read_acceptance()
+    failing = [(c["group"], c["id"], c["value"]) for c in doc["criteria"] if c["status"] == "FAIL"]
+    assert doc["overall"] == "PASS", failing
+    assert doc["n_graded"] == 6
