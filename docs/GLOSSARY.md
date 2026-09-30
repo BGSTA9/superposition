@@ -61,6 +61,20 @@ interfere; in the feature geometry graph, tegum factors are the connected compon
 relative importance varies (here in the generalized sense of footnote 13): a feature switches
 between not learned, stored in superposition, and given a dedicated dimension.
 
+**Weight family, W ⊥ v** (pp. 14–15, 21). A set of solutions named by the direction v that W
+does not represent: project the standard basis onto the complement of v and normalize. W ⊥ [1, 1]
+is an antipodal pair; W ⊥ [1, 1, 1] a triangle. The theoretical phase diagrams optimize each
+family's scale and biases exactly and keep the cheapest (E02; D-302).
+
+**Confused feature** (pp. 51–53). McGrath's solution W₁ ≈ W₂: two features share one direction
+with the same sign, so either one lights up both outputs. It is optimal in his exact analysis,
+which ignores biases; E02 reports where it wins with and without biases.
+
+**Correlated / anticorrelated feature set** (p. 23). Features that are zero or nonzero together
+(correlated), or of which at most one is active at a time (anticorrelated). Correlated features
+prefer to be orthogonal, then side by side, then collapse onto their principal component;
+anticorrelated features prefer to be antipodal (pp. 23–25; E04).
+
 **Monosemantic / polysemantic neuron** (pp. 31–33). With a privileged basis, a neuron is
 monosemantic when it carries one feature and polysemantic when it carries several. In this repo
 a neuron carries feature i when |W[h, i]| is at least 25% of its largest weight (E07, E08).

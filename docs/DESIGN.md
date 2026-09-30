@@ -37,7 +37,7 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
 | `models` | `TiedModel`, `AbsModel`, activation registry, per-instance init | utils |
 | `train` | trainer, evaluation, `select_best` | config, data |
 | `metrics` | pure metric functions of W; `loss_by_num_active` and `per_feature_loss` also run a model on sampled inputs | torch, networkx, data |
-| `theory` | closed forms (Phase 1: linear optimum; Phase 3: decompositions, phase diagrams) | torch |
+| `theory` | exact expectations in closed form: linear optimum and decomposition, 0- and 1-sparse terms, the exact loss of a ReLU output model whose outputs read ≤ 1 other feature, weight families (W ⊥ v), their optima and theoretical phase diagrams (pp. 13–16, D-301, D-302) | torch, numpy, networkx |
 | `adversarial` | analytic L2 attacks, no-superposition reference, vulnerability (p. 29) | models |
 | `interp` | path gains, neuron roles, motif detector, zero/mean ablations, rebuild test for the absolute-value model (pp. 38–39) | metrics, models, theory |
 | `sae` | multi-instance sparse autoencoders (L1, TopK, resampling) and ground-truth recovery metrics (pp. 42–44) | utils |
@@ -124,10 +124,14 @@ commit → run → write the narrative → `superposition report --pin <exp>` �
      `plotting.style.save_figure`;
    - `EXPERIMENT = Experiment(name, code, title, paper_pages, config_cls, run, figures)`.
 2. Add `configs/<name>.yaml` with `experiment`, `base`, and `profiles: {quick, full}`; the quick
-   profile must finish in ≤ 10 minutes on a laptop CPU. Comment the measured runtime.
+   profile must finish in ≤ 10 minutes on a laptop CPU. Comment the measured runtime. Further
+   named profiles are allowed for documented variants (`superposition run <name> --profile
+   <variant>`; D-309).
 3. Register it in `experiments/__init__.py`.
-4. Test the criteria logic on hand-built weights (`tests/unit/test_experiment_criteria.py`)
-   and add a slow replication test (`tests/replication/`).
+4. Test the criteria logic on hand-built weights (`tests/unit/test_experiment_criteria.py`,
+   `tests/unit/test_phase3_experiments.py`) and add a replication test (`tests/replication/`)
+   that re-runs the quick profile: mark it `paper` (opt-in, `make test-paper`), or `slow` only
+   if the whole slow tier stays under 15 minutes (D-310).
 5. Record every under-specified choice in `docs/DECISIONS.md`, run the quick profile, publish
    figures (`superposition figures <name> --publish`), run `superposition report`, and write
    the narrative in `docs/REPRODUCTION.md`.

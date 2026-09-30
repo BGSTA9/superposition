@@ -16,7 +16,7 @@ uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish
 uv run superposition report [--pin EXP | --pin-all]   # cite runs; regenerate REPRODUCTION tables
-uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Playground, Dynamics, Neurons, Adversarial, SAE lab)
+uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Playground, Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons, Adversarial, SAE lab)
 ```
 
 ## Layout
