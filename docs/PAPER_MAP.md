@@ -17,12 +17,12 @@ parsed from this file, so edit it here).
 | ↳ Summary: A Hierarchy of Feature Properties | 8 | `metrics.is_superposition` | — | 01 | — |
 | Demonstrating Superposition: Experiment Setup | 9–10 | `data`, `models`, `train`, `lab` | E00, E01 | 02 | Playground |
 | Demonstrating Superposition: Basic Results | 10–12 | `metrics`, `plotting` | E01 basic_results | 02 | Playground (p. 11 preset) |
-| Mathematical Understanding | 12–14 | `theory.linear_optimum_loss`; planned (Phase 3): `theory` | — | 03 | Playground probe panel (interference) |
-| Superposition as a Phase Change | 14–16 | planned (Phase 3): `theory` | E02 phase_change | 04 | Phase diagrams |
-| The Geometry of Superposition: Uniform Superposition | 16–21 | `metrics` (D*, Dᵢ, graph) | E03 uniform_geometry | 05 | Geometry |
-| ↳ Feature Dimensionality; Why These Geometric Structures? | 18–20 | `metrics.feature_dimensionality`, `metrics.geometry_graph` | E03 | 05 | Geometry |
-| ↳ Aside: Polytopes and Low-Rank Matrices | 20–21 | `metrics` (simplex test) | — | 05 | — |
-| The Geometry of Superposition: Non-Uniform Superposition | 21–26 | `data.CorrelatedSets`, `data.AnticorrelatedSets` | E04 nonuniform_geometry | 05 | Non-uniform |
+| Mathematical Understanding | 12–14 | `theory` (`linear_loss_decomposition`, `one_sparse_decomposition`, `k_sparse_weights`, `relu_output_expected_loss`, `linear_optimum_loss`); `metrics.loss_by_num_active` | — | 03 | Playground probe panel (interference) |
+| Superposition as a Phase Change | 14–16 | `theory` (families, `optimize_family`, `theoretical_phase_diagram`), `plotting.phase` | E02 phase_change | 03, 04 | Phase diagrams |
+| The Geometry of Superposition: Uniform Superposition | 16–21 | `metrics` (D*, Dᵢ, graph), `plotting.geometry` | E03 uniform_geometry | 05 | Geometry |
+| ↳ Feature Dimensionality; Why These Geometric Structures? | 18–20 | `metrics.feature_dimensionality`, `metrics.geometry_graph`, `metrics.component_geometry`, `metrics.geometry_census` | E03 | 05 | Geometry |
+| ↳ Aside: Polytopes and Low-Rank Matrices | 20–21 | `theory.Family` (W ⊥ v by projection); `metrics` (simplex test) | E02 (families) | 03, 05 | Phase diagrams |
+| The Geometry of Superposition: Non-Uniform Superposition | 21–26 | `data.CorrelatedSets`, `data.AnticorrelatedSets`, `metrics.canonicalize_2d`, `experiments.nonuniform_geometry` | E04 nonuniform_geometry | 05 | Non-uniform |
 | Superposition and Learning Dynamics | 26–28 | `train` (snapshots), `experiments.learning_dynamics` (jump detector, geometric stages), `plotting.dynamics` | E05 learning_dynamics | 06 | Dynamics |
 | Relationship to Adversarial Robustness | 28–30 | `adversarial` (analytic attacks, vulnerability), `plotting.adversarial` | E06 adversarial | 07 | Adversarial |
 | Superposition in a Privileged Basis | 31–34 | `models.TiedModel(hidden_act="relu")`, `metrics.neuron_polysemanticity`, `plotting.neurons` (stack plots) | E07 privileged_basis | 08 | Playground (ReLU hidden, W view); Neurons |

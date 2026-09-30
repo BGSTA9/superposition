@@ -308,6 +308,187 @@ n = 80, m = 20).
   0.025 apart, and in the importance-weighted pentagon the least important feature has
   Dᵢ ≈ 0.387, nearer 3/8. The Playground says so under its table.
 
+## Phase 3: theory and geometry
+
+Phase 3 was drafted on 2026-09-29 (commits `4355d5d`, `acec078`) and left unfinished; Phases 4
+and 5 were built beside it (D-401). The draft's code already cited D-301 to D-307, which were
+never written. They are recorded here on 2026-09-30, when Phase 3 was closed, together with
+what the draft session had seen before each choice (its transcript is the evidence).
+
+### D-301 · 2026-09-30 · Exact expectations in closed form, not by quadrature
+- **Decision:** every expected loss in `theory.py` is computed in closed form. With independent
+  features that are 0 w.p. 1 − p and U[0, 1] otherwise, each ReLU-output term that depends on
+  at most one other feature is a mixture, over the four activity patterns of the two features,
+  of F(γ, α, β, c) = ∫₀¹∫₀¹ (γx − ReLU(αx + βy + c))² dy dx. `relu_square_integral` integrates y
+  analytically, which leaves a piecewise cubic in x with known breakpoints (αx + c = 0 and
+  αx + c = −β), and integrates each piece with a 3-point Gauss–Legendre rule, exact for
+  polynomials up to degree 5. The 1D special cases (`own_error_1d`, `relu_square_1d`) have
+  their own closed forms.
+- **Rationale:** SPEC §6 allows closed form or adaptive quadrature at tolerance ≤ 1e-8 and asks
+  which. Closed form is exact up to rounding, vectorizes over a whole phase diagram, and has no
+  tolerance to tune. It is validated in `tests/unit/test_theory.py`: F agrees with nested
+  adaptive quadrature (scipy `quad`, kinks as breakpoints, tolerance 1e-13) to 1e-11 on random
+  arguments, and the exact losses agree with Monte-Carlo estimates within 4 standard errors
+  (a 20-seed check during development: mean z −0.25 and +0.04, spread ≈ 1).
+- **Paper:** p. 13 (the integral over x decomposes by sparsity pattern); pp. 14–15.
+- **Alternatives:** adaptive quadrature per cell (slower, needs tolerance bookkeeping);
+  Monte-Carlo losses (noisy exactly where families nearly tie).
+
+### D-302 · 2026-09-30 · Theoretical families: free scalars and the optimizer
+- **Decision:** a family is "W ⊥ v": the standard basis projected onto the complement of v and
+  each nonzero column normalized (the p. 21 construction). Its free scalars are one weight
+  scale per tegum factor (a connected component of the template's represented features) and
+  one bias per feature; an unrepresented feature's output is ReLU(bᵢ). Given the scales, each
+  output's bias is optimized separately (outputs are separable); the loss is the sum over
+  factors. The search is a coarse grid (41 scales in [0, 2] × 121 biases in [−1.5, 1.5], one
+  vectorized call), then 40 golden-section iterations on the scale around the best grid point,
+  re-optimizing every bias (grid, then golden section) at each trial scale. Ties on the grid go
+  to the largest index, because a ReLU output is exactly flat in its bias where it is always
+  off. Families: n = 2, m = 1: W ⊥ [0, 1], [1, 0], [1, 1] (p. 14) plus McGrath's confused
+  W ⊥ [1, −1] (pp. 51–53) as an optional fourth; n = 3, m = 2: W ⊥ [0, 0, 1], [1, 0, 0],
+  [0, 1, 1], [1, 1, 0] (p. 15) plus the analogous confused W ⊥ [0, 1, −1]. The paper's
+  diagrams use the paper's families only; the confused family is reported beside them, with
+  fitted biases and with every bias fixed at 0 (McGrath's analysis "ignoring bias terms",
+  p. 51).
+- **Rationale:** the paper gives "closed form solutions for the loss of different weight
+  configurations" but not how their scale and biases were set; optimizing them is the only
+  choice that does not favor one family. A scale per factor lets an antipodal pair and a
+  dedicated feature in the same model take different lengths. The unit tests check that the
+  optimum is not beaten by a local search, that the dropped-feature family recovers the known
+  optimum I·(p/3 − p²/4) with b = p/2, and that an optimal family's loss matches Monte Carlo.
+- **Alternatives:** fixed unit norms and zero biases (ignores the bias's role, p. 13); a
+  general optimizer such as L-BFGS over all scalars (local minima; slower per cell); the
+  paper's notebook formulas (not consulted, SPEC §2 independence).
+
+### D-303 · 2026-09-30 · E02 grids and the reading of "sparsity from 1.0 to 0.01"
+- **Decision:** the y axis is the feature density 1 − S, log-spaced over [0.01, 1]; the x axis
+  is the extra feature's relative importance, log-spaced over [0.1, 10]; 12 × 12 cells in the
+  quick profile, 24 × 24 in the full one. Both counts are even, so importance 1 (an exact tie
+  between "drop the extra feature" and "drop the other one") never lies on the grid. Ten
+  models per cell, ReLU output model, SPEC §6 optimizer settings except the batch size (D-309).
+- **Rationale:** p. 14 says "we vary the sparsity of all features from 1.0 to 0.01", while the
+  axes of pp. 15–16 are labeled "Feature Density (1−S)" from 0.01 to 1; the figures decide.
+  SPEC §7 asks for this reading to be documented.
+- **Paper:** pp. 14–16.
+
+### D-304 · 2026-09-30 · E02 labels and the vote
+- **Decision:** a model's extra feature e is *not learned* if ‖W_e‖ ≤ 0.5; *dedicated* if it is
+  represented and Σ_{j≠e} (Ŵ_e·Wⱼ)² ≤ 0.05 over the other *represented* features; otherwise
+  *superposition* when its most-overlapping represented partner points the opposite way
+  (cos < 0) and *confused* when it points the same way (McGrath's W₁ ≈ W₂, pp. 51–53). Per cell
+  the highest-loss model is discarded (p. 14) and the other nine vote; a tie between labels
+  goes to the label of the lowest-loss model among the tied ones.
+- **Rationale:** thresholds 0.5 and 0.05 are SPEC §3's represented threshold and E01's
+  orthogonality bar (D-105). Counting only represented partners keeps a weakly embedded,
+  unlearned feature from making a dedicated feature look superposed. The unit tests label the
+  theory's own optimal weights with this function and recover the theory's label in every
+  cell, so both diagrams use one definition of each regime.
+- **Alternatives:** the paper's continuous coloring by norm × superposition (drawn as a panel
+  but not graded, because agreement needs discrete labels); averaging the nine models' norms
+  and scores before labeling (blurs bimodal cells).
+
+### D-305 · 2026-09-30 · E02 acceptance criteria
+- **Decision:** for each problem size (n = 2, m = 1 and n = 3, m = 2): the three main regions
+  appear in the empirical diagram and in the theoretical diagram (two criteria), and the
+  empirical majority label equals the theoretical label (paper families) on ≥ 80% of cells.
+  Six graded criteria in all. Reported (INFO): agreement when each cell is labeled by its
+  lowest-loss model; every disagreeing cell, whether it lies on or next to a theoretical
+  boundary (a different label in its 8-neighbourhood, or the two best families within 5% of
+  each other); and the confused regime (empirical cells, and where the confused family wins in
+  theory with and without biases).
+- **Rationale:** SPEC §7 E02 verbatim. SPEC's empirical setup names n = 2, m = 1, but the paper
+  draws an empirical diagram for n = 3, m = 2 too (p. 16), so both are graded, the stricter
+  reading.
+- **Disclosure:** the draft session ran uncited exploratory grids (CPU, 10,000 steps, batch 256)
+  before this entry was written: 87.5% agreement for n = 2, m = 1 and 81.9% for n = 3, m = 2.
+  The ≥ 80% bar is SPEC's; nothing was tuned to those numbers.
+
+### D-306 · 2026-09-30 · E03: readings of the p. 17 figure and what counts as a cluster
+- **Decision:** thresholds (all in `UniformGeometryThresholds`):
+  - “D* ≈ 1 up to 1/(1 − S) ≈ 1.2”: D* ≥ 0.95 at every grid point with 1/(1 − S) ≤ 1.2.
+  - “A plateau at 0.5 ± 0.03 over a contiguous range”: the longest run (by log width) of grid
+    points within the band, with end points at least 1.25× apart in 1/(1 − S) (three points of
+    the 20-point quick grid); the span is reported. The paper's span, roughly [2.6, 3.7], is
+    1.42× wide.
+  - “Falls beyond the plateau, to ≈ 0.25 at 8”: every point after the plateau is below 0.47,
+    and D* at the grid point nearest 1/(1 − S) = 8 is 0.25 ± 0.05.
+  - “Dᵢ cluster within ±0.02 of at least three characteristic fractions”: a fraction among 3/4,
+    2/3, 1/2, 2/5 and 3/8 counts as a cluster when, in at least one best model, at least 20% and
+    at least 8 of the represented features have it as their nearest fraction within ±0.02.
+  - Σᵢ Dᵢ against m, and the tegum-factor census (D-308), are reported.
+- **Rationale:** SPEC §7 E03 gives the anchor values (1 up to 1.2; 0.5 ± 0.03; ≈ 0.25 at 8;
+  ±0.02, three fractions); the tolerances turn "≈", "contiguous range" and "cluster" into
+  tests that the paper's own curve passes with margin.
+- **Disclosure:** the draft session read p. 17 at 300 dpi and had also seen the D* curve of an
+  uncited exploratory run of this setup (CPU, 10,000 steps, batch 256: plateau 2.34–3.79, D*
+  0.264 at 7.85) before writing these thresholds; the cluster rule was written before any Dᵢ
+  of that run were analyzed. No threshold was changed after the cited run.
+- **Paper:** pp. 17–19.
+
+### D-307 · 2026-09-30 · E04 setups and criteria
+- **(a) Perturbed pentagon (p. 22):** n = 5, m = 2, Iᵢ = 1, four features at 1 − S = 0.05 and
+  feature 0 at 0.1× … 10× that (21 log-spaced ratios), 32 restarts. Feature 0 is the perturbed
+  one so that `canonicalize_2d` puts it at the top, as on p. 22. *Denser → neighbours repel:*
+  over ratios ≥ 1, the best pentagon's mean angle between feature 0 and its two neighbours has
+  Spearman ρ ≥ 0.8 with the ratio, and the densest pentagon's angle exceeds 72° + 1°. *Sparser
+  → neighbours close in:* the same over ratios ≤ 1, with the sparsest pentagon below 72° − 1°.
+  *Collapse:* at the sparsest ratio the best restart is two digons with feature 0 dropped
+  (‖W₀‖ < 0.1); the largest ratio where that holds is reported (paper: ≈ 1/2.5 = 0.4). The
+  trends use the best *pentagon* at each ratio, because p. 22 describes how the pentagon
+  deforms before it snaps; every restart's loss is plotted to show the crossing curves.
+- **(b) Correlated and anticorrelated sets in m = 2 (pp. 23–24):** 2 correlated pairs,
+  2 anticorrelated pairs and 3 correlated pairs, set density 0.02, 16 restarts each, the best
+  by loss. *Anticorrelated interfere more negatively:* mean within-set cosine lower than the
+  correlated pairs'. *Orthogonal when there is room:* each of the 2 correlated pairs has
+  |cos| < 0.1. *Side by side when there is not:* with 3 pairs, all 6 represented and each
+  pair's members angular neighbours.
+- **(c) Local almost-orthogonal bases (pp. 24–25):** 2 correlated sets of 10 in m = 10, set
+  density 0.02, 8 restarts; mean |cos| within a set < mean |cos| across sets.
+- **(d) Collapse (p. 25):** 3 correlated pairs in m = 2 at 12 set densities, log-spaced over
+  [0.01, 0.5], 16 restarts. *Very sparse → hexagon:* at the sparsest density all 6 represented,
+  pairs adjacent, no pair with cos > 0.95. *Denser → collapse:* Spearman ρ ≥ 0.8 between density
+  and the mean within-pair cosine, and that cosine > 0.95 at the densest setting.
+- **Best-restart selection:** every part's final losses are estimated on 200,000 fresh
+  samples. At set densities of 0.01–0.02 a set is active only a few hundred times in the
+  default 20,000, too few to rank geometries whose losses differ by a few percent. Part (a)
+  had this in the draft; parts (b)–(d) got it on 2026-09-30 (commit `230a51d`), before any
+  cited run.
+- **Rationale:** the paper states no density for (b)–(d). Its p. 25 figure puts "no features
+  collapsed" at 1 − S ≤ 0.05 and "all sets collapsed" at 0.25–0.5, so 0.02 sits in the
+  uncollapsed regime for (b) and (c), and (d)'s sweep spans every regime it names. Thresholds
+  0.1, −0.95 and 0.5 are E00's and SPEC §3's; 0.95 marks a collapsed pair; ρ ≥ 0.8 is E06's
+  correlation bar.
+- **Alternatives:** grading every restart rather than the best (the paper itself keeps the
+  best, p. 22); a fixed angle change instead of a rank trend (arbitrary size).
+
+### D-308 · 2026-09-30 · Naming tegum factors
+- **Decision:** `metrics.component_geometry` names a tegum factor (a connected component of
+  the geometry graph, edges |Wᵢ·Wⱼ| > 0.05) by its number of features k, the dimensions r it
+  spans (singular values above 0.1 × the largest) and whether it is uniform (every Dᵢ within
+  0.05 of r/k): (1, 1) dedicated dimension, (2, 1) digon, (3, 2) triangle, (4, 3) tetrahedron,
+  (5, 2) pentagon, (8, 3) square antiprism; anything else is "k in r (uniform)" or "k in r
+  (non-uniform)". `metrics.geometry_census` counts represented features per name.
+- **Rationale:** resolves Phase 2 open issue 1: Dᵢ alone cannot tell 2/5 from 3/8 (0.025
+  apart), but (k, r) can, and p. 20 says Dᵢ follows the factor, not the whole polytope (a
+  triangular bipyramid shows up as a triangle plus a digon). Unit tests check every named
+  polytope, including the tight square antiprism (Dᵢ = 3/8), and the bipyramid split.
+- **Paper:** pp. 19–21.
+
+### D-310 · 2026-09-30 · Test tiers: slow under 15 minutes, and an opt-in paper tier
+- **Decision:** three tiers. Unmarked tests are the fast unit and property tier (CI,
+  `make test`). `slow` trains small models or runs short notebooks and must stay under 15
+  minutes in total on a laptop CPU (`make test-slow`): E00's replication test, the lab tests
+  and notebooks 00–03. `paper` re-runs an experiment's whole quick profile, or a notebook that
+  does (`make test-paper`): the replication tests of E01–E11 and notebooks 04–10. Paper tests
+  are deselected unless the `-m` expression names `paper` (`conftest.py`).
+- **Rationale:** the slow tier had grown to more than an hour (Phase 4 open issue 6), which
+  made it useless as a routine check. Opt-in keeps SPEC's commands meaning what they meant:
+  `pytest -m "not slow"` (CI, and the fresh-clone test of SPEC §11) and a bare `pytest` never
+  start an hour of training, while the markers stay disjoint.
+- **Alternatives:** marking paper tests `slow` as well and selecting `slow and not paper`
+  (then `-m slow` alone runs everything); a `--runpaper` command-line flag (a second mechanism
+  besides markers).
+
 ## Phase 4: dynamics, robustness, neurons
 
 ### D-401 · 2026-09-29 · Phase 4 built while Phase 3 is unfinished
