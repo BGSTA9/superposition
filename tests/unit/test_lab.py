@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 
@@ -133,3 +134,29 @@ def test_status_frame_without_runs() -> None:
     assert set(frame["latest local run"]) == {"none"}
     assert all(cmd.startswith("uv run superposition run ") for cmd in frame["command"])
     assert not math.isnan(len(frame))
+
+
+def test_phase_cell_models_orders_by_loss_and_marks_the_non_voter() -> None:
+    """E02's vote (p. 14): per cell, the highest-loss model is discarded."""
+    per_cell, n_dens, n_imp = 3, 2, 2
+    n = per_cell * n_dens * n_imp
+    loss = np.arange(n, dtype=float)[::-1].copy()  # later models have lower losses
+    problem = lab.PhaseProblem(
+        label="n2_m1",
+        n_features=2,
+        n_hidden=1,
+        importance=np.array([0.5, 2.0]),
+        density=np.array([0.1, 1.0]),
+        regime=np.array(["superposition", "dedicated", "not_learned"] * (n // 3)),
+        W=np.zeros((n, 1, 2)),
+        b=np.zeros((n, 2)),
+        loss=loss,
+        models_per_cell=per_cell,
+        cells=pd.DataFrame(),
+        theory=None,
+    )
+    models = lab.phase_cell_models(problem, d=1, i=0, discard_worst=1)  # cell 2: models 6–8
+    assert list(models["model"]) == [2, 1, 0]
+    assert list(models["loss"]) == sorted(models["loss"])
+    assert list(models["votes"]) == [True, True, False]
+    assert list(models["regime"]) == ["not_learned", "dedicated", "superposition"]

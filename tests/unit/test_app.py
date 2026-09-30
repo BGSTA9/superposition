@@ -74,9 +74,12 @@ def test_playground_linear_shows_closed_form_optimum() -> None:
     assert "closed-form linear optimum" in [m.label for m in at.metric]
 
 
-# --- results pages (Phase 4): Dynamics, Neurons, Adversarial ----------------------------------
+# --- results pages: Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons, Adversarial -----
 
 RESULT_PAGES = {
+    "2_Phase_diagrams.py": ["phase_change"],
+    "3_Geometry.py": ["uniform_geometry"],
+    "4_Non-uniform.py": ["nonuniform_geometry"],
     "5_Dynamics.py": ["learning_dynamics"],
     "6_Neurons.py": ["privileged_basis", "abs_computation", "mech_interp_abs"],
     "7_Adversarial.py": ["adversarial"],
@@ -85,6 +88,22 @@ RESULT_PAGES = {
 TINY_TRAIN = {"steps": 200, "log_every": 50, "eval_samples": 1000}
 # Tiny versions of each experiment: the pages only need a run with the right structure.
 TINY_RUNS: dict[str, dict] = {
+    "phase_change": {
+        "grid": {"n_importance": 4, "n_density": 4},
+        "models_per_cell": 3,
+        "theory": {"scale_grid": 11, "bias_grid": 31, "golden_iterations": 20},
+        "train": TINY_TRAIN,
+    },
+    "uniform_geometry": {
+        "n_features": 40, "n_hidden": 6, "n_points": 4, "n_restarts": 1, "graph_at": [2.0],
+        "train": TINY_TRAIN,
+    },
+    "nonuniform_geometry": {
+        "perturbed": {"n_ratios": 3, "n_restarts": 2, "eval_samples": 1000},
+        "correlation": {"n_restarts": 2, "local_basis_restarts": 1, "eval_samples": 1000},
+        "collapse": {"n_densities": 3, "n_restarts": 2, "eval_samples": 1000},
+        "train": TINY_TRAIN,
+    },
     "learning_dynamics": {
         "energy": {"n_features": 40, "n_hidden": 6, "n_restarts": 1, "loss_eval_samples": 256},
         "train": {**TINY_TRAIN, "snapshot_every": 50},
@@ -152,7 +171,7 @@ TINY_RUNS: dict[str, dict] = {
 
 @pytest.fixture(scope="module")
 def tiny_results(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """A results folder holding one tiny complete run of each Phase 4 and 5 experiment."""
+    """A results folder holding one tiny complete run of each results page's experiments."""
     from superposition.experiments.runner import run_experiment
     from superposition.runs import RESULTS_ENV
 
@@ -218,3 +237,36 @@ def test_neurons_e09_tab_switches_models(
     assert len(options) == 2 and options[1].endswith("(context)")
     at.selectbox(key="e09_model").set_value(options[1]).run()
     assert not at.exception
+
+
+def test_phase_diagrams_cell_selection(tiny_results: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Moving the sliders (what a click on the map does) selects another cell and view."""
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    at = AppTest.from_file(str(APP / "pages" / "2_Phase_diagrams.py"), default_timeout=120).run()
+    at.radio(key="pc_problem").set_value("n3_m2").run()
+    at.select_slider(key="pc_density").set_value(3).run()
+    at.select_slider(key="pc_importance").set_value(0).run()
+    assert not at.exception
+    assert "importance 0.1×" in at.subheader[0].value
+    for view in at.radio(key="pc_view").options:
+        at.radio(key="pc_view").set_value(view).run()
+        assert not at.exception
+
+
+def test_geometry_and_nonuniform_sliders(
+    tiny_results: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    geometry = AppTest.from_file(str(APP / "pages" / "3_Geometry.py"), default_timeout=120).run()
+    geometry.select_slider(key="geo_point").set_value(0).run()
+    assert not geometry.exception
+    assert [m.label for m in geometry.metric][:2] == ["D*", "represented features"]
+    nonuniform = AppTest.from_file(str(APP / "pages" / "4_Non-uniform.py"), default_timeout=120)
+    nonuniform.run()
+    nonuniform.select_slider(key="nu_ratio").set_value(0).run()
+    nonuniform.select_slider(key="nu_collapse").set_value(2).run()
+    assert not nonuniform.exception

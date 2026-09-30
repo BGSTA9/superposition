@@ -1,9 +1,11 @@
 """Computation behind the interactive lab: live Playground training, feature tables, probes,
-and loaders for the results pages (Dynamics, Neurons, Adversarial).
+and loaders for the results pages (Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons,
+Adversarial, SAE lab).
 
 SPEC §8 (The interactive lab). Paper: Demonstrating Superposition, pp. 9–12 (the models and
 the WᵀW / ‖Wᵢ‖ views), Feature Dimensionality, pp. 18–19 (the Dᵢ table), Superposition in a
-Privileged Basis, p. 31 (the ReLU hidden model); Learning Dynamics, pp. 26–27; Adversarial
+Privileged Basis, p. 31 (the ReLU hidden model); Superposition as a Phase Change, pp. 14–16;
+The Geometry of Superposition, pp. 16–25; Learning Dynamics, pp. 26–27; Adversarial
 Robustness, p. 29; Privileged Basis and Computation in Superposition, pp. 31–39.
 
 The Streamlit pages in ``app/`` only lay out widgets and figures; everything they compute
@@ -17,6 +19,7 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 import einops
 import numpy as np
@@ -800,3 +803,220 @@ def load_l1(run: RunDir) -> L1Run:
         n_hidden={s.label: s.n_hidden for s in config.setups},
         weights=weights,
     )
+
+
+# --- results pages: Phase diagrams, Geometry, Non-uniform (SPEC §8 pages 3–5) ----------------
+
+
+@dataclass
+class PhaseProblem:
+    """One problem size of an E02 run (n = 2, m = 1 or n = 3, m = 2), for the Phase diagrams
+    page. Models are cell-major (cell = density index · n_importance + importance index), with
+    ``models_per_cell`` consecutive models per cell. ``theory`` is the run's TheoryResult."""
+
+    label: str
+    n_features: int
+    n_hidden: int
+    importance: np.ndarray
+    density: np.ndarray
+    regime: np.ndarray
+    W: np.ndarray
+    b: np.ndarray
+    loss: np.ndarray
+    models_per_cell: int
+    cells: pd.DataFrame
+    theory: Any
+
+    def grid(self, column: str) -> np.ndarray:
+        """A per-cell column of the run's table as a ``(n_density, n_importance)`` array."""
+        return np.asarray(self.cells[column]).reshape(len(self.density), len(self.importance))
+
+
+@dataclass
+class PhaseChangeRun:
+    """An E02 run: one :class:`PhaseProblem` per problem size (Paper: pp. 14–16, 51–53)."""
+
+    run_id: str
+    problems: dict[str, PhaseProblem]
+    discard_worst: int
+
+
+def load_phase_change(run: RunDir) -> PhaseChangeRun:
+    """Load an E02 run's trained grids, theoretical diagrams and per-cell table."""
+    from superposition.experiments.phase_change import (
+        PhaseChangeConfig,
+        PhaseGridResult,
+        TheoryResult,
+        extra_feature_regime,
+    )
+
+    config = from_dict(PhaseChangeConfig, yaml.safe_load(run.config_path.read_text()))
+    cells = run.read_table("cells")
+    thr = config.thresholds
+    problems = {}
+    for setting in config.settings:
+        grid = PhaseGridResult.from_checkpoint(run.load_checkpoint(f"{setting.label}__empirical"))
+        theory = TheoryResult.from_checkpoint(run.load_checkpoint(f"{setting.label}__theory"))
+        regime, _, _ = extra_feature_regime(
+            grid.W, setting.n_features - 1, thr.represented_norm, thr.superposition_score
+        )
+        problems[setting.label] = PhaseProblem(
+            label=setting.label,
+            n_features=setting.n_features,
+            n_hidden=setting.n_hidden,
+            importance=np.asarray(grid.importance_grid),
+            density=np.asarray(grid.density_grid),
+            regime=regime,
+            W=grid.W.numpy(),
+            b=grid.b.numpy(),
+            loss=grid.final_loss.numpy(),
+            models_per_cell=grid.models_per_cell,
+            cells=pd.DataFrame(cells[cells["setting"] == setting.label]).reset_index(drop=True),
+            theory=theory,
+        )
+    return PhaseChangeRun(run.run_id, problems, config.discard_worst)
+
+
+def phase_cell_models(problem: PhaseProblem, d: int, i: int, discard_worst: int) -> pd.DataFrame:
+    """The models trained at cell (density ``d``, importance ``i``), lowest loss first, with
+    their extra-feature regime and whether they vote (the highest-loss ones do not, p. 14)."""
+    per_cell = problem.models_per_cell
+    first = (d * len(problem.importance) + i) * per_cell
+    order = first + np.argsort(problem.loss[first : first + per_cell], kind="stable")
+    rows = []
+    for rank, k in enumerate(order):
+        rows.append(
+            {
+                "model": int(k - first),
+                "loss": float(problem.loss[k]),
+                "regime": str(problem.regime[k]),
+                "votes": rank < per_cell - discard_worst,
+                "‖W_extra‖": float(np.linalg.norm(problem.W[k][:, -1])),
+                "W": np.round(problem.W[k], 3).tolist(),
+                "b": np.round(problem.b[k], 3).tolist(),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def phase_cell_theory(problem: PhaseProblem, d: int, i: int) -> pd.DataFrame:
+    """Every family's optimal exact loss at one cell, lowest first, with its optimal W and b
+    (with fitted biases; and the loss when every bias is fixed at 0, McGrath's setting)."""
+    theory = problem.theory
+    rows = [
+        {
+            "family": name,
+            "regime": label,
+            "paper family": f < len(theory.family_names) - 1,
+            "optimal loss": float(theory.losses[d, i, f]),
+            "loss with b = 0": float(theory.losses_no_bias[d, i, f]),
+            "W": np.round(theory.W[f, d, i], 3).tolist(),
+            "b": np.round(theory.b[f, d, i], 3).tolist(),
+        }
+        for f, (name, label) in enumerate(
+            zip(theory.family_names, theory.family_labels, strict=True)
+        )
+    ]
+    return pd.DataFrame(rows).sort_values("optimal loss", kind="stable").reset_index(drop=True)
+
+
+@dataclass
+class UniformGeometryRun:
+    """An E03 run for the Geometry page: per sparsity point, the best model's weights and its
+    D*, Dᵢ, represented mask and tegum-factor census (Paper: pp. 17–20)."""
+
+    run_id: str
+    n_features: int
+    n_hidden: int
+    inverse_density: np.ndarray
+    dstar: np.ndarray
+    dimensionality: list[np.ndarray]
+    represented: list[np.ndarray]
+    census: list[dict[str, int]]
+    sum_dimensionality: np.ndarray
+    W: list[np.ndarray]
+    plateau: tuple[float, float] | None
+    thresholds: Any
+
+
+def load_uniform_geometry(run: RunDir) -> UniformGeometryRun:
+    """Load an E03 run and summarize its best restart at every sparsity."""
+    from superposition.experiments.common import GridResult
+    from superposition.experiments.uniform_geometry import (
+        UniformGeometryConfig,
+        plateau_span,
+        summarize,
+    )
+
+    config = from_dict(UniformGeometryConfig, yaml.safe_load(run.config_path.read_text()))
+    thr = config.thresholds
+    grid = GridResult.from_checkpoint(run.load_checkpoint("relu_output"))
+    summary = summarize(grid, thr)
+    span = plateau_span(summary.inverse_density, summary.dstar, thr.plateau_value, thr.plateau_tol)
+    x = summary.inverse_density
+    return UniformGeometryRun(
+        run_id=run.run_id,
+        n_features=config.n_features,
+        n_hidden=config.n_hidden,
+        inverse_density=x,
+        dstar=summary.dstar,
+        dimensionality=summary.dimensionality,
+        represented=summary.represented,
+        census=summary.census,
+        sum_dimensionality=summary.sum_dimensionality,
+        W=[grid.best_weights(c)[0].numpy() for c in range(grid.n_conditions)],
+        plateau=(float(x[span[0]]), float(x[span[1]])) if span else None,
+        thresholds=thr,
+    )
+
+
+def geometry_graph_panel(
+    geometry: UniformGeometryRun, point: int
+) -> tuple[str, Any, dict[int, str]]:
+    """``(title, graph, structure_by_node)`` of one sparsity point, for the p. 19 graph view."""
+    from superposition.experiments.uniform_geometry import structure_by_node
+
+    thr = geometry.thresholds
+    W = torch.from_numpy(geometry.W[point])
+    graph, _ = metrics.geometry_graph(W, thr.edge_threshold, thr.represented_norm)
+    title = f"1/(1−S) = {geometry.inverse_density[point]:.2f}"
+    return title, graph, structure_by_node(W, thr)
+
+
+@dataclass
+class NonuniformRun:
+    """An E04 run for the Non-uniform page: the saved training states of parts (a)–(d) and the
+    per-restart table of part (a) (Paper: pp. 22–25)."""
+
+    run_id: str
+    thresholds: Any
+    perturbed: dict[str, Any]
+    perturbed_table: pd.DataFrame
+    correlation: dict[str, Any]
+    collapse: dict[str, Any]
+
+
+def load_nonuniform(run: RunDir) -> NonuniformRun:
+    """Load an E04 run's checkpoints."""
+    from superposition.experiments.nonuniform_geometry import NonuniformGeometryConfig
+
+    config = from_dict(NonuniformGeometryConfig, yaml.safe_load(run.config_path.read_text()))
+    return NonuniformRun(
+        run_id=run.run_id,
+        thresholds=config.thresholds,
+        perturbed=run.load_checkpoint("a_perturbed"),
+        perturbed_table=run.read_table("perturbed_restarts"),
+        correlation=run.load_checkpoint("bc_correlation"),
+        collapse=run.load_checkpoint("d_collapse"),
+    )
+
+
+def best_in_condition(state: dict[str, Any], condition: int) -> int:
+    """Index of the lowest-loss instance trained under ``condition`` (a ratio or a density)."""
+    members = torch.nonzero(state["condition"] == condition).flatten()
+    return int(members[state["final_loss"][members].argmin()])
+
+
+def canonical_2d(W: torch.Tensor) -> np.ndarray:
+    """One 2D solution rotated and reflected into the canonical frame (p. 22)."""
+    return metrics.canonicalize_2d(W[None])[0].numpy()
