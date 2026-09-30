@@ -174,6 +174,14 @@ def test_e11_criteria() -> None:
     assert by_id["toy_superposition_declines"].status == "FAIL"
     assert by_id["toy_loss_rises"].status == "FAIL"
     assert by_id["toy_loss_rises"].value["largest_relative_drop"] == pytest.approx(0.2917, abs=1e-3)
+    # Free of superposition only once a single feature is left: PARTIAL, not PASS (D-R05).
+    lone = good.assign(represented=[5, 4, 4, 1, 1])
+    by_id = {c.id: c for c in e11.evaluate_setup(setup, lone, thr)}
+    assert by_id["toy_superposition_falls_to_none"].status == "PARTIAL"
+    assert (
+        by_id["toy_superposition_falls_to_none"].value["free_lambdas_with_several_features"] == []
+    )
+    assert by_id["toy_loss_rises"].status == "PASS"
     # Never free of superposition: the falls-to-none criterion fails and so does loss_rises.
     never = e11_table([5, 5, 4, 4, 2], [0.02, 0.02, 0.03, 0.04, 0.05])
     by_id = {c.id: c for c in e11.evaluate_setup(setup, never, thr)}

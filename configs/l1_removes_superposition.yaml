@@ -1,4 +1,4 @@
-# E11 l1_removes_superposition (Paper: p. 42). SPEC §7 E11; decision D-505.
+# E11 l1_removes_superposition (Paper: p. 42). SPEC §7 E11; decisions D-505, D-R05.
 # ReLU output model with λ E‖h‖₁ added to the loss, λ swept (0 first, increasing); the grid
 # is finer where the last features die (0.5–0.8; D-505).
 # Setups are in superposition at λ = 0: the E00 pentagon and E01's n = 20, m = 5 at 1 − S = 0.01.
@@ -30,6 +30,7 @@ base:
     count_tolerance: 1
     loss_tolerance: 0.02
     eval_samples: 200000
+    nontrivial_represented: 2   # falls to none with fewer features left is PARTIAL (D-R05)
   train:
     steps: 10000
     batch_size: 1024

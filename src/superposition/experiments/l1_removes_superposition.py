@@ -16,7 +16,9 @@ For each λ we keep the restart with the lowest *training objective* (reconstruc
 λ E‖h‖₁, since that is what training minimizes) and measure its reconstruction loss (without
 the penalty; losses at one sparsity are comparable, footnote 17) and its superposition:
 represented features (‖Wᵢ‖ > 0.5), superposed ones (superposition score > 0.05), the formal
-test (WᵀW not invertible on the represented features, p. 8) and D*. Criteria: D-505.
+test (WᵀW not invertible on the represented features, p. 8) and D*. Criteria: D-505; a
+superposition-free model with a single feature left passes "falls to none" only as PARTIAL,
+since one feature cannot be in superposition with anything (D-R05).
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ import yaml
 from torch import Tensor
 
 from superposition import metrics
-from superposition.acceptance import Criterion, check, info
+from superposition.acceptance import FAIL, PARTIAL, PASS, Criterion, check, graded, info
 from superposition.config import ExperimentConfig, from_dict
 from superposition.data import IndependentSparse, geometric_importance
 from superposition.experiments.base import Experiment
@@ -72,6 +74,9 @@ class L1Thresholds:
     count_tolerance: int = 1  # superposed count may rise by this much between λ values
     loss_tolerance: float = 0.02  # a relative loss decrease up to this counts as flat (noise)
     eval_samples: int = 200_000  # shared samples for the loss and E‖h‖₁ of every instance
+    # "falls to none" passes only if a superposition-free model keeps at least this many
+    # features; with fewer it is PARTIAL (a lone feature cannot be in superposition; D-R05)
+    nontrivial_represented: int = 2
 
 
 @dataclass
@@ -233,6 +238,8 @@ def evaluate_setup(setup: L1Setup, table: pd.DataFrame, thr: L1Thresholds) -> li
     rises = [b - a for a, b in pairwise(superposed)]
     free = [r for r in rows if float(r["lambda"]) > 0 and superposition_free(r)]
     first_free = free[0] if free else None
+    several = [r for r in free if int(r["represented"]) >= thr.nontrivial_represented]
+    falls_status = PASS if several else PARTIAL if free else FAIL
     losses = [float(r["loss"]) for r in rows]
     drops = [
         (float(rows[i]["lambda"]), (losses[i - 1] - losses[i]) / losses[i - 1])
@@ -271,12 +278,13 @@ def evaluate_setup(setup: L1Setup, table: pd.DataFrame, thr: L1Thresholds) -> li
             f"rises ≤ {thr.count_tolerance}",
             group=g,
         ),
-        check(
+        graded(
             f"{g}_superposition_falls_to_none",
             f"{desc}: some λ gives a model with no superposition (no superposed feature, WᵀW "
-            "invertible on the represented ones) that still represents at least one feature",
+            f"invertible on the represented ones) that keeps at least "
+            f"{thr.nontrivial_represented} features; PARTIAL if it keeps only one (D-R05)",
             PAGE,
-            first_free is not None,
+            falls_status,
             None
             if first_free is None
             else {
@@ -284,8 +292,10 @@ def evaluate_setup(setup: L1Setup, table: pd.DataFrame, thr: L1Thresholds) -> li
                 "represented": int(first_free["represented"]),
                 "features": list(first_free["represented_features"]),
                 "free_lambdas": [float(r["lambda"]) for r in free],
+                "free_lambdas_with_several_features": [float(r["lambda"]) for r in several],
             },
-            "exists",
+            f"exists with ≥ {thr.nontrivial_represented} features (PASS); only with fewer "
+            "(PARTIAL)",
             group=g,
         ),
         check(
