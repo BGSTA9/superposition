@@ -42,7 +42,12 @@ from scipy.stats import rankdata
 from superposition import metrics
 from superposition.acceptance import Criterion, check, info
 from superposition.config import ExperimentConfig, TrainConfig
-from superposition.data import AnticorrelatedSets, CorrelatedSets, IndependentSparse
+from superposition.data import (
+    AnticorrelatedSets,
+    CorrelatedSets,
+    FeatureDistribution,
+    IndependentSparse,
+)
 from superposition.experiments.base import Experiment
 from superposition.models import TiedModel
 from superposition.plotting.arrows import plot_feature_arrows
@@ -197,6 +202,13 @@ def set_pairs(n_sets: int, set_size: int) -> list[list[int]]:
     return [list(range(s * set_size, (s + 1) * set_size)) for s in range(n_sets)]
 
 
+def as_pairs(sets: list[list[int]]) -> list[tuple[int, int]]:
+    """The sets as ``(a, b)`` pairs; the pair criteria (p. 24, p. 25) need sets of two."""
+    if any(len(group) != 2 for group in sets):
+        raise ValueError(f"expected sets of two features, got sizes {[len(g) for g in sets]}")
+    return [(group[0], group[1]) for group in sets]
+
+
 def mean_within_set_cos(W: torch.Tensor, sets: list[list[int]]) -> float:
     cos = metrics.cosine_similarity_matrix(W[None])[0]
     values = [
@@ -222,8 +234,14 @@ def mean_abs_cos(W: torch.Tensor, sets: list[list[int]], within: bool) -> float:
 # --- training --------------------------------------------------------------------------------
 
 
-def _train(dist: Any, n_features: int, n_hidden: int, config: NonuniformGeometryConfig,
-           device: torch.device, eval_samples: int | None = None) -> dict[str, Any]:  # fmt: skip
+def _train(
+    dist: FeatureDistribution,
+    n_features: int,
+    n_hidden: int,
+    config: NonuniformGeometryConfig,
+    device: torch.device,
+    eval_samples: int | None = None,
+) -> dict[str, Any]:
     model = TiedModel.from_kind("relu_output", n_features, n_hidden, dist.n_inst, seed=config.seed)
     model = model.to(device)
     train_config = config.train
@@ -463,7 +481,7 @@ def evaluate_correlation(
         )
     ]
     cos = metrics.cosine_similarity_matrix(W_of("correlated_2x2")[None])[0]
-    within = [abs(float(cos[a, b])) for a, b in sets_of("correlated_2x2")]
+    within = [abs(float(cos[a, b])) for a, b in as_pairs(sets_of("correlated_2x2"))]
     criteria.append(
         check(
             "correlated_orthogonal_when_room",
@@ -476,9 +494,9 @@ def evaluate_correlation(
         )
     )
     W3 = W_of("correlated_3x2")
-    pairs3 = [tuple(g) for g in sets_of("correlated_3x2")]
+    pairs3 = as_pairs(sets_of("correlated_3x2"))
     represented = int(metrics.represented_mask(W3[None], thr.represented_norm)[0].sum())
-    adjacent = adjacent_in_cycle(W3, pairs3)  # type: ignore[arg-type]
+    adjacent = adjacent_in_cycle(W3, pairs3)
     criteria.append(
         check(
             "correlated_adjacent_when_no_room",
@@ -537,7 +555,7 @@ def evaluate_collapse(config: NonuniformGeometryConfig, state: dict[str, Any]) -
     thr = config.thresholds
     densities = state["densities"]
     sets = set_pairs(state["n_sets"], state["set_size"])
-    pairs = [tuple(g) for g in sets]
+    pairs = as_pairs(sets)
     best = best_per_condition(state)
     W_best = [state["W"][k] for k in best]
     mean_cos = np.array([mean_within_set_cos(W, sets) for W in W_best])
@@ -550,7 +568,7 @@ def evaluate_collapse(config: NonuniformGeometryConfig, state: dict[str, Any]) -
     ]
     W0 = W_best[0]
     represented = int(metrics.represented_mask(W0[None], thr.represented_norm)[0].sum())
-    adjacent = adjacent_in_cycle(W0, pairs)  # type: ignore[arg-type]
+    adjacent = adjacent_in_cycle(W0, pairs)
     criteria = [
         check(
             "sparse_hexagon_pairs_adjacent",
@@ -659,7 +677,11 @@ def perturbed_figures(
     ratios, cond, W_all, loss = state["ratios"], state["condition"], state["W"], state["final_loss"]
     kinds = [classify_perturbed(W_all[k], 0, thr) for k in range(len(W_all))]
     cmap = plt.get_cmap("viridis")
-    color_of = lambda r: cmap((np.log10(r) + 1) / 2)  # noqa: E731 (0.1× → 0, 10× → 1)
+
+    def color_of(ratio: float) -> tuple[float, float, float, float]:
+        """Relative density on the colorbar's log scale: 0.1× → 0, 1× → 0.5, 10× → 1."""
+        return cmap((np.log10(ratio) + 1) / 2)
+
     paths: list[Path] = []
     with paper_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.9))
@@ -796,8 +818,12 @@ def collapse_figures(
     picks = np.unique(np.linspace(0, len(densities) - 1, 6).round().astype(int))
     paths: list[Path] = []
     with paper_style():
-        fig, axes = plt.subplots(1, len(picks) + 1, figsize=(2.3 * (len(picks) + 1) + 0.6, 2.8),
-                                 gridspec_kw={"width_ratios": [1] * len(picks) + [1.6]})  # fmt: skip
+        fig, axes = plt.subplots(
+            1,
+            len(picks) + 1,
+            figsize=(2.3 * (len(picks) + 1) + 0.6, 2.8),
+            gridspec_kw={"width_ratios": [1] * len(picks) + [1.6]},
+        )
         for ax, c in zip(axes[:-1], picks[::-1], strict=True):
             plot_feature_arrows(
                 ax, _canonical(state["W"][best[c]]), annotate=False, colors=colors, limit=1.4
@@ -821,8 +847,13 @@ def collapse_figures(
         ax.set_xlabel("density 1 − S")
         ax.set_ylabel("mean within-pair cos")
         ax.grid(axis="y")
-        fig.suptitle("E04 (d) · three correlated pairs in m = 2: more PCA-like as density rises (dashed circle r = 1/√2)",
-                     x=0.02, ha="left", fontsize=10.5)  # fmt: skip
+        fig.suptitle(
+            "E04 (d) · three correlated pairs in m = 2: more PCA-like as density rises "
+            "(dashed circle r = 1/√2)",
+            x=0.02,
+            ha="left",
+            fontsize=10.5,
+        )
         fig.tight_layout(rect=(0, 0, 1, 0.9))
     paths += save_figure(fig, run_dir.figures_dir / "collapse")
     return paths
