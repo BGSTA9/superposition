@@ -240,7 +240,7 @@ def test_neurons_e09_tab_switches_models(
 
 
 def test_phase_diagrams_cell_selection(tiny_results: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Moving the sliders (what a click on the map does) selects another cell and view."""
+    """The two sliders select another cell, and every view renders."""
     from superposition.runs import RESULTS_ENV
 
     monkeypatch.setenv(RESULTS_ENV, str(tiny_results))

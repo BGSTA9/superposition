@@ -77,7 +77,7 @@ st.markdown(
 | Page | What it does | Status |
 |---|---|---|
 | **Playground** | train a small model live; WᵀW, feature norms, Dᵢ, 2D/3D views; probe any input | available |
-| **Phase diagrams** | E02 empirical and theoretical diagrams; click a cell for its models and every family's optimum (E12 arrives in Phase 6) | available |
+| **Phase diagrams** | E02 empirical and theoretical diagrams; pick a cell for its models and every family's optimum (E12 arrives in Phase 6) | available |
 | **Geometry** | E03 D* and Dᵢ curves; pick a sparsity for its geometry graph, Dᵢ histogram and tegum factors | available |
 | **Non-uniform** | E04 with a density slider for the perturbed feature; correlated sets, local bases, collapse | available |
 | **Dynamics** | E05 energy-level jumps and 3D trajectories, with a training-step scrubber | available |

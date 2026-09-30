@@ -162,12 +162,12 @@ def phase_map(
     selected: tuple[int, int] | None = None,
     title: str = "",
 ) -> go.Figure:
-    """A clickable phase diagram (pp. 15–16): one colored cell per (importance, density).
+    """A phase diagram (pp. 15–16): one colored cell per (importance, density).
 
     ``labels`` is ``(n_density, n_importance)`` of regime names. Cells whose ``overlay`` label
     (e.g. the theory's) differs are marked with an ×, and ``selected`` (density index,
-    importance index) is outlined. An invisible marker sits on every cell so that clicking a
-    cell selects it (``st.plotly_chart(on_select=...)`` returns its ``customdata``).
+    importance index) is outlined. An invisible marker on every cell carries the hover text and
+    the cell's indices (``customdata``).
     """
     from superposition.plotting.phase import REGIME_COLORS, REGIME_NAMES
 

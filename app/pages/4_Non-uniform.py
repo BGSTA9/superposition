@@ -120,7 +120,11 @@ with tab_a:
         figure.add_vline(x=float(ratios[c]), line_dash="dash", line_color=INK_SECONDARY)
         figure.update_xaxes(type="log", title="feature 0's relative density")
         figure.update_yaxes(type="log", title="final loss (every restart)")
-        figure.update_layout(height=380, margin={"l": 50, "r": 10, "t": 30, "b": 40})
+        figure.update_layout(
+            height=420,
+            margin={"l": 50, "r": 10, "t": 30, "b": 40},
+            legend={"orientation": "h", "yanchor": "top", "y": -0.2, "x": 0},
+        )
         st.plotly_chart(figure, width="stretch")
         st.caption(
             "Each geometry has its own loss curve; where the curves cross, the best solution "

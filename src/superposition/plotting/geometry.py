@@ -125,7 +125,9 @@ def geometry_graph_figure(
     edges by |Wᵢ·Wⱼ| (darker = larger).
     """
     with paper_style():
-        fig, axes = plt.subplots(1, len(panels), figsize=(2.6 * len(panels), 2.9), squeeze=False)
+        # A lone panel (the lab's Geometry page) gets room for its legend below it.
+        size = (2.6 * len(panels), 2.9) if len(panels) > 2 else (5.2, 4.6)
+        fig, axes = plt.subplots(1, len(panels), figsize=size, squeeze=False)
         for ax, (panel_title, graph, structure) in zip(axes[0], panels, strict=True):
             nodes = [v for v, d in graph.nodes(data=True) if d.get("represented")]
             sub = graph.subgraph(nodes)
@@ -147,9 +149,10 @@ def geometry_graph_figure(
                    markersize=5, label=n)
             for n in names
         ]  # fmt: skip
-        fig.legend(handles=handles, loc="lower center", ncol=len(handles), fontsize=7.5)
+        ncol = len(handles) if len(panels) > 2 else 4
+        fig.legend(handles=handles, loc="lower center", ncol=ncol, fontsize=7.5)
         fig.suptitle(title, x=0.01, ha="left", fontsize=10.5)
-        fig.tight_layout(rect=(0, 0.1, 1, 0.92))
+        fig.tight_layout(rect=(0, 0.1 if len(panels) > 2 else 0.14, 1, 0.92))
     return fig
 
 

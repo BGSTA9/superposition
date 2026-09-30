@@ -2,8 +2,9 @@
 
 SPEC §8, page 3. Paper: Superposition as a Phase Change, pp. 14–16; Comments & Replications
 (McGrath), pp. 51–53. Results are read from the latest ``phase_change`` run; this page never
-trains. Clicking a cell (or moving the two sliders) shows the models trained there and every
-theoretical family's optimum at that cell.
+trains. Two sliders pick a cell (the map outlines it; hovering shows any cell's labels), and the
+page shows the models trained there and every theoretical family's optimum at that cell. SPEC §8
+asks for clicking a cell; docs/DECISIONS.md D-311 records why the page uses sliders instead.
 """
 
 from __future__ import annotations
@@ -68,11 +69,6 @@ with left:
     )
 
 n_dens, n_imp = len(problem.density), len(problem.importance)
-# A click on the map (handled below the map) leaves the clicked cell here for this rerun;
-# widget state can only be set before the sliders are drawn.
-pending = st.session_state.pop("pc_pending", None)
-if pending is not None:
-    st.session_state["pc_density"], st.session_state["pc_importance"] = pending
 for key, size, default in (("pc_density", n_dens, 0), ("pc_importance", n_imp, n_imp // 2)):
     if st.session_state.get(key, size) >= size:
         st.session_state[key] = default
@@ -111,19 +107,8 @@ with left:
         selected=(d, i),
         title=f"E02 · {titles[label]}: {view}",
     )
-    event = st.plotly_chart(
-        figure, key="pc_map", on_select="rerun", selection_mode="points", width="stretch"
-    )
-    points = event.selection.points if event and event.selection else []
-    if points:
-        clicked = (round(float(points[0]["y"])), round(float(points[0]["x"])))
-        # The selection persists across reruns: act on a click only once, so that moving the
-        # sliders afterwards is not undone by the old selection.
-        if clicked != st.session_state.get("pc_last_click"):
-            st.session_state["pc_last_click"] = clicked
-            if clicked != (d, i):
-                st.session_state["pc_pending"] = clicked
-                st.rerun()
+    st.plotly_chart(figure, key="pc_map", width="stretch")
+    st.caption("Pick a cell with the two sliders; hover over the map to read any cell's labels.")
 
 st.subheader(
     f"The cell at 1 − S = {problem.density[d]:.3g}, importance {problem.importance[i]:.3g}×"
