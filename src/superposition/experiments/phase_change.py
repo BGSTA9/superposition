@@ -250,6 +250,7 @@ class PhaseGridResult:
     density_grid: np.ndarray
     models_per_cell: int
     wall_time_s: float
+    W_init: Float[Tensor, "inst hidden feat"] | None = None  # before training (R1-02)
 
     def to_checkpoint(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -287,6 +288,7 @@ def train_phase_grid(
     model = TiedModel(
         setting.n_features, setting.n_hidden, n_inst, out_act=out_act, seed=config.seed
     ).to(device)
+    W_init = model.W.detach().cpu().clone()
     dist = IndependentSparse(density[cell], n_inst, setting.n_features)
     result = train_from_config(
         model, dist, importance, config.train, seed=config.seed, progress=progress
@@ -303,7 +305,65 @@ def train_phase_grid(
         density_grid=density_grid,
         models_per_cell=config.models_per_cell,
         wall_time_s=result.wall_time_s,
+        W_init=W_init,
     )
+
+
+def initial_sign_outcomes(
+    empirical: PhaseGridResult, labels: np.ndarray, theory_labels: np.ndarray
+) -> dict[str, Any] | None:
+    """n = 2, m = 1: how often a model ends in superposition where the theory says it should,
+    split by whether its two weights started with opposite signs (R1-02).
+
+    In one dimension the two weights must pass through zero to become antipodal, so the
+    starting sign may decide the outcome. Every model counts (not only the nine voters).
+    """
+    if empirical.W_init is None or empirical.W.shape[1:] != (1, 2):
+        return None
+    per_model_theory = np.repeat(np.asarray(theory_labels).ravel(), empirical.models_per_cell)
+    target = per_model_theory == theory.SUPERPOSITION
+    opposite = (empirical.W_init[:, 0, 0] * empirical.W_init[:, 0, 1] < 0).numpy()
+    reached = np.asarray(labels) == theory.SUPERPOSITION
+    out: dict[str, Any] = {}
+    for name, start in (("opposite_sign", opposite), ("same_sign", ~opposite)):
+        models = target & start
+        out[name] = f"{int((reached & models).sum())}/{int(models.sum())}"
+    return out
+
+
+def exact_vs_theory(
+    empirical: PhaseGridResult, base_importance: float, theory_loss: np.ndarray, activation: str
+) -> dict[str, Any] | None:
+    """The best trained model's exact loss against the cheapest paper family's, per cell.
+
+    Only for models whose outputs each read at most one other feature (every n = 2 model); the
+    families are restricted (one weight scale per tegum factor, D-302), so a trained model can
+    beat them, e.g. an antipodal pair with unequal lengths (R1-03).
+    """
+    n = empirical.W.shape[-1]
+    importance = np.full((empirical.W.shape[0], n), base_importance)
+    importance[:, -1] = empirical.extra_importance.numpy()
+    try:
+        exact = theory.tied_output_expected_losses(
+            empirical.W.double().numpy(),
+            empirical.b.double().numpy(),
+            importance,
+            empirical.density.double().numpy(),
+            activation,
+        )
+    except NotImplementedError:
+        return None
+    best = empirical.by_cell(exact).reshape(-1, empirical.models_per_cell).min(1)
+    family = np.asarray(theory_loss).ravel()
+    below = (family - best) / family  # > 0: the trained model beats the family optimum
+    return {
+        "cells": len(best),
+        "beats_theory_by_more_than": {
+            f"{t:g}": int((below > t).sum()) for t in (0.001, 0.005, 0.01)
+        },
+        "largest_margin": round(float(below.max()), 4),
+        "worst_gap": round(float(-below.min()), 4),
+    }
 
 
 def families_for(setting: ProblemSetting) -> tuple[tuple[theory.Family, ...], theory.Family]:
@@ -527,6 +587,37 @@ def evaluate_setting(
             group=group,
         )
     )
+    labels, _, _ = extra_feature_regime(
+        empirical.W, empirical.W.shape[-1] - 1, thr.represented_norm, thr.superposition_score
+    )
+    signs = initial_sign_outcomes(empirical, labels, predicted.labels())
+    if signs is not None:
+        criteria.append(
+            info(
+                "initial_sign",
+                "Models reaching superposition in the cells where the theory has it, by the "
+                "starting sign of their two weights (every model, not only the voters)",
+                "p. 15",
+                signs,
+                group=group,
+            )
+        )
+    n_paper = len(predicted.family_labels) - 1
+    exact = exact_vs_theory(
+        empirical, config.base_importance, predicted.losses[..., :n_paper].min(-1), "relu"
+    )
+    if exact is not None:
+        criteria.append(
+            info(
+                "exact_loss_vs_theory",
+                "Best trained model's exact loss against the cheapest paper family's optimum, per "
+                "cell: how many cells it beats the family by more than 0.1%, 0.5% and 1% "
+                "(families are restricted, D-302), the largest margin and the largest gap",
+                "p. 15",
+                exact,
+                group=group,
+            )
+        )
     confused_models = sum(str(c).count(f"'{theory.CONFUSED}'") for c in col["counts"])
     criteria.append(
         info(

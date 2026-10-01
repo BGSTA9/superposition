@@ -54,7 +54,9 @@ from superposition.experiments.phase_change import (
     ProblemSetting,
     TheoryResult,
     cell_frame,
+    extra_feature_regime,
     families_for,
+    initial_sign_outcomes,
     train_phase_grid,
 )
 from superposition.models import get_activation
@@ -257,6 +259,7 @@ def evaluate_activations(
     setting: ProblemSetting,
     frames: dict[str, pd.DataFrame],
     checks: dict[str, dict[str, Any]],
+    signs: dict[str, dict[str, Any] | None] | None = None,
 ) -> list[Criterion]:
     """E12's report rows for one problem (SPEC §7 E12: no pass/fail; D-602)."""
     criteria: list[Criterion] = []
@@ -336,6 +339,19 @@ def evaluate_activations(
                 group=group,
             )
         )
+        sign = (signs or {}).get(activation)
+        if sign is not None:
+            criteria.append(
+                info(
+                    "initial_sign",
+                    "Models reaching superposition in the cells where this activation's theory "
+                    "has it, by the starting sign of their two weights (every model; the same "
+                    "starting weights for every activation)",
+                    "p. 15",
+                    sign,
+                    group=group,
+                )
+            )
         criteria.append(
             info(
                 "quadrature_check",
@@ -390,6 +406,7 @@ def run(
     for setting in config.settings:
         frames: dict[str, pd.DataFrame] = {}
         checks: dict[str, dict[str, Any]] = {}
+        signs: dict[str, dict[str, Any] | None] = {}
         grid = config.grid
         for activation in config.activations:
             logger.info(
@@ -408,7 +425,14 @@ def run(
                 f"{setting.label}__{activation}__theory", predicted.to_checkpoint()
             )
             frames[activation] = activation_frame(config, activation, empirical, predicted)
-        criteria += evaluate_activations(config, setting, frames, checks)
+            labels, _, _ = extra_feature_regime(
+                empirical.W,
+                setting.n_features - 1,
+                config.thresholds.represented_norm,
+                config.thresholds.superposition_score,
+            )
+            signs[activation] = initial_sign_outcomes(empirical, labels, predicted.labels())
+        criteria += evaluate_activations(config, setting, frames, checks, signs)
         tables += list(frames.values())
     run_dir.write_table(pd.concat(tables, ignore_index=True), "cells")
     return criteria
