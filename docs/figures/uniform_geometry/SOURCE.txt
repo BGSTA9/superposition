@@ -1,6 +1,6 @@
 experiment: uniform_geometry
-run_id: 20260930T091350Z-2cb2dc61
+run_id: 20261001T071640Z-2cb2dc61
 profile: quick
-git_commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+git_commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
 git_dirty: False
 figures: dstar.png, dimensionality.png, geometry_graphs.png, factor_census.png

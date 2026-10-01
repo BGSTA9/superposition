@@ -1,0 +1,6 @@
+experiment: activation_functions
+run_id: 20261001T112822Z-6151c7ff
+profile: quick
+git_commit: 0ad36795d7b8972a6fbdee0b7ce0ad126504bb3b
+git_dirty: False
+figures: diagrams_n2_m1.png, shares_n2_m1.png

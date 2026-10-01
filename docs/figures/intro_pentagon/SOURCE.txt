@@ -1,6 +1,6 @@
 experiment: intro_pentagon
-run_id: 20260929T093651Z-5eeb804c
+run_id: 20261001T071529Z-5eeb804c
 profile: quick
-git_commit: 340f825d57d1147e6325c21982ac9b042ee15867
+git_commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
 git_dirty: False
 figures: pentagon_arrows.png, weights_best.png, restart_losses.png

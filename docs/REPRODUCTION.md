@@ -18,19 +18,30 @@ PDF print of the paper (see `references/README.md`).
 <!-- BEGIN AUTO:STATUS -->
 | Code | Experiment | Paper | Status | Graded criteria passed | Run ID | Profile · device |
 |---|---|---|---|---|---|---|
-| E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20260929T093651Z-5eeb804c` | quick · cpu |
+| E00 | `intro_pentagon` | p. 2 | **PASS** | 11/11 | `20261001T071529Z-5eeb804c` | quick · cpu |
 | E01 | `basic_results` | pp. 10–12 | **PASS** | 12/12 | `20260929T093755Z-2cb0bbc4` | quick · cpu |
-| E02 | `phase_change` | pp. 14–16 | **PASS** | 6/6 | `20260930T090540Z-4e3325bf` | quick · cpu |
-| E03 | `uniform_geometry` | pp. 16–21 | **PASS** | 4/4 | `20260930T091350Z-2cb2dc61` | quick · cpu |
+| E02 | `phase_change` | pp. 14–16 | **PASS** | 6/6 | `20261001T070725Z-4e3325bf` | quick · cpu |
+| E03 | `uniform_geometry` | pp. 16–21 | **PARTIAL** | 3/4 | `20261001T071640Z-2cb2dc61` | quick · cpu |
 | E04 | `nonuniform_geometry` | pp. 21–26 | **PASS** | 9/9 | `20260930T091958Z-43c63e78` | quick · cpu |
 | E05 | `learning_dynamics` | pp. 26–28 | **PASS** | 2/2 | `20260930T190604Z-2fae0fc5` | quick · cpu |
 | E06 | `adversarial` | pp. 29–30 | **PARTIAL** | 2/4 | `20260929T173800Z-e84cec26` | quick · cpu |
 | E07 | `privileged_basis` | pp. 31–34 | **PASS** | 3/3 | `20260929T174443Z-d54df07e` | quick · cpu |
 | E08 | `abs_computation` | pp. 34–39 | **PARTIAL** | 2/4 | `20260930T191445Z-49fd30ed` | quick · cpu |
-| E09 | `mech_interp_abs` | pp. 38–39 | **PASS** | 3/3 | `20260930T184323Z-3fdd1d10` | quick · cpu |
+| E09 | `mech_interp_abs` | pp. 38–39 | **PASS** | 3/3 | `20261001T072551Z-3fdd1d10` | quick · cpu |
 | E10 | `sae_recovery` | pp. 42–44 | **PARTIAL** | 1/3 | `20260930T192302Z-13117b27` | quick · cpu |
 | E11 | `l1_removes_superposition` | p. 42 | **PARTIAL** | 7/8 | `20260930T185653Z-c4feb0cf` | quick · cpu |
+| E12 | `activation_functions` | p. 51 | **INFO** | — (report only) | `20261001T112822Z-6151c7ff` | quick · cpu |
 <!-- END AUTO:STATUS -->
+
+**Notes on the status table** (written by hand; the table is generated from each experiment's
+cited run):
+- **E02:** PASS on the cited seed. The n = 3, m = 2 agreement does not hold across seeds: it is
+  0.764 and 0.792 on held-out seeds 1 and 2, and the three-seed mean is 0.792, against a bar of
+  0.80. Under the rule fixed before those runs (D-605) this is reported here, and the status is
+  left to the owner (docs/REVIEW.md, R1-01).
+- **E12** is an extension with no pass/fail (SPEC §7); every row is INFO.
+- docs/REVIEW.md lists what the Phase 6 independent review found in every experiment, and how
+  each finding was resolved.
 
 ## E00 intro_pentagon (p. 2)
 
@@ -52,14 +63,18 @@ Importance is unstated for this figure; Iᵢ = 0.9ⁱ reproduces it (SPEC §3).
 **Status: PASS (11/11 graded criteria).** All three geometries appear as claimed: two
 orthogonal features at S = 0 (|cos| = 0.0014), two exactly antipodal pairs {0, 2} and {1, 3} at
 S = 0.8, and a pentagon at S = 0.9 with angular gaps 69.8°–74.0°, norms 1.08–1.11 and biases
-−0.198 to −0.211. The linear model keeps features {0, 1} orthogonal at every sparsity and lands
-within 1.0% of its exact optimum at each S, and every unrepresented feature's bias equals the
-feature mean (1 − S)/2 to within 0.0016 (ReLU) and 0.0034 (linear), as p. 10 describes.
+−0.198 to −0.211. The linear model keeps features {0, 1} orthogonal at every sparsity, and
+every unrepresented feature's bias equals the feature mean (1 − S)/2 to within 0.0016 (ReLU)
+and 0.0034 (linear), as p. 10 describes. The linear model's loss is graded on 100,000 fresh
+samples, which put it 0.13%, 0.38% and 1.01% from the exact optimum at S = 0, 0.8 and 0.9. Its
+*exact* expected loss (`exact_loss`, new in this run; review R1-11) is within 0.01% of the
+optimum at every S, so the sampled gap is noise plus the winner's curse of picking the lowest of
+eight.
 
 **Evidence.** Generated from the cited run's `acceptance.json`:
 
 <!-- BEGIN AUTO:E00 -->
-Run `20260929T093651Z-5eeb804c` · profile `quick` · seed 0 · device `cpu` · commit `340f825d57` · wall-clock 61.905 s · overall **PASS** (11/11)
+Run `20261001T071529Z-5eeb804c` · profile `quick` · seed 0 · device `cpu` · commit `450938eff0` · wall-clock 68.432 s · overall **PASS** (11/11)
 
 | Group | Criterion | Paper | Status | Value | Threshold |
 |---|---|---|---|---|---|
@@ -70,9 +85,9 @@ Run `20260929T093651Z-5eeb804c` · profile `quick` · seed 0 · device `cpu` · 
 | linear | S = 0: exactly features {0, 1} represented, orthogonal (\|cos\| < 0.1) | pp. 10–11 | PASS | {"represented": [0, 1], "abs_cos_01": 0.0017} | {"represented": [0, 1], "abs_cos_max": 0.1} |
 | linear | S = 0.8: exactly features {0, 1} represented, orthogonal (\|cos\| < 0.1) | pp. 10–11 | PASS | {"represented": [0, 1], "abs_cos_01": 0.0001} | {"represented": [0, 1], "abs_cos_max": 0.1} |
 | linear | S = 0.9: exactly features {0, 1} represented, orthogonal (\|cos\| < 0.1) | pp. 10–11 | PASS | {"represented": [0, 1], "abs_cos_01": 0.0002} | {"represented": [0, 1], "abs_cos_max": 0.1} |
-| linear | S = 0: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.18269, "optimum": 0.18292, "rel_diff": 0.0013} | {"rel_diff_max": 0.03} |
-| linear | S = 0.8: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.12392, "optimum": 0.12439, "rel_diff": 0.0038} | {"rel_diff_max": 0.03} |
-| linear | S = 0.9: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.067, "optimum": 0.06768, "rel_diff": 0.0101} | {"rel_diff_max": 0.03} |
+| linear | S = 0: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.18269, "optimum": 0.18292, "rel_diff": 0.0013, "exact_loss": 0.182943, "exact_rel_diff": 0.000101} | {"rel_diff_max": 0.03} |
+| linear | S = 0.8: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.12392, "optimum": 0.12439, "rel_diff": 0.0038, "exact_loss": 0.124396, "exact_rel_diff": 5.7e-05} | {"rel_diff_max": 0.03} |
+| linear | S = 0.9: best linear loss within 3% of Σ_{i≥m} Iᵢ(p/3 − p²/4) | p. 13 | PASS | {"loss": 0.067, "optimum": 0.06768, "rel_diff": 0.0101, "exact_loss": 0.067689, "exact_rel_diff": 9.3e-05} | {"rel_diff_max": 0.03} |
 | relu_output | Every feature with ‖Wᵢ‖ < 0.05 has bias within 0.02 of (1 − S)/2 | p. 10 | PASS | [{"S": 0.0, "feature": 2, "bias": 0.4984, "expected": 0.5}, {"S": 0.0, "feature": 3, "bias": 0.5002, "expected": 0.5}, {"S": 0.0, "feature"… | {"norm_max": 0.05, "abs_diff_max": 0.02} |
 | linear | Every feature with ‖Wᵢ‖ < 0.05 has bias within 0.02 of (1 − S)/2 | p. 10 | PASS | [{"S": 0.0, "feature": 2, "bias": 0.4973, "expected": 0.5}, {"S": 0.0, "feature": 3, "bias": 0.4999, "expected": 0.5}, {"S": 0.0, "feature"… | {"norm_max": 0.05, "abs_diff_max": 0.02} |
 | relu_output | Best-restart loss per S next to the independent reference run (sanity check) | p. 2 | INFO | {"S=0": {"ours": 0.18269, "reference": 0.182}, "S=0.8": {"ours": 0.05932, "reference": 0.059}, "S=0.9": {"ours": 0.02117, "reference": 0.01… | — |
@@ -89,7 +104,7 @@ features and 11 settle for four (quick profile: 6 of 8 and 2 of 8), matching the
 note that 3 of 8 restarts stopped at four features. Keeping the best restart, as the paper does
 for 2D models (p. 23), is what makes the S = 0.9 criterion robust.
 
-**Discrepancy with the reference losses, and what it is.** SPEC §7 lists reference losses from
+**Discrepancy with the reference losses, and a hypothesis for it.** SPEC §7 lists reference losses from
 an independent verification run (20,000 evaluation samples each). Ours agree at S = 0 and
 S = 0.8, but the best S = 0.9 pentagon is higher: 0.0214 on a 1,000,000-sample re-evaluation,
 against 0.0196. What we checked, all logged as INFO rows of the cited run:
@@ -98,8 +113,12 @@ against 0.0196. What we checked, all logged as INFO rows of the cited run:
    reference geometry, so the two runs agree on *what* was learned.
 2. *Other local optima, and convergence.* Every one of the 12 cyclic arrangements of the five
    features (up to rotation and reflection), trained for 10,000 more steps from an ideal
-   pentagon, converges to 0.02142–0.02165. No pentagon comes near 0.0196, and the best restart
-   (arrangement 0-1-2-4-3) is already the best arrangement.
+   pentagon, converges to 0.02142–0.02165, and no pentagon comes near 0.0196.
+   - The 12 arrangements span only about 1%, about twice the noise of a 1M-sample estimate, so
+     this diagnostic cannot rank them. The quick and full runs rank them differently (review
+     R1-04). An earlier version said the best restart's arrangement was "already the best".
+   - The reviewer trained the chosen pentagon for 40,000 more steps at smaller learning rates
+     and larger batches. Its loss stayed at 0.0214, so the 0.0214 is converged (not in a run).
 3. *Sampling noise.* A 20,000-sample estimate of this loss has 3.7% relative noise, not the 1–2%
    SPEC assumes. Only 1 of 200 such estimates (0.5%) falls at or below 0.0196.
 4. *Selection bias in the reference.* The reference linear losses (0.182, 0.122, 0.067) all lie
@@ -110,15 +129,21 @@ against 0.0196. What we checked, all logged as INFO rows of the cited run:
    pentagon's 100,000-sample loss (0.0212) is 1% below its 1M-sample value (0.0214). That is why
    E00 re-evaluates the chosen pentagon on independent samples.
 
-The full-profile run on MPS repeats every diagnostic with the same conclusion (1M-sample loss
-0.0212, arrangements 0.02127–0.02171, 20k-sample noise 3.3%, no estimate at or below 0.0196).
+The full-profile run on MPS repeats every diagnostic (1M-sample loss 0.0212, arrangements
+0.02127–0.02171, 20k-sample noise 3.3%, no estimate at or below 0.0196).
 
 **Hypothesis:** 0.0196 is a low draw of a noisy, selection-biased estimate; the pentagon's
-expected loss in this setup is ≈ 0.021. No acceptance criterion depends on it (the reference
-values are sanity checks only, SPEC §7).
+expected loss in this setup is ≈ 0.021. It is a hypothesis, not a finding (review R1-05).
+0.0196 is about 2.2 standard deviations below the mean of our 20,000-sample estimates, and only
+1 of 200 such estimates reaches it. Even allowing for a best-of-several choice, such a draw has
+a probability of a few percent. No acceptance criterion depends on it: the reference values are
+sanity checks only (SPEC §7).
 
-**Run IDs.** Cited (quick, CPU, seed 0, commit `340f825`): `20260929T093651Z-5eeb804c`.
-Full profile (MPS): `20260929T090615Z-eb7b9e3b`.
+**Run IDs.**
+- Cited (quick, CPU, seed 0, commit `450938e`): `20261001T071529Z-5eeb804c` (68 s
+  wall-clock). It reproduces the previous cited run (`20260929T093651Z-5eeb804c`, commit
+  `340f825`) in every earlier value; the exact linear losses are new.
+- Full profile (MPS): `20260929T090615Z-eb7b9e3b`.
 
 ## E01 basic_results (pp. 10–12)
 
@@ -219,13 +244,33 @@ and the cells where the two disagree (dots: next to a theoretical boundary).
 
 ![E02 family losses, n = 2](figures/phase_change/family_losses_n2_m1.png)
 
-**Status: PASS (6/6 graded criteria).**
+**Status: PASS (6/6 graded criteria) on the cited seed. The n = 3 agreement does not hold
+across seeds (D-605; open, see below).**
 
-Both problems show all three regions in both diagrams, arranged as on pp. 15–16. For n = 2,
-m = 1 the vote matches the theory in 126 of 144 cells (0.875); for n = 3, m = 2 in 118 of 144
-(0.819), just above SPEC's 0.80. The theory finds the paper's crossing loss curves (the
-family-loss figure): each family's optimum is smooth in the density, and the winner switches
-where two curves cross.
+Both problems show all three regions in both diagrams. For n = 2, m = 1 the vote matches the
+theory in 126 of 144 cells (0.875); for n = 3, m = 2 in 118 of 144 (0.819), just above SPEC's
+0.80. The theory finds the paper's crossing loss curves (the family-loss figure): each family's
+optimum is smooth in the density, and the winner switches where two curves cross.
+
+*Held-out seeds (D-605; review R1-01).* The 0.819 rested on one seed. The unchanged quick
+profile was re-run on seeds 1 and 2, with the rule for reading them fixed before they ran:
+
+| Agreement of the vote with the theory | seed 0 (cited) | seed 1 | seed 2 | mean |
+|---|---|---|---|---|
+| n = 2, m = 1 | 0.875 | 0.882 | 0.854 | 0.870 |
+| n = 3, m = 2 | 0.819 | 0.764 | 0.792 | **0.792** |
+| n = 3, m = 2, lowest-loss model instead of the vote (INFO) | 0.944 | 0.889 | 0.903 | 0.912 |
+
+- *n = 2 holds* on every seed.
+- *n = 3 does not:* two of the three seeds, and their mean, are below 0.80. Under D-605 the
+  criterion is therefore reported as not holding across seeds.
+- *The status is left to you, the owner.* The cited seed-0 run's grade is not edited (review
+  finding R1-01 stays open), as D-R05 did for E11.
+- *Earlier corroborations were not independent.* The batch-1024 run of D-309 (0.833) uses
+  seed 0, so it starts from the same weights.
+- *More restarts would not have helped.* An earlier version said more restarts per cell
+  "would likely raise" the n = 3 agreement. The reviewer's resampling suggests the opposite:
+  more voters converge on the stuck label.
 
 *What the disagreements are.* In n = 2 all 18 disagreeing cells are ones where the theory says
 superposition and the vote says the extra feature was dropped (10) or given the dimension (8).
@@ -233,30 +278,59 @@ In n = 3, 25 of the 26 are cells where the theory gives the extra feature a dime
 vote says superposition (18 of them at relative importance 1.2–2.9×); in the last one, at
 0.1×, the theory drops it. The votes are close: 5–4 or 6–3 in 35 of the 44 cells, 7–2 in 8
 (and 5–3–1 in one).
-Notebook 04 (section 3) compares each cell's voting models with the theory's winning family
-(`lab.phase_cell_shared_losses`):
-- *n = 2, exactly* (every n = 2, m = 1 model's loss is computable in closed form): in all 18
-  cells the lowest-loss voting model has the theory's label, and in 14 it is within 0.3% of the
-  theory's optimum. The other voting models sit in worse minima and outnumber it, which is what
-  McGrath reports for this problem (p. 52) and why the paper discards the worst model.
-- *n = 3, on 2,000,000 shared inputs* (trained n = 3 models have no closed form): in all 26
-  cells the lowest-loss voting model has the theory's label, within 0.7% of its optimum. At
-  densities 0.01–0.015 the loss comes from a few hundred double activations and such sampled
-  comparisons are only indicative; at 0.023 and above they are precise.
 
-Labeling each cell by its lowest-loss model according to the run's own 20,000-sample losses
-(INFO row) agrees with the theory in all 144 n = 2 cells and in 136 of 144 n = 3 cells.
+*Why n = 2 models get stuck: the starting sign (D-605; review R1-02).* In one dimension the two
+weights must pass through zero to become an antipodal pair. INFO `initial_sign` counts, over
+every model in the cells where the theory has superposition, how many reach it:
 
-*Solutions the paper's families miss.* In 4 of the n = 2 cells (density 0.12–0.28, extra
-importance 0.1–0.15× or 4–10×) the best trained model beats the theory's antipodal family by
-5.4–6.5% in exact loss. It is an *asymmetric* pair: the more important feature 1.02–1.04 long,
-the other 0.82–0.89, with a small positive bias (0.017–0.065) on the less important output. The
-family W ⊥ [1, 1] cannot express it, because W₁ + W₂ = 0 forces equal lengths. The label is still
-superposition, so no agreement number changes. In one dense n = 3 cell (density 0.66, 1.23×),
-where the vote agrees with the theory, the best model stores all three features in joint
-superposition (pairwise cosines −0.79, −0.33, −0.32) and beats every family by 1.3% on shared
-inputs; p. 15 says the paper deliberately leaves that solution out. Both are reported, not
-graded (docs/progress/phase-3.md, open issue 2).
+| Weights at the start | seed 0 | seed 1 | seed 2 |
+|---|---|---|---|
+| opposite signs | 535/545 | 497/500 | 518/526 |
+| the same sign | 266/515 | 310/560 | 276/534 |
+
+The reviewer re-optimized 40 of the stuck models on the exact loss, and none changed label. So
+these are local minima, not slow training: for example W = [1.09, 0.25] with a negative bias
+that filters the same-sign interference.
+
+This is also where our n = 2 empirical diagram departs from p. 15:
+- the paper's panel is uniformly red below the dome;
+- in ours, 17–40% of the models in theory-superposition cells end dropped or dedicated,
+  depending on the density row (the reviewer's count), so some columns are pale.
+
+An earlier version of this section explained the stuck models with McGrath's remark about small
+basins of attraction and with the paper's discarding of the worst model. Neither fits:
+- McGrath's remark is about parameters near a phase transition, in an analysis without biases,
+  and only 5 of the 18 disagreeing cells are on or next to a theoretical boundary (INFO
+  `disagreements`);
+- the paper discards the worst model "to reduce noise" (p. 14).
+
+*Hypotheses:* the paper's initialization scale or optimizer, neither of which it states, may
+leave fewer models stuck. Testing them, or consulting the reference notebook under SPEC §2's
+rule, is left open.
+
+*How close the best models come* (notebook 04, section 3, with `lab.phase_cell_shared_losses`;
+these numbers are not stored in a run, but the reviewer reproduced them):
+- *n = 2, exactly:* in all 18 disagreeing cells the lowest-loss voting model has the theory's
+  label, and in 14 it is within 0.3% of the theory's optimum.
+- *n = 3, on 2,000,000 shared inputs:* in all 26 the lowest-loss voting model has the theory's
+  label, within 0.7% of its optimum. At densities 0.01–0.015 the loss comes from a few hundred
+  double activations, so those comparisons are only indicative.
+
+*Solutions the paper's families miss (review R1-03).* INFO `exact_loss_vs_theory` compares
+every cell's best n = 2 model, by its exact loss, with the cheapest family's optimum.
+- The best model beats the family by more than 0.1% in 59 of the 144 cells, by more than 0.5%
+  in 36, and by more than 1% in 24, at most by 6.5%. These are superposition cells. An earlier
+  version said 4 cells: those are only the 4 disagreeing ones.
+- The cause is D-302's single weight scale per tegum factor. W ⊥ [1, 1] forces both features to
+  the same length, while the best models are asymmetric pairs, with the more important feature
+  longer and a small positive bias on the other output.
+- The labels are unaffected in E02's cells. E12's unrestricted optimum (D-608), which frees
+  every weight and bias, changes 2 of 64 ReLU labels on its coarser grid, both to superposition.
+- In one dense n = 3 cell (density 0.66, 1.23×) the best model stores all three features in
+  joint superposition (pairwise cosines −0.79, −0.33, −0.32; notebook 04). It beats every family
+  by 1.3% on shared inputs. p. 15 says the paper deliberately leaves that solution out.
+- These two families are therefore "the exact loss of each restricted family", not an exact
+  global theory.
 
 *The confused feature.* With every bias fixed at 0 the confused family wins 16 cells (n = 2)
 and 13 (n = 3), as McGrath found; with fitted biases it wins none. No cell's vote is confused:
@@ -267,7 +341,7 @@ sharing a direction was buying (notebook 04, section 4).
 **Evidence.** Generated from the cited run's `acceptance.json`:
 
 <!-- BEGIN AUTO:E02 -->
-Run `20260930T090540Z-4e3325bf` · profile `quick` · seed 0 · device `cpu` · commit `230a51dddd` · wall-clock 486.673 s · overall **PASS** (6/6)
+Run `20261001T070725Z-4e3325bf` · profile `quick` · seed 0 · device `cpu` · commit `450938eff0` · wall-clock 480.891 s · overall **PASS** (6/6)
 
 | Group | Criterion | Paper | Status | Value | Threshold |
 |---|---|---|---|---|---|
@@ -276,6 +350,8 @@ Run `20260930T090540Z-4e3325bf` · profile `quick` · seed 0 · device `cpu` · 
 | n2_m1 | Empirical majority label equals the theoretical label (paper's families) | p. 15 | PASS | {"agreement": 0.875, "cells": 144, "agreeing": 126} | {"min": 0.8} |
 | n2_m1 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 15 | INFO | {"agreement": 1.0} | — |
 | n2_m1 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 18, "on_or_next_to_a_theory_boundary": 5, "empirical_label_counts": {"not_learned": 10, "dedicated": 8}, "cells": [{"density… | — |
+| n2_m1 | Models reaching superposition in the cells where the theory has it, by the starting sign of their two weights (every mo… | p. 15 | INFO | {"opposite_sign": "535/545", "same_sign": "266/515"} | — |
+| n2_m1 | Best trained model's exact loss against the cheapest paper family's optimum, per cell: how many cells it beats the fami… | p. 15 | INFO | {"cells": 144, "beats_theory_by_more_than": {"0.001": 59, "0.005": 36, "0.01": 24}, "largest_margin": 0.0649, "worst_gap": 0.0041} | — |
 | n2_m1 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 0, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
 | n3_m2 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 79, "dedicated": 47, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
 | n3_m2 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 53, "dedicated": 72, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
@@ -285,20 +361,71 @@ Run `20260930T090540Z-4e3325bf` · profile `quick` · seed 0 · device `cpu` · 
 | n3_m2 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 1, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
 <!-- END AUTO:E02 -->
 
+Held-out seeds 1 and 2 (`phase_change:seed1`, `phase_change:seed2`):
+
+<!-- BEGIN AUTO:E02:seed1 -->
+Run `20261001T065043Z-133b16d8` · profile `quick` · seed 1 · device `cpu` · commit `450938eff0` · wall-clock 497.795 s · overall **PARTIAL** (5/6)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| n2_m1 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 89, "not_learned": 30, "dedicated"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 106, "not_learned": 19, "dedicated… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Empirical majority label equals the theoretical label (paper's families) | p. 15 | PASS | {"agreement": 0.8819, "cells": 144, "agreeing": 127} | {"min": 0.8} |
+| n2_m1 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 15 | INFO | {"agreement": 1.0} | — |
+| n2_m1 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 17, "on_or_next_to_a_theory_boundary": 5, "empirical_label_counts": {"not_learned": 11, "dedicated": 6}, "cells": [{"density… | — |
+| n2_m1 | Models reaching superposition in the cells where the theory has it, by the starting sign of their two weights (every mo… | p. 15 | INFO | {"opposite_sign": "497/500", "same_sign": "310/560"} | — |
+| n2_m1 | Best trained model's exact loss against the cheapest paper family's optimum, per cell: how many cells it beats the fami… | p. 15 | INFO | {"cells": 144, "beats_theory_by_more_than": {"0.001": 57, "0.005": 36, "0.01": 24}, "largest_margin": 0.065, "worst_gap": 0.0108} | — |
+| n2_m1 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 0, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+| n3_m2 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 83, "dedicated": 42, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 53, "dedicated": 72, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Empirical majority label equals the theoretical label (paper's families) | p. 16 | FAIL | {"agreement": 0.7639, "cells": 144, "agreeing": 110} | {"min": 0.8} |
+| n3_m2 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 16 | INFO | {"agreement": 0.8889} | — |
+| n3_m2 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 34, "on_or_next_to_a_theory_boundary": 11, "empirical_label_counts": {"superposition": 32, "dedicated": 2}, "cells": [{"dens… | — |
+| n3_m2 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 1, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+<!-- END AUTO:E02:seed1 -->
+
+<!-- BEGIN AUTO:E02:seed2 -->
+Run `20261001T065904Z-afab247b` · profile `quick` · seed 2 · device `cpu` · commit `450938eff0` · wall-clock 498.204 s · overall **PARTIAL** (5/6)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| n2_m1 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 85, "not_learned": 32, "dedicated"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 15 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 106, "not_learned": 19, "dedicated… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n2_m1 | Empirical majority label equals the theoretical label (paper's families) | p. 15 | PASS | {"agreement": 0.8542, "cells": 144, "agreeing": 123} | {"min": 0.8} |
+| n2_m1 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 15 | INFO | {"agreement": 1.0} | — |
+| n2_m1 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 21, "on_or_next_to_a_theory_boundary": 5, "empirical_label_counts": {"not_learned": 13, "dedicated": 8}, "cells": [{"density… | — |
+| n2_m1 | Models reaching superposition in the cells where the theory has it, by the starting sign of their two weights (every mo… | p. 15 | INFO | {"opposite_sign": "518/526", "same_sign": "276/534"} | — |
+| n2_m1 | Best trained model's exact loss against the cheapest paper family's optimum, per cell: how many cells it beats the fami… | p. 15 | INFO | {"cells": 144, "beats_theory_by_more_than": {"0.001": 58, "0.005": 36, "0.01": 24}, "largest_margin": 0.065, "worst_gap": 0.0048} | — |
+| n2_m1 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 0, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+| n3_m2 | Empirical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 79, "dedicated": 46, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Theoretical diagram shows all three regions (not represented, superposition, dedicated dimension) | p. 16 | PASS | {"regions_present": ["dedicated", "not_learned", "superposition"], "cells_per_region": {"superposition": 53, "dedicated": 72, "not_learned"… | {"required": ["not_learned", "superposition", "dedicated"]} |
+| n3_m2 | Empirical majority label equals the theoretical label (paper's families) | p. 16 | FAIL | {"agreement": 0.7917, "cells": 144, "agreeing": 114} | {"min": 0.8} |
+| n3_m2 | Agreement when each cell is labeled by its lowest-loss model instead of the majority | p. 16 | INFO | {"agreement": 0.9028} | — |
+| n3_m2 | Disagreeing cells: where they are relative to the theoretical boundaries | pp. 15, 52 | INFO | {"n_disagree": 30, "on_or_next_to_a_theory_boundary": 9, "empirical_label_counts": {"superposition": 28, "dedicated": 2}, "cells": [{"densi… | — |
+| n3_m2 | McGrath's confused-feature regime: empirical cells, and where the confused family wins in theory with and without biases | pp. 51–53 | INFO | {"empirical_confused_cells": 0, "cells_with_a_confused_model": 1, "theory_confused_wins_with_bias": 0, "theory_confused_wins_without_bias":… | — |
+<!-- END AUTO:E02:seed2 -->
+
 **Discrepancies and notes.**
-- *n = 3, m = 2 margin.* 0.819 is close to the 0.80 bar; the batch-1024 run gives 0.833
-  (D-309). The disagreements are stuck models, not physics (above), so more restarts per cell
-  would likely raise it; the quick profile keeps the paper's ten.
+- *n = 3, m = 2 across seeds:* not robust; open (above).
+- *n = 2, m = 1 against p. 15:* stuck models from same-sign starts (above).
 - *Where the empirical n = 3 diagram differs from p. 16.* The paper's empirical diagram shows
   red specks near 1× at low density; ours has a band of red cells at 1.2–3×. The cause is the
   one above: in those cells most voting models pair the extra feature with another one, a
   minimum the theory ranks 12% to 4.5× worse than giving it a dimension, and they outvote the
   models that found the optimum.
+- *The vote is SPEC's, not the paper's (review R1-08).* p. 14 averages the nine kept models and
+  colors each cell continuously; SPEC §7 asks for the majority label (D-304). The first panel
+  of each figure is the averaged view. The vote hides the mixed basins that averaging shows.
 - *Batch size.* Quick profiles train at batch 256 to fit 10 minutes on a CPU; a batch-1024 run
-  gives identical labels in 284 of 288 cells (D-309).
+  gives identical labels in 284 of 288 cells (D-309). It shares seed 0's starting weights, so it
+  says nothing about seeds.
 
-**Run IDs.** Cited (quick, CPU, seed 0, commit `230a51d`): `20260930T090540Z-4e3325bf`
-(487 s wall-clock). Batch comparison: `20260930T075829Z-609cc6fb` (D-309).
+**Run IDs.** Cited (quick, CPU, seed 0, commit `450938e`): `20261001T070725Z-4e3325bf`
+(481 s wall-clock). It reproduces the previous cited run (`20260930T090540Z-4e3325bf`, commit
+`230a51d`) in every earlier row; `initial_sign` and `exact_loss_vs_theory` are new.
+- Held-out seeds (same commit): `20261001T065043Z-133b16d8` (seed 1, 498 s, PARTIAL 5/6) and
+  `20261001T065904Z-afab247b` (seed 2, 498 s, PARTIAL 5/6).
+- Batch comparison: `20260930T075829Z-609cc6fb` (D-309).
 
 ## E03 uniform_geometry (pp. 16–21)
 
@@ -318,38 +445,63 @@ components of the geometry graph (p. 20).
 
 ![E03 geometry graphs](figures/uniform_geometry/geometry_graphs.png)
 
-**Status: PASS (4/4 graded criteria).**
+**Status: PARTIAL (3/4 graded criteria).** Was PASS 4/4 until the cluster criterion was
+tightened after the review (D-603; review R2-01). D* behaves as on p. 17. The characteristic
+fractions are backed by their polytopes only at 1/2.
 
-D* is 0.998–0.999 at 1/(1 − S) ≤ 1.2. It sits within 0.03 of 1/2 from 2.34 to 3.79
-(0.525, 0.507, 0.500, 0.496, 0.493), wider than the paper's roughly 2.6–3.7, then falls
-steadily to 0.264 at 7.85 and 0.218 at 10. Σᵢ Dᵢ stays between 29.84 and 29.99 at every
-sparsity, as p. 18 says it should. From 2.64 to 3.79 all 58 represented features are in
-digons (29 antipodal pairs). Dᵢ cluster at four fractions: 2/3 (10 features at 1/(1 − S) = 1.62),
-1/2 (58 at 2.64), 2/5 (33 at 4.83) and 3/8 (29 at 4.83). Beyond about 5 the Dᵢ form a band that
-falls with D* instead of sitting on fraction lines, as in the paper's figure.
+*D\* (three criteria pass).*
+- D* is 0.998–0.999 at 1/(1 − S) ≤ 1.2.
+- It sits within 0.03 of 1/2 from 2.34 to 3.79 (0.525, 0.507, 0.500, 0.496, 0.493).
+- It then falls steadily, to 0.264 at 7.85 and 0.218 at 10.
+- Σᵢ Dᵢ stays between 29.84 and 29.99 at every sparsity, as p. 18 says it should.
+- From 2.64 to 3.79 all 58 represented features are in digons (29 antipodal pairs).
+
+*Clusters at the characteristic fractions (fails).* The graded rule now counts a feature
+toward a fraction only if it also sits in that fraction's polytope (D-603). Only the digons
+qualify: 58 features at 1/(1 − S) = 2.64. That is one fraction, and three are required.
+- The pentagons reach at most 5 features (7%) at 4.28, below the 8 and 20% a cluster needs.
+- There are no triangles, tetrahedra or square antiprisms as factors at E03's edge threshold.
+- The old rule, Dᵢ alone (INFO `fraction_clusters_by_value`), still finds four fractions:
+  - 2/3: 10 features at 1.62;
+  - 1/2: 58 at 2.64;
+  - 2/5: 33 at 4.83;
+  - 3/8: 29 at 4.83.
+- Those were not four geometries:
+  - the 2/3 "cluster" is the upper tail of a single band below 2/3;
+  - the 2/5 and 3/8 "clusters" are one band of Dᵢ near 0.39 in one model. The two fractions'
+    ±0.02 windows overlap, so the band counted twice.
+- Beyond about 5 the Dᵢ form a band that falls with D* instead of sitting on fraction lines.
+  The paper's figure shows the same.
 
 *Which polytopes are really there.* Dᵢ alone cannot name a polytope, so the run also names each
 connected component of the geometry graph (D-308). With E03's edge threshold, |Wᵢ·Wⱼ| > 0.05
 (D-110), only the plateau's digons and one pentagon are separate factors; at higher sparsity a
 few small overlaps link everything into one component. Ignoring overlaps below 0.2 (notebook
-05, section 2) separates them: at 1/(1 − S) = 4.28 all 70 represented features sit in digons
-(50) and pentagons (20); at 4.83 there are 5 pentagons, 12 digons, a square antiprism and two
-uniform pieces (11 features in 4 dimensions, 4 in 2); at 5.46 two square antiprisms and two
-pentagons. From 6.16 on, one uniform component spans all 30 dimensions even at 0.2. The paper's
-geometric story holds in the middle of the range, with factors that are nearly rather than
-exactly orthogonal.
+05, section 2; these counts are not graded or stored in the run):
+- at 1/(1 − S) = 4.28 all 70 represented features sit in digons (50) and pentagons (20);
+- at 4.83 there are 5 pentagons, 12 digons, a square antiprism and three uniform pieces (one
+  of 11 features in 4 dimensions, two of 4 in 2; corrected from "two pieces", review R2-06);
+- at 5.46, two square antiprisms and two pentagons;
+- from 6.16 on, one uniform component spans all 30 dimensions even at 0.2.
+
+The paper's polytopes do appear in the middle of the range, but only once overlaps up to 0.2 are
+ignored, so its factors are nearly rather than exactly orthogonal. That is why the graded rule,
+at E03's threshold of 0.05, finds only the digons. Whether the criterion should read factors at
+0.2 is a question for the owner. Choosing it now, after seeing which threshold passes, would be
+tuning (docs/REVIEW.md, R2-01).
 
 **Evidence.** Generated from the cited run's `acceptance.json`:
 
 <!-- BEGIN AUTO:E03 -->
-Run `20260930T091350Z-2cb2dc61` · profile `quick` · seed 0 · device `cpu` · commit `230a51dddd` · wall-clock 364.968 s · overall **PASS** (4/4)
+Run `20261001T071640Z-2cb2dc61` · profile `quick` · seed 0 · device `cpu` · commit `450938eff0` · wall-clock 346.338 s · overall **PARTIAL** (3/4)
 
 | Group | Criterion | Paper | Status | Value | Threshold |
 |---|---|---|---|---|---|
 | — | D* ≈ 1 (≥ 0.95) at every 1/(1 − S) ≤ 1.2 | p. 17 | PASS | {"1.000": 0.9983, "1.129": 0.999} | {"min_dstar": 0.95, "up_to": 1.2} |
 | — | A plateau at 0.5 ± 0.03 over a contiguous range (end points at least 1.25× apart in 1/(1 − S)); report the span | p. 17 | PASS | {"span": [2.336, 3.793], "width_ratio": 1.624, "dstar_on_plateau": [0.5254, 0.5067, 0.5003, 0.4958, 0.4926], "paper_span": [2.6, 3.7]} | {"value": 0.5, "tol": 0.03, "min_span": 1.25} |
 | — | D* falls below the plateau after it and is 0.25 ± 0.05 at 1/(1 − S) ≈ 8 | p. 17 | PASS | {"at": 7.848, "dstar": 0.2637, "all_after_plateau_below": true, "dstar_after_plateau": [0.4102, 0.3797, 0.3407, 0.3096, 0.2876, 0.2637, 0.2… | {"value": 0.25, "tol": 0.05} |
-| — | Nonzero Dᵢ cluster within ±0.02 of at least 3 characteristic fractions | p. 19 | PASS | {"clusters": ["triangle (0.667)", "antipodal pair (digon) (0.5)", "pentagon (0.4)", "square antiprism (0.375)"], "by_fraction": {"tetrahedr… | {"min_clusters": 3, "cluster": "≥ 20% and ≥ 8 of one model's represented featur… |
+| — | Nonzero Dᵢ cluster within ±0.02 of at least 3 characteristic fractions, each feature counted only in the polytope of it… | p. 19 | FAIL | {"clusters": ["antipodal pair (digon) (0.5)"], "by_fraction": {"tetrahedron (0.75)": {"cluster": false, "max_share": 0.0, "count": 0, "at_i… | {"min_clusters": 3, "cluster": "≥ 20% and ≥ 8 of one model's represented featur… |
+| — | The same count by Dᵢ alone (the rule of D-306, before D-603): a band between 2/5 and 3/8 counts for both | p. 19 | INFO | {"clusters": ["triangle (0.667)", "antipodal pair (digon) (0.5)", "pentagon (0.4)", "square antiprism (0.375)"], "by_fraction": {"tetrahedr… | — |
 | — | Σᵢ Dᵢ of the best model at each sparsity, against m = 30 | p. 18 | INFO | {"1.000": {"sum_D": 29.99, "D_star": 0.9983}, "1.129": {"sum_D": 29.986, "D_star": 0.999}, "1.274": {"sum_D": 29.98, "D_star": 0.9993}, "1.… | — |
 | — | Represented features per tegum-factor type (geometry-graph components named by size, rank and uniformity) | pp. 19–20 | INFO | {"1.000": {}, "1.129": {}, "1.274": {}, "1.438": {"12 in 12 (non-uniform)": 12}, "1.624": {"23 in 23 (non-uniform)": 23, "dedicated dimensi… | — |
 <!-- END AUTO:E03 -->
@@ -365,11 +517,20 @@ Run `20260930T091350Z-2cb2dc61` · profile `quick` · seed 0 · device `cpu` · 
   up to 0.085 (D-309) and the draft's uncited 50,000-step run by more. Hypothesis: the paper
   trained longer. No criterion reads this range; the full profile (batch 1024, 20,000 steps,
   60 points) is the test.
-- *Plateau wider than the paper's.* 2.34–3.79 against roughly 2.6–3.7; our reading of the
-  figure is approximate.
+- *The plateau's width matches the paper's.* An earlier note called ours (2.34–3.79) wider than
+  the paper's "roughly 2.6–3.7". The reviewer applied the same ±0.03 rule to a pixel reading of
+  the paper's curve and got about 2.15–3.8, so the two are comparable (review R2-08).
+- *Restart selection is noisy.* With two restarts and 20,000-sample losses, the choice between
+  them is close to a coin flip at some sparsities (at 4.83 the restarts differ by less than the
+  noise), and at 1/(1 − S) = 1 neither restart has converged. The reviewer found no outcome
+  that changes with the other restart (review R2-10).
 
-**Run IDs.** Cited (quick, CPU, seed 0, commit `230a51d`): `20260930T091350Z-2cb2dc61`
-(365 s wall-clock). Batch comparison: `20260930T082510Z-c635c83a` (D-309).
+**Run IDs.**
+- Cited (quick, CPU, seed 0, commit `450938e`): `20261001T071640Z-2cb2dc61` (346 s
+  wall-clock). It reproduces the previous cited run (`20260930T091350Z-2cb2dc61`, commit
+  `230a51d`, then PASS 4/4) in every D* and Dᵢ value; only the cluster criterion changed
+  (D-603).
+- Batch comparison: `20260930T082510Z-c635c83a` (D-309).
 
 ## E04 nonuniform_geometry (pp. 21–26)
 
@@ -963,11 +1124,25 @@ matrices, the rebuild test for every setting, and the role census.
 ![E09 role census](figures/mech_interp_abs/role_census.png)
 
 **Status: PASS (3/3 graded criteria), with a discrepancy on one sub-claim** (inhibition,
-below; D-R03). In all six graded models every live neuron receives a
-named role (48/48; all 48 with one of SPEC's four roles; no dead neurons), and for every one of
-them both the zero and the mean ablation raise exactly the losses the role predicts (48/48).
-The motif is found in 134 of the 240 trained models, in every graded configuration (11–18 of
-20 restarts) and never at 1 − S = 0.5.
+below; D-R03). The criteria were tightened after the review (D-604) and still pass.
+- *Roles.* In all six graded models every live neuron receives a named role with nothing
+  unexplained left (48/48; all with one of SPEC's four roles; no dead neurons).
+  - *Baseline:* the same rules on the untrained weights name 49–54% of live neurons, and
+    30–33% with nothing unexplained (INFO `named_at_initialization`). The inhibitor role in
+    particular fits many random neurons (review R4-02), so it is the second count that the
+    90% bar is now graded on.
+- *Ablations.* For every one of them, both the zero and the mean ablation raise every loss the
+  role predicts, most on one of them (48/48).
+  - The check does not require the other features' losses to stay put. In 5 of the 96
+    (neuron, ablation) cases a feature the role does not name rises by 5–8% (the reviewer's
+    count; review R4-03). An earlier version said the ablations raise "exactly" the predicted
+    losses.
+- *Motif.* A motif counts only when its neurons carry the motif's roles (D-604; review R4-01).
+  - It is found in 68 of the 240 trained models: 8–12 of 20 restarts in each graded
+    configuration, never at 1 − S = 0.5, and 1–4 of 20 at 0.1.
+  - The weight pattern alone, which the previous version counted, occurs in 134 models (11–18
+    of 20 per graded configuration, 12–17 at 0.1). Many of those sit on neurons that the role
+    table calls unexplained.
 
 *The trained models reproduce the p. 39 structure, not just the motif.* Every graded best model
 has exactly two asymmetric-superposition neurons that share one victim feature (each supplies
@@ -986,26 +1161,36 @@ settings (0.90, 0.92 at n = 4; 0.91, 0.95 at n = 5; 0.93, 0.97 at n = 6; for 1 �
 and 89–97% with the trained biases. The missing few percent are the "small conditional biases"
 of p. 39: small weights no role names.
 
-*Where the regime ends (INFO).* At 1 − S = 0.5 the models do no superposition at all: they drop
-one feature and compute the others with clean side neurons, every neuron is named, and the
-rebuild recovers 100%. At 0.1 the picture depends on the size: n = 5 is still fully named
-(8/8, rebuild 0.92), while n = 4 has 2 and n = 6 has 6 unexplained neurons and the rebuild
-recovers 0.63 and 0.17. The motif still occurs there (12–17 of 20 restarts), but next to
-neurons that fit no role.
+*Where the regime ends (INFO).*
+- *1 − S = 0.5:* the models do no superposition at all. They drop one feature and compute the
+  others with clean side neurons, every neuron is named, and the rebuild recovers 100%.
+- *0.1, by size:*
+  - n = 5 is still fully named (8/8, rebuild 0.92);
+  - n = 4 names 4 of 6 neurons fully, and its rebuild recovers 0.63;
+  - n = 6 names only 2 of 10 fully. Two of its "named" inhibitors also carry unexplained
+    content, which an earlier count ignored (review R4-02). Its rebuild recovers 0.17.
+- *The motif at 0.1* is rare: 1–4 of 20 restarts. The weight pattern alone appears in 12–17,
+  mostly on neurons that fit no role.
+
+*The PASS is for a regime chosen for clean roles (review R4-10).* The graded densities were
+picked from a pilot because every neuron was named there (D-502). The pilot measured the same
+quantity the criterion grades. Grading 1 − S = 0.1 as well would give 62 of 72 neurons fully
+named (0.86), below the 90% bar.
 
 **Evidence.** Generated from the cited run's `acceptance.json`:
 
 <!-- BEGIN AUTO:E09 -->
-Run `20260930T184323Z-3fdd1d10` · profile `quick` · seed 0 · device `cpu` · commit `fd32b02273` · wall-clock 257.997 s · overall **PASS** (3/3)
+Run `20261001T072551Z-3fdd1d10` · profile `quick` · seed 0 · device `cpu` · commit `450938eff0` · wall-clock 255.206 s · overall **PASS** (3/3)
 
 | Group | Criterion | Paper | Status | Value | Threshold |
 |---|---|---|---|---|---|
-| — | ≥ 90% of live neurons receive a named role (best model of each of n=4/m=6, n=5/m=8, n=6/m=10 at 1 − S ∈ {0.3, 0.2}) | pp. 38–39 | PASS | {"fraction": 1.0, "named": 48, "live": 48, "dead": 0, "fraction_spec_roles_only": 1.0, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2… | ≥ 0.9 |
+| — | ≥ 90% of live neurons receive a named role, with nothing unexplained left (best model of each of n=4/m=6, n=5/m=8, n=6/… | pp. 38–39 | PASS | {"fraction": 1.0, "named": 48, "live": 48, "dead": 0, "named_incl_partial_inhibitors": 48, "fraction_spec_roles_only": 1.0, "per_model": {"… | ≥ 0.9 |
 | — | Ablation effects agree with the assigned roles: for ≥ 90% of named neurons, zeroing and mean-ablating each raise the lo… | pp. 38–39 | PASS | {"fraction": 1.0, "agree": 48, "named": 48, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2": "6/6", "n5_m8 1-S=0.3": "8/8", "n5_m8 1-… | ≥ 0.9 |
-| — | The asymmetric superposition + inhibition motif is found in at least one model (searched in every restart); restarts wi… | pp. 38–39 | PASS | {"models_with_motif": 134, "per_configuration": {"n4_m6 1-S=0.3": "11/20", "n4_m6 1-S=0.2": "17/20", "n4_m6 1-S=0.5": "0/20", "n4_m6 1-S=0.… | ≥ 1 model |
+| — | The asymmetric superposition + inhibition motif is found in at least one model (searched in every restart; its neurons … | pp. 38–39 | PASS | {"models_with_motif": 68, "per_configuration": {"n4_m6 1-S=0.3": "8/20", "n4_m6 1-S=0.2": "12/20", "n4_m6 1-S=0.5": "0/20", "n4_m6 1-S=0.1"… | ≥ 1 model |
 | — | Rebuild test: share of the trained model's loss reduction (vs predicting the mean) recovered by the model rebuilt by ha… | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": {"recovered": 0.8975, "recovered_trained_bias": 0.8941}, "n4_m6 1-S=0.2": {"recovered": 0.9179, "recovered_trained_bias":… | — |
-| — | Motifs in the best models: input and output size ratios, the positive interference, the inhibition, and the net 1-spars… | pp. 38–39 | INFO | {"motifs_in_best_models": 18, "net_interference_negative": "6/18", "all_restarts_net_negative": "111/292", "net_interference_best_models": … | — |
-| — | Outside the graded regime (reported only): named roles, ablation agreement, motifs and rebuild of the best model at the… | pp. 38–39 | INFO | {"n4_m6 1-S=0.5": {"named": "6/6", "agree": "6/6", "motifs": 0, "restarts_with_motif": "0/20", "rebuild_recovered": 1.0001, "roles": ["nega… | — |
+| — | The same role rules on the untrained weights of every restart: the share of live neurons they would name in a random mo… | pp. 38–39 | INFO | {"n4_m6": {"live": 478, "named_fraction": 0.5377, "fully_named_fraction": 0.3264}, "n5_m8": {"live": 640, "named_fraction": 0.5047, "fully_… | — |
+| — | Role-consistent motifs in the best models: input and output size ratios, the positive interference, the inhibition, and… | pp. 38–39 | INFO | {"motifs_in_best_models": 16, "net_interference_negative": "5/16", "all_restarts_net_negative": "43/129", "net_interference_best_models": {… | — |
+| — | Outside the graded regime (reported only): named roles, ablation agreement, motifs and rebuild of the best model at the… | pp. 38–39 | INFO | {"n4_m6 1-S=0.5": {"named": "6/6", "agree": "6/6", "motifs": 0, "restarts_with_motif": "0/20", "restarts_with_motif_pattern": "0/20", "rebu… | — |
 | — | Role of every neuron in the graded models (best restart) | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": ["inhibitor(1) + negative-side(3)", "inhibitor(1) + positive-side(3)", "positive-side(0)", "positive-side(2)", "asymmetri… | — |
 <!-- END AUTO:E09 -->
 
@@ -1014,12 +1199,15 @@ do not convert it.** p. 39 says the inhibiting neuron "essentially converts posi
 interference (which could greatly increase the loss) into negative interference". In our
 models the inhibition matches the positive interference almost exactly, so the victim's net
 1-sparse pre-activation (bias included) sits near zero rather than below it:
-- in the 18 motifs of the best models (two each in the six graded models and the three at
-  1 − S = 0.1), the net ranges from −0.081 to +0.075 with median +0.023, and only 6 of 18 are
-  negative;
-- relative to the interference it cancels (2.3–4.3), the net is −2.8% to +2.5% (median +0.6%);
-- over all 292 motifs in all restarts, 111 are negative (quartiles −0.030 and +0.062, median
-  +0.018). A few restarts do overshoot (the most negative net is −0.83).
+- in the 16 role-consistent motifs of the best models (two in each of the six graded models,
+  and four in the models at 1 − S = 0.1), the net ranges from −0.045 to +0.075 with median
+  +0.023, and only 5 of 16 are negative;
+- relative to the interference it cancels, the net is −1.1% to +2.5% (median +0.6%);
+- over all 129 role-consistent motifs in all restarts, 43 are negative (quartiles −0.007 and
+  +0.075, median +0.033). A few restarts do overshoot (the most negative net is −0.26).
+
+These numbers changed from the previous version, which counted every weight pattern (D-604);
+the conclusion did not.
 
 A net near zero leaves the victim's output within a few hundredths of its target when the heavy
 feature fires, so the motif works; a negative net would be clipped to exactly zero by the
@@ -1033,26 +1221,30 @@ pilot`, with the three sizes, all four densities, 16 restarts each, analyzed the
 bit-identical to the script, which ordered the densities differently). It supports the choice:
 - *1 − S = 0.5:* no superposition. Every neuron is named, the motif appears in 0 of 16
   restarts at every size, and the rebuild recovers 100%.
-- *0.3 and 0.2 (graded):* every live neuron is named (48/48), every ablation agrees (48/48),
-  the motif appears in 6–14 of 16 restarts, and the rebuild recovers 89–98%.
-- *0.1:* the regime breaks down. There are 2, 6 and 1 unexplained neurons at n = 4, 5 and 6,
-  and the rebuild recovers 0.21, −0.29 and 0.57, although the motif still appears in 9–12 of
-  16 restarts.
+- *0.3 and 0.2 (graded):* every live neuron is fully named (48/48), every ablation agrees
+  (48/48), the role-consistent motif appears in 5–12 of 16 restarts, and the rebuild recovers
+  89–98%.
+- *0.1:* the regime breaks down.
+  - Neurons not fully named: 2, 6 and 1 at n = 4, 5 and 6.
+  - The rebuild recovers 0.21, −0.29 and 0.57.
+  - The role-consistent motif appears in 6, 0 and 1 of 16 restarts; the weight pattern alone,
+    in 9–12.
 
-The pilot's motifs repeat the discrepancy above: the net is negative in 4 of 18 best-model
-motifs (median +0.045), and in 78 of 211 over all restarts.
+The pilot's motifs repeat the discrepancy above: the net is negative in 3 of 16 best-model
+motifs (median +0.046), and in 32 of 104 over all restarts.
 
 <!-- BEGIN AUTO:E09:pilot -->
-Run `20260930T183948Z-1e8bafbd` · profile `pilot` · seed 0 · device `cpu` · commit `fd32b02273` · wall-clock 212.446 s · overall **PASS** (3/3)
+Run `20261001T072229Z-1e8bafbd` · profile `pilot` · seed 0 · device `cpu` · commit `450938eff0` · wall-clock 199.813 s · overall **PASS** (3/3)
 
 | Group | Criterion | Paper | Status | Value | Threshold |
 |---|---|---|---|---|---|
-| — | ≥ 90% of live neurons receive a named role (best model of each of n=4/m=6, n=5/m=8, n=6/m=10 at 1 − S ∈ {0.3, 0.2}) | pp. 38–39 | PASS | {"fraction": 1.0, "named": 48, "live": 48, "dead": 0, "fraction_spec_roles_only": 1.0, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2… | ≥ 0.9 |
+| — | ≥ 90% of live neurons receive a named role, with nothing unexplained left (best model of each of n=4/m=6, n=5/m=8, n=6/… | pp. 38–39 | PASS | {"fraction": 1.0, "named": 48, "live": 48, "dead": 0, "named_incl_partial_inhibitors": 48, "fraction_spec_roles_only": 1.0, "per_model": {"… | ≥ 0.9 |
 | — | Ablation effects agree with the assigned roles: for ≥ 90% of named neurons, zeroing and mean-ablating each raise the lo… | pp. 38–39 | PASS | {"fraction": 1.0, "agree": 48, "named": 48, "per_model": {"n4_m6 1-S=0.3": "6/6", "n4_m6 1-S=0.2": "6/6", "n5_m8 1-S=0.3": "8/8", "n5_m8 1-… | ≥ 0.9 |
-| — | The asymmetric superposition + inhibition motif is found in at least one model (searched in every restart); restarts wi… | pp. 38–39 | PASS | {"models_with_motif": 99, "per_configuration": {"n4_m6 1-S=0.3": "9/16", "n4_m6 1-S=0.2": "14/16", "n4_m6 1-S=0.5": "0/16", "n4_m6 1-S=0.1"… | ≥ 1 model |
+| — | The asymmetric superposition + inhibition motif is found in at least one model (searched in every restart; its neurons … | pp. 38–39 | PASS | {"models_with_motif": 55, "per_configuration": {"n4_m6 1-S=0.3": "6/16", "n4_m6 1-S=0.2": "12/16", "n4_m6 1-S=0.5": "0/16", "n4_m6 1-S=0.1"… | ≥ 1 model |
 | — | Rebuild test: share of the trained model's loss reduction (vs predicting the mean) recovered by the model rebuilt by ha… | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": {"recovered": 0.8918, "recovered_trained_bias": 0.8863}, "n4_m6 1-S=0.2": {"recovered": 0.9125, "recovered_trained_bias":… | — |
-| — | Motifs in the best models: input and output size ratios, the positive interference, the inhibition, and the net 1-spars… | pp. 38–39 | INFO | {"motifs_in_best_models": 18, "net_interference_negative": "4/18", "all_restarts_net_negative": "78/211", "net_interference_best_models": {… | — |
-| — | Outside the graded regime (reported only): named roles, ablation agreement, motifs and rebuild of the best model at the… | pp. 38–39 | INFO | {"n4_m6 1-S=0.5": {"named": "6/6", "agree": "6/6", "motifs": 0, "restarts_with_motif": "0/16", "rebuild_recovered": 1.0001, "roles": ["posi… | — |
+| — | The same role rules on the untrained weights of every restart: the share of live neurons they would name in a random mo… | pp. 38–39 | INFO | {"n4_m6": {"live": 382, "named_fraction": 0.534, "fully_named_fraction": 0.3194}, "n5_m8": {"live": 512, "named_fraction": 0.5137, "fully_n… | — |
+| — | Role-consistent motifs in the best models: input and output size ratios, the positive interference, the inhibition, and… | pp. 38–39 | INFO | {"motifs_in_best_models": 16, "net_interference_negative": "3/16", "all_restarts_net_negative": "32/104", "net_interference_best_models": {… | — |
+| — | Outside the graded regime (reported only): named roles, ablation agreement, motifs and rebuild of the best model at the… | pp. 38–39 | INFO | {"n4_m6 1-S=0.5": {"named": "6/6", "agree": "6/6", "motifs": 0, "restarts_with_motif": "0/16", "restarts_with_motif_pattern": "0/16", "rebu… | — |
 | — | Role of every neuron in the graded models (best restart) | pp. 38–39 | INFO | {"n4_m6 1-S=0.3": ["inhibitor(3) + negative-side(1)", "inhibitor(3) + positive-side(1)", "asymmetric-superposition(2, 3)", "asymmetric-supe… | — |
 <!-- END AUTO:E09:pilot -->
 
@@ -1066,11 +1258,13 @@ Run `20260930T183948Z-1e8bafbd` · profile `pilot` · seed 0 · device `cpu` · 
 - *superposition(i, j)* (normal superposition) and *dead* extend SPEC's role list (D-501); no
   graded model uses either.
 
-**Run IDs.** Cited (quick, CPU, seed 0, commit `fd32b02`): `20260930T184323Z-3fdd1d10` (258 s
-wall-clock). It reproduces the previous cited run (`20260929T211826Z-3fdd1d10`, commit
-`dbe87c8`, 271 s) exactly in every earlier row; the spread of the net interference is new.
-Pilot (profile `pilot`, CPU, seed 0, commit `fd32b02`, cited as `mech_interp_abs:pilot`):
-`20260930T183948Z-1e8bafbd` (212 s).
+**Run IDs.**
+- Cited (quick, CPU, seed 0, commit `450938e`): `20261001T072551Z-3fdd1d10` (255 s
+  wall-clock). It trains the same models as the previous cited run (`20260930T184323Z-3fdd1d10`,
+  commit `fd32b02`). The weight-pattern counts and the rebuild values are unchanged; the strict
+  naming, the role-consistent motifs and the baseline are new (D-604).
+- Pilot (profile `pilot`, CPU, seed 0, commit `450938e`, cited as `mech_interp_abs:pilot`):
+  `20261001T072229Z-1e8bafbd` (200 s).
 
 ## E10 sae_recovery (pp. 42–44)
 
@@ -1375,3 +1569,182 @@ wall-clock). It reproduces the previous cited run (`20260929T212948Z-027b0327`, 
 `dbe87c8`, 533 s, then PASS 8/8) in every number; only the pentagon's "falls to none" status
 changed (D-R05). Held-out seed (quick, CPU, seed 1, commit `fd32b02`, cited as
 `l1_removes_superposition:heldout`): `20260930T184744Z-e8c803d0` (546 s).
+
+## E12 activation_functions (p. 51; extension)
+
+**Paper's claim.** Redwood Research replicated the phase diagrams of pp. 14–16. They report
+that the diagrams "look quite different depending on the activation function", which suggests
+that "some activation functions induce more polysemanticity than others" (p. 51). The paper
+does not say:
+- which activations they used, or which problem size;
+- whether the diagrams were empirical or theoretical;
+- which way the differences went.
+
+SPEC §7 makes E12 an extension with no pass/fail: report the differences.
+
+**What we test** (D-601, D-602, D-608). E02's n = 2, m = 1 problem with the output ReLU replaced
+by gelu, silu, softplus, leaky_relu (slope 0.01) and sigmoid. Everything else is E02's: an 8 × 8
+grid in the quick profile, ten models per cell, the vote of nine, the same seed, and the same
+starting weights for every activation. Each activation gets three diagrams:
+- the **vote** of its trained models;
+- the **family theory**: E02's weight families, each with its exact loss under that σ, computed
+  by quadrature;
+- the **unrestricted optimum**: all four parameters free, searched from every family optimum.
+
+Losses are compared across activations only within a cell, which is the same task (footnote
+17).
+
+**Our figures** (quick profile). The rows of the first figure are the vote, the family theory,
+the unrestricted theory, and the cells whose vote differs from the ReLU's. The second figure
+shows the activations next to the share of cells in each regime.
+
+![E12 diagrams](figures/activation_functions/diagrams_n2_m1.png)
+
+![E12 shares](figures/activation_functions/shares_n2_m1.png)
+
+**Status: INFO** (an extension with no graded criteria).
+
+| Activation | Superposition cells (vote) | (family theory) | (unrestricted) | Vote agrees with its family theory | Lowest-loss model agrees with the unrestricted theory | Same-sign starts reaching superposition | Opposite-sign starts |
+|---|---|---|---|---|---|---|---|
+| relu | 39 | 46 | 48 | 0.86 | 1.00 | 117/223 | 231/237 |
+| leaky_relu | 39 | 46 | 48 | 0.86 | 1.00 | 117/223 | 231/237 |
+| gelu | 22 | 42 | 42 | 0.69 | 1.00 | 3/204 | 189/216 |
+| silu | 16 | 28 | 30 | 0.81 | 1.00 | 2/133 | 129/147 |
+| softplus | 48 | 46 | 46 | 0.97 | 0.98 | 216/223 | 237/237 |
+| sigmoid | 48 | 46 | 48 | 0.97 | 1.00 | 223/223 | 237/237 |
+
+Out of 64 cells. The starting-sign counts are over every model in the cells where that
+activation's family theory has superposition; "lowest-loss model" means lowest exact loss.
+
+*What the loss landscape says (the theory).*
+- **SiLU's optimal superposition region is clearly smaller than the ReLU's:** 28 cells against
+  46 by the families, 30 against 48 unrestricted. **GELU's is slightly smaller:** 42 against 46
+  or 48.
+  - *Hypothesis* (p. 13): their negative lobe makes negative interference cost something, so an
+    antipodal pair pays where the ReLU's pair is free. SiLU's lobe is deeper (about −0.28,
+    against −0.17).
+- **Leaky ReLU (slope 0.01) is indistinguishable from the ReLU** in every row.
+- **Softplus and sigmoid get the ReLU's family labels on this grid**, and nearly its
+  unrestricted labels (46 and 48 against 48). Their boundaries do differ, but by less than a
+  grid cell. The reviewer bisected the density where superposition stops winning at relative
+  importance 0.1: 0.161 for the ReLU, 0.149 for sigmoid, 0.143 for softplus, 0.048 for GELU and
+  below 0.01 for SiLU (review R5-03; not in the run). The 8 × 8 grid resolves only the GELU and
+  SiLU differences.
+- **The unrestricted optimum barely changes the labels:** 2 cells move to superposition for
+  ReLU, leaky ReLU, SiLU and sigmoid, and none for GELU or softplus.
+  - It is often lower than the best family, by more than 1% in 6–14 cells per activation
+    (none for softplus). This is the same equal-length restriction found in E02 (review R1-03).
+- **Quadrature:** re-evaluating every family optimum with 24 instead of 12 nodes changes no
+  label, and no loss by more than 1e-10 relative (`quadrature_check`).
+
+*What training reaches (the vote).* The votes differ from the theory, and from each other,
+mostly because of where training starts (review R5-01).
+- In one dimension the two weights must cross zero to form an antipodal pair:
+  - GELU and SiLU models almost never get there from a same-sign start (3 of 204 and 2 of 133);
+  - softplus and sigmoid get there from either sign;
+  - the ReLU does from about half of its same-sign starts.
+- **So the votes order the activations differently from the theory.** GELU's and SiLU's votes
+  show far less superposition (22 and 16 cells) than their own theory (42 and 28). Softplus's
+  and sigmoid's show more than the ReLU's vote (48 against 39), but not more than the ReLU's
+  theory. Those 9 cells are cells where the *ReLU's* models got stuck, not cells where softplus
+  or sigmoid prefer superposition.
+- **In every cell, the lowest-loss trained model agrees with its activation's unrestricted
+  theory** (one softplus cell excepted). So the landscape is not wrong; the vote of the other
+  nine is.
+- **These are local minima, not slow training:** the reviewer trained stuck GELU and SiLU models
+  for 20,000 more steps, and only 3 of 200 and 7 of 149 escaped (not in the run).
+
+*Losses within a cell.*
+- The theory's optimal loss relative to the ReLU's, median over cells:
+  - GELU 2.3×, SiLU 3.0×, softplus 3.5×, sigmoid 1.8×, leaky ReLU 1.007×.
+  - These ratios mostly measure how well σ can output x when a feature is on and exactly 0 when
+    it is off, not superposition (review R5-08).
+  - Sigmoid's optimum is below the ReLU's in a few dense cells (minimum ratio 0.96).
+- **Softplus and sigmoid have not converged at the sparse densities after 10,000 steps:** their
+  best models reach up to 1.7× and 2.3× their optimum (review R5-02). So their *trained* loss
+  ratios to the ReLU (up to 67× and 29×) overstate the cost of the activation. Use the
+  theory's ratios.
+- GELU's, SiLU's and the ReLU's best models are within 0.5% of their optimum in every cell.
+  Where a trained model beats the family optimum, it is the equal-length restriction (above).
+
+**What this says about p. 51.**
+- **Consistent with Redwood's remark, the diagrams depend on the activation.** For GELU and
+  SiLU they depend strongly in the vote and visibly in the optimum. For softplus, sigmoid and
+  leaky ReLU, the optimum moves by less than the grid resolves.
+- **On "some activations induce more polysemanticity",** the landscape gives SiLU and GELU less
+  superposition than the ReLU, and the others about the same. What training produces depends at
+  least as much on basins of attraction as on the optimum.
+- **Ties:** the rankings in the run group activations that share a value; there is no strict
+  order.
+- **This does not replicate Redwood's result,** which the paper does not show. It tests the
+  remark on one problem size with one seed.
+
+**Evidence.** Generated from the cited run's `acceptance.json`:
+
+<!-- BEGIN AUTO:E12 -->
+Run `20261001T112822Z-6151c7ff` · profile `quick` · seed 0 · device `cpu` · commit `0ad36795d7` · wall-clock 506.7 s · overall **INFO** (0/0)
+
+| Group | Criterion | Paper | Status | Value | Threshold |
+|---|---|---|---|---|---|
+| n2_m1 · relu | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 11, "superposition": 39, "dedicated": 14}, "theory": {"not_learned": 9, "superposition": 46, "dedicated": 9},… | — |
+| n2_m1 · relu | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.8594, "with_confused_family": 0.8594, "best_model_vs_paper_families": 0.9688, "best_model_source": "exact", "unrestric… | — |
+| n2_m1 · relu | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0, "min": 0.933, "max": 1.0047}, "best_model_loss_source": "exact"} | — |
+| n2_m1 · relu | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "231/237", "same_sign": "117/223"} | — |
+| n2_m1 · relu | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {"not_learned → superposition": 1, "dedicated → superposition": 1}, "lower_than_families_by_more_than": {"0.001":… | — |
+| n2_m1 · relu | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 1.2212453270876722e-15, "max_rel_change": 2.713231767455136e-15, "cells_changing_label":… | — |
+| n2_m1 · gelu | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 19, "superposition": 22, "dedicated": 23}, "theory": {"not_learned": 11, "superposition": 42, "dedicated": 11… | — |
+| n2_m1 · gelu | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.6875, "with_confused_family": 0.6875, "best_model_vs_paper_families": 1.0, "best_model_source": "exact", "unrestricted… | — |
+| n2_m1 · gelu | Cells whose label differs from the relu diagram's, and how they changed (reference → this activation) | p. 51 | INFO | {"empirical_same": 0.7344, "theory_same": 0.9375, "empirical_changes": {"superposition → dedicated": 9, "superposition → not_learned": 8}, … | — |
+| n2_m1 · gelu | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0, "min": 0.9706, "max": 1.0009}, "best_model_loss_source": "exact", "theory_over_reference_theory"… | — |
+| n2_m1 · gelu | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "189/216", "same_sign": "3/204"} | — |
+| n2_m1 · gelu | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {}, "lower_than_families_by_more_than": {"0.001": 18, "0.01": 6}, "largest_gain": 0.0295} | — |
+| n2_m1 · gelu | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 1.3322676295501878e-15, "max_rel_change": 2.146090975243585e-15, "cells_changing_label":… | — |
+| n2_m1 · silu | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 21, "superposition": 16, "dedicated": 27}, "theory": {"not_learned": 18, "superposition": 28, "dedicated": 18… | — |
+| n2_m1 · silu | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.8125, "with_confused_family": 0.8125, "best_model_vs_paper_families": 0.9688, "best_model_source": "exact", "unrestric… | — |
+| n2_m1 · silu | Cells whose label differs from the relu diagram's, and how they changed (reference → this activation) | p. 51 | INFO | {"empirical_same": 0.6406, "theory_same": 0.7188, "empirical_changes": {"superposition → dedicated": 13, "superposition → not_learned": 10}… | — |
+| n2_m1 · silu | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0, "min": 0.9784, "max": 1.0002}, "best_model_loss_source": "exact", "theory_over_reference_theory"… | — |
+| n2_m1 · silu | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "129/147", "same_sign": "2/133"} | — |
+| n2_m1 · silu | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {"not_learned → superposition": 1, "dedicated → superposition": 1}, "lower_than_families_by_more_than": {"0.001":… | — |
+| n2_m1 · silu | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 1.3322676295501878e-15, "max_rel_change": 2.1100972296842113e-15, "cells_changing_label"… | — |
+| n2_m1 · softplus | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 8, "superposition": 48, "dedicated": 8}, "theory": {"not_learned": 9, "superposition": 46, "dedicated": 9}, "… | — |
+| n2_m1 · softplus | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.9688, "with_confused_family": 0.9688, "best_model_vs_paper_families": 0.9844, "best_model_source": "exact", "unrestric… | — |
+| n2_m1 · softplus | Cells whose label differs from the relu diagram's, and how they changed (reference → this activation) | p. 51 | INFO | {"empirical_same": 0.8594, "theory_same": 1.0, "empirical_changes": {"dedicated → superposition": 6, "not_learned → superposition": 3}, "th… | — |
+| n2_m1 · softplus | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0114, "min": 0.9907, "max": 1.6577}, "best_model_loss_source": "exact", "theory_over_reference_theo… | — |
+| n2_m1 · softplus | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "237/237", "same_sign": "216/223"} | — |
+| n2_m1 · softplus | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {}, "lower_than_families_by_more_than": {"0.001": 12, "0.01": 0}, "largest_gain": 0.0099} | — |
+| n2_m1 · softplus | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 4.73232564246473e-15, "max_rel_change": 5.2488075081815e-13, "cells_changing_label": 0} | — |
+| n2_m1 · leaky_relu | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 11, "superposition": 39, "dedicated": 14}, "theory": {"not_learned": 9, "superposition": 46, "dedicated": 9},… | — |
+| n2_m1 · leaky_relu | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.8594, "with_confused_family": 0.8594, "best_model_vs_paper_families": 0.9688, "best_model_source": "exact", "unrestric… | — |
+| n2_m1 · leaky_relu | Cells whose label differs from the relu diagram's, and how they changed (reference → this activation) | p. 51 | INFO | {"empirical_same": 1.0, "theory_same": 1.0, "empirical_changes": {}, "theory_changes": {}} | — |
+| n2_m1 · leaky_relu | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0, "min": 0.9312, "max": 1.0046}, "best_model_loss_source": "exact", "theory_over_reference_theory"… | — |
+| n2_m1 · leaky_relu | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "231/237", "same_sign": "117/223"} | — |
+| n2_m1 · leaky_relu | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {"not_learned → superposition": 1, "dedicated → superposition": 1}, "lower_than_families_by_more_than": {"0.001":… | — |
+| n2_m1 · leaky_relu | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 1.3322676295501878e-15, "max_rel_change": 1.8167285857502593e-15, "cells_changing_label"… | — |
+| n2_m1 · sigmoid | Cells per regime: empirical majority, theory (the paper's families), and theory with McGrath's confused family | pp. 14–16, 51–53 | INFO | {"empirical": {"not_learned": 8, "superposition": 48, "dedicated": 8}, "theory": {"not_learned": 9, "superposition": 46, "dedicated": 9}, "… | — |
+| n2_m1 · sigmoid | Share of cells where the empirical majority equals this activation's theory | pp. 14–15 | INFO | {"paper_families": 0.9688, "with_confused_family": 0.9688, "best_model_vs_paper_families": 0.9688, "best_model_source": "exact", "unrestric… | — |
+| n2_m1 · sigmoid | Cells whose label differs from the relu diagram's, and how they changed (reference → this activation) | p. 51 | INFO | {"empirical_same": 0.8594, "theory_same": 1.0, "empirical_changes": {"dedicated → superposition": 6, "not_learned → superposition": 3}, "th… | — |
+| n2_m1 · sigmoid | Loss ratios over the cells (comparable within a cell, footnote 17): the best trained model against the theory's optimum… | p. 15, footnote 17 | INFO | {"best_model_over_theory": {"median": 1.0089, "min": 0.9163, "max": 2.2807}, "best_model_loss_source": "exact", "theory_over_reference_theo… | — |
+| n2_m1 · sigmoid | Models reaching superposition in the cells where this activation's theory has it, by the starting sign of their two wei… | p. 15 | INFO | {"opposite_sign": "237/237", "same_sign": "223/223"} | — |
+| n2_m1 · sigmoid | Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs from the families' and how, and how much lo… | p. 15; R5-03 | INFO | {"changes_from_families": {"not_learned → superposition": 1, "dedicated → superposition": 1}, "lower_than_families_by_more_than": {"0.001":… | — |
+| n2_m1 · sigmoid | Change of every family optimum's loss when re-evaluated with more quadrature nodes (D-601) | p. 51 | INFO | {"nodes": 12, "check_nodes": 24, "max_abs_change": 1.486415157625487e-12, "max_rel_change": 8.761874641465187e-11, "cells_changing_label": … | — |
+| n2_m1 | Share of cells where the extra feature is in superposition, per activation (Redwood: some activations 'induce more poly… | p. 51 | INFO | {"shares": {"relu": {"empirical": 0.6094, "theory": 0.7188, "theory_with_confused": 0.7188, "empirical_confused": 0.0, "unrestricted_theory… | — |
+<!-- END AUTO:E12 -->
+
+**Discrepancies and notes.**
+- *One seed.* Which GELU and SiLU cells end in superposition depends on each cell's starting
+  signs. The cell-by-cell maps will not reproduce on another seed; the shares and the
+  starting-sign effect may (review R5-07).
+- *Resolution.* The 8 × 8 grid hides differences smaller than a cell; boundary positions are
+  not reported (review R5-03).
+- *Scope.* The quick profile covers n = 2, m = 1 only. The full profile, with n = 3, m = 2 on
+  E02's grid, was not run (estimated at about an hour). For n = 3 the trained models' losses
+  are sampled, not exact, so their comparisons would be noisier.
+- *Labels* use E02's thresholds. ‖Wᵢ‖ > 0.5 does not mean the same response for every σ, but
+  the trained norms are bimodal and no label depends on the threshold (review R5-09).
+
+**Run IDs.**
+- Cited (quick, CPU, seed 0, commit `0ad3679`): `20261001T112822Z-6151c7ff` (507 s wall-clock).
+- Earlier, uncited runs of the same profile: `20261001T064053Z-e72fab4f` (commit `79f1937`, the
+  run the review read) and `20261001T073009Z-e72fab4f` (commit `450938e`). Every value they
+  share with the cited run is identical; the unrestricted optimum, the starting-sign rows and
+  the exact-loss best models are new.

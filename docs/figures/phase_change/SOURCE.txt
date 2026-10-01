@@ -1,6 +1,6 @@
 experiment: phase_change
-run_id: 20260930T090540Z-4e3325bf
+run_id: 20261001T070725Z-4e3325bf
 profile: quick
-git_commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+git_commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
 git_dirty: False
 figures: phase_n2_m1.png, theory_variants_n2_m1.png, family_losses_n2_m1.png, phase_n3_m2.png, theory_variants_n3_m2.png, family_losses_n3_m2.png

@@ -12,6 +12,17 @@ abs_computation:
   n_passed: 2
   n_graded: 4
   wall_clock_s: 492.778
+activation_functions:
+  run_id: 20261001T112822Z-6151c7ff
+  profile: quick
+  device: cpu
+  seed: 0
+  commit: 0ad36795d7b8972a6fbdee0b7ce0ad126504bb3b
+  dirty: false
+  overall: INFO
+  n_passed: 0
+  n_graded: 0
+  wall_clock_s: 506.7
 adversarial:
   run_id: 20260929T173800Z-e84cec26
   profile: quick
@@ -35,16 +46,16 @@ basic_results:
   n_graded: 12
   wall_clock_s: 472.425
 intro_pentagon:
-  run_id: 20260929T093651Z-5eeb804c
+  run_id: 20261001T071529Z-5eeb804c
   profile: quick
   device: cpu
   seed: 0
-  commit: 340f825d57d1147e6325c21982ac9b042ee15867
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
   dirty: false
   overall: PASS
   n_passed: 11
   n_graded: 11
-  wall_clock_s: 61.905
+  wall_clock_s: 68.432
 l1_removes_superposition:
   run_id: 20260930T185653Z-c4feb0cf
   profile: quick
@@ -79,27 +90,27 @@ learning_dynamics:
   n_graded: 2
   wall_clock_s: 517.951
 mech_interp_abs:
-  run_id: 20260930T184323Z-3fdd1d10
+  run_id: 20261001T072551Z-3fdd1d10
   profile: quick
   device: cpu
   seed: 0
-  commit: fd32b022730d61db39e23b7919c20e1db03a506c
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
   dirty: false
   overall: PASS
   n_passed: 3
   n_graded: 3
-  wall_clock_s: 257.997
+  wall_clock_s: 255.206
 mech_interp_abs:pilot:
-  run_id: 20260930T183948Z-1e8bafbd
+  run_id: 20261001T072229Z-1e8bafbd
   profile: pilot
   device: cpu
   seed: 0
-  commit: fd32b022730d61db39e23b7919c20e1db03a506c
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
   dirty: false
   overall: PASS
   n_passed: 3
   n_graded: 3
-  wall_clock_s: 212.446
+  wall_clock_s: 199.813
 nonuniform_geometry:
   run_id: 20260930T091958Z-43c63e78
   profile: quick
@@ -112,16 +123,38 @@ nonuniform_geometry:
   n_graded: 9
   wall_clock_s: 287.461
 phase_change:
-  run_id: 20260930T090540Z-4e3325bf
+  run_id: 20261001T070725Z-4e3325bf
   profile: quick
   device: cpu
   seed: 0
-  commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
   dirty: false
   overall: PASS
   n_passed: 6
   n_graded: 6
-  wall_clock_s: 486.673
+  wall_clock_s: 480.891
+phase_change:seed1:
+  run_id: 20261001T065043Z-133b16d8
+  profile: quick
+  device: cpu
+  seed: 1
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
+  dirty: false
+  overall: PARTIAL
+  n_passed: 5
+  n_graded: 6
+  wall_clock_s: 497.795
+phase_change:seed2:
+  run_id: 20261001T065904Z-afab247b
+  profile: quick
+  device: cpu
+  seed: 2
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
+  dirty: false
+  overall: PARTIAL
+  n_passed: 5
+  n_graded: 6
+  wall_clock_s: 498.204
 privileged_basis:
   run_id: 20260929T174443Z-d54df07e
   profile: quick
@@ -145,13 +178,13 @@ sae_recovery:
   n_graded: 3
   wall_clock_s: 415.275
 uniform_geometry:
-  run_id: 20260930T091350Z-2cb2dc61
+  run_id: 20261001T071640Z-2cb2dc61
   profile: quick
   device: cpu
   seed: 0
-  commit: 230a51dddd14739b4b536f49e9b90afeecbfd90c
+  commit: 450938eff0f194925e46a03ad5fca1d3c32f8e0f
   dirty: false
-  overall: PASS
-  n_passed: 4
+  overall: PARTIAL
+  n_passed: 3
   n_graded: 4
-  wall_clock_s: 364.968
+  wall_clock_s: 346.338
