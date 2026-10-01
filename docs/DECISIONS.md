@@ -1046,3 +1046,157 @@ that apply them.
 - **Alternatives:** a separate registered experiment for each run (SPEC §7 would then ask for
   its own notebook and app page); citing the run in prose only (it would have no status summary
   in the record).
+
+## Phase 6: extensions, review, polish
+
+### D-601 · 2026-10-01 · Exact losses for other output activations: split Gauss–Legendre quadrature
+- **Decision:** for an output x′ = σ(WᵀWx + b) with σ ≠ ReLU, `theory.activation_square_integral`
+  integrates (γx − σ(αx + βy + c))² over [0, 1]² with Gauss–Legendre rules on pieces where σ's
+  argument keeps one sign. x is split where αx + c = 0 or αx + c + β = 0; for each x node, y is
+  split where αx + βy + c = 0. The 1-sparse terms use the same rule in 1D. σ is the torch
+  function the model trains with, evaluated in float64. Every sparsity pattern is summed exactly
+  as for the ReLU (p. 13).
+- **Accuracy:**
+  - The pieces are polynomials for the ReLU, leaky ReLU and identity, so the rule is exact
+    there; the unit test matches the ReLU closed form to 1e-12.
+  - For gelu, silu, softplus and sigmoid, 24 nodes per piece agree with nested adaptive
+    quadrature (scipy, 1e-13) to 1e-9 across E12's search box: scale ≤ 4, so |α|, |β| ≤ 16, and
+    bias in [−8, 4].
+  - 12 nodes, which E12's search uses for speed, stay within 1e-4 there; the largest errors
+    (about 1e-5, GELU) sit at the box's far corners, far from any optimum.
+  - Every family optimum E12 reports is re-evaluated with 24 nodes. The run records the largest
+    change and whether any cell's winner changes (`quadrature_check`).
+- **Rationale:** no closed form exists for these σ. SPEC §6 asks for closed forms or adaptive
+  quadrature at ≤ 1e-8 for E02; E12 is an extension, and it reports its accuracy check at the
+  optima instead of assuming it.
+- **Alternatives:** adaptive quadrature per evaluation (orders of magnitude slower in the
+  family search); Monte Carlo (noisy at the 1e-4 relative gaps between families).
+- **Paper:** p. 51 (Redwood), with p. 13's decomposition.
+
+### D-602 · 2026-10-01 · E12: what is varied, profiles, and what is reported
+- **Decision:**
+  - E12 is E02 with the output ReLU replaced by relu, gelu, silu, softplus, leaky_relu
+    (PyTorch's default negative slope 0.01) and sigmoid.
+  - Everything else is E02's: the labels and vote of D-304, the thresholds, ten models per cell,
+    seed 0, the same starting weights for every activation (initialization depends only on seed
+    and instance), Adam at lr 1e-3, batch 256 and 10,000 steps (D-309).
+  - Each activation gets its own theoretical diagram: the same families as E02, with the exact
+    loss under that σ (D-601).
+  - The family search uses one box for every activation, wider than E02's: scale ≤ 4, bias in
+    [−8, 4], 30 golden-section steps. Sigmoid and softplus optima need larger weights and more
+    negative biases; the optima found reach a scale of about 3.1 and biases of about −5.3. A
+    unit test checks that this box gives E02's ReLU labels on E02's grid.
+  - **quick:** n = 2, m = 1 on an 8 × 8 grid, so that six activations fit in SPEC §5's
+    10 minutes.
+  - **full:** both E02 problems on E02's quick 12 × 12 grid, so the ReLU column repeats E02's
+    cited run. Not run; estimated at about an hour on an Apple M2 CPU (D-R06).
+  - E12 has no pass/fail (SPEC §7). It reports per activation:
+    - the regions, empirical and theoretical;
+    - agreement with its own theory;
+    - the cells whose label changes from the ReLU's, and how;
+    - losses compared within a cell, which footnote 17 allows: the same task. These are the
+      best trained model against the theory, and both against the ReLU. For n = 2 the trained
+      models' losses are exact.
+    - the share of cells in superposition;
+    - outcome by starting sign (D-605);
+    - the quadrature check.
+- **Rationale:** p. 51 gives only the qualitative remark; varying one thing at a time makes
+  differences attributable to the activation. The theory per activation separates what the loss
+  landscape prefers from what training reaches.
+- **Alternatives:** reusing the ReLU theory for every activation (it would not say whether a
+  difference is optimization or optimum); a finer grid in quick (over the time budget).
+- **Paper:** p. 51; pp. 14–16.
+
+### D-603 · 2026-10-01 · E03: a Dᵢ cluster counts only in its polytope (tightens D-306)
+- **Finding (review R2-01):** D-306 counts a feature toward a fraction when its Dᵢ is nearest to
+  that fraction within ±0.02. 2/5 and 3/8 are 0.025 apart, so their windows overlap on
+  [0.355, 0.42]. One band of Dᵢ near 0.39 then counts as a pentagon cluster and a square-antiprism
+  cluster at once, and the upper tail of a band below 2/3 counts as triangles. The cited run's
+  "triangle" and "square antiprism" clusters are of this kind.
+- **Decision:** a feature counts toward a fraction only if, in addition, its tegum factor is that
+  fraction's polytope as named by D-308. For example, a feature at 2/5 must sit in a pentagon,
+  and one at 1/2 in a digon. The edge threshold is E03's graded 0.05.
+  - Everything else in D-306 is unchanged: ±0.02, ≥ 20% and ≥ 8 of one model's represented
+    features, at least three fractions.
+  - The old count is still reported, as INFO `fraction_clusters_by_value`.
+- **Rationale:** p. 19 says each fraction "corresponds to a specific weight geometry"; the
+  criterion should test that geometry, not a value that two geometries share. This tightens
+  the criterion; nothing is loosened.
+- **Known before the change:** the reviewer's analysis of the cited run suggested that only 1/2
+  and 2/5 survive, so E03 is expected to become PARTIAL. The rule was fixed and committed before
+  the run that grades it.
+- **Supersedes:** D-306's cluster rule.
+
+### D-604 · 2026-10-01 · E09: motifs must carry their roles; "named" means nothing unexplained
+- **Findings (review R4-01, R4-02):**
+  - `find_motifs` checks a weight pattern only. It does not require the asymmetric neuron to
+    store just the two features, nor the partner to be an inhibitor, and it reported motifs on
+    neurons the role table calls unexplained.
+  - The inhibitor role names almost any neuron whose most negative gain dominates. On random
+    weights about half of the live neurons get a role, most of them inhibitors.
+- **Decision:**
+  - A motif counts only if its asymmetric neuron carries asymmetric-superposition(heavy, victim),
+    as its role or its secondary role, and its partner is inhibitor(victim)
+    (`interp.role_consistent_motifs`). The graded `motif_found` and the motif statistics use
+    these. The weight-pattern counts are reported next to them.
+  - A neuron is "named" for the graded 90% only if nothing in it is unexplained
+    (`NeuronRole.fully_named`): an inhibitor whose other content fits no role does not count.
+    Ablation agreement is measured over these neurons.
+  - New INFO `named_at_initialization`: the same rules on every restart's untrained weights, as
+    a baseline for the 90% bar.
+- **Rationale:** the paper's motif (p. 39) is one neuron storing two features plus an inhibitor;
+  a role the rules give to random weights is weak evidence. Both changes tighten the criteria.
+- **Supersedes:** the motif counting and the "named" count of D-501.
+
+### D-605 · 2026-10-01 · E02: held-out seeds for the n = 3 agreement; starting sign; exact losses
+- **Findings (review R1-01–R1-03):**
+  - The n = 3 agreement (0.819 against the 0.80 bar) rests on one seed. A resampling of each
+    cell's models puts it near 0.80 on average. The batch-1024 comparison of D-309 shares seed 0
+    and therefore the same starting weights.
+  - In n = 2 cells where the theory has superposition, whether a model gets there seems to
+    depend on the starting sign of its two weights.
+  - Trained n = 2 models beat the restricted families in more cells than the docs said.
+- **Decision (fixed before the runs):**
+  - **Held-out seeds.** The unchanged quick profile is run with `--seed 1` and `--seed 2`, and
+    pinned as `phase_change:seed1` and `phase_change:seed2` (D-R07). REPRODUCTION.md reports
+    the n = 2 and n = 3 agreement of all three seeds and their mean.
+  - **If the n = 3 mean over the three seeds is below 0.80:**
+    - E02's section and README say the n = 3 agreement criterion does not hold across seeds;
+    - review finding R1-01 stays open, with the status left to the owner as D-R05 did for E11;
+    - the cited seed-0 run's grade is not edited.
+  - **New INFO rows:**
+    - `initial_sign`: in the cells where the theory has superposition, how many models reach it,
+      split by the starting sign of their two weights (n = 2; models keep their starting
+      weights in the checkpoint);
+    - `exact_loss_vs_theory`: per cell, the best trained model's exact loss against the
+      cheapest paper family's, for n = 2.
+  - E12 reports `initial_sign` per activation.
+- **Paper:** pp. 14–16.
+
+### D-606 · 2026-10-01 · Untracked code makes a run dirty
+- **Finding (review R1-10):** `runs.git_info` ignored untracked files, so a run that imported a
+  new module or read a new config not yet committed was recorded as `dirty: false`.
+- **Decision:** untracked files under `src/` and `configs/` now make the tree dirty. Other
+  untracked files, such as notes, do not.
+- **Effect on cited runs:** no cited run used an untracked module (review R1-10 checked
+  E00–E02; every later cited run was launched from a clean detached worktree).
+
+### D-607 · 2026-10-01 · How the Phase 6 review was run
+- **Decision:**
+  - Four reviewers with fresh context, each a separate agent that saw none of this
+    repository's history, took one group each:
+    - engine and E00–E02;
+    - E03–E05;
+    - E06–E08;
+    - E09–E11.
+  - Each re-derived its experiments from the cited paper pages first, then audited the code
+    and checked every number in docs/REPRODUCTION.md against the cited runs.
+  - They worked read-only on the repository, without the reference implementations, and
+    returned numbered findings with evidence.
+  - A fifth review of E12 ran after E12's code was written.
+  - docs/REVIEW.md lists every finding and its resolution.
+- **Rationale:** SPEC §11 asks for a reviewer with fresh context; splitting by experiment
+  group keeps each review within one reading of the relevant pages.
+- **Caveat:** the reviewers' own analysis scripts are not part of the repository. A number in
+  REVIEW.md that comes from them is labeled as the reviewer's analysis. A number that the docs
+  rely on was first re-computed by code in this repository and a logged run.
