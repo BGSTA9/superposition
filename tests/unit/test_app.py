@@ -29,6 +29,15 @@ def test_home_renders_status_and_paper_map() -> None:
     assert any("uv run superposition run intro_pentagon" in c.value for c in at.code)
 
 
+def test_sidebar_shows_the_lab_credit() -> None:
+    """Every page's sidebar ends with the lab's logo, then its name (lab_ui.lab_credit)."""
+    at = AppTest.from_file(str(APP / "Home.py"), default_timeout=60).run()
+    credit = [m.value for m in at.sidebar.markdown if "lab-credit" in m.value]
+    assert len(credit) == 1
+    logo = credit[0].index('src="data:image/svg+xml;base64,')
+    assert logo < credit[0].index("Argo Navis Research Lab")  # the logo comes first
+
+
 def playground(steps: int = 500, restarts: int = 2) -> AppTest:
     at = AppTest.from_file(str(APP / "pages" / "1_Playground.py"), default_timeout=120)
     at.session_state["pg_steps"] = steps
