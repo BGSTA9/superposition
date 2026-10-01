@@ -55,7 +55,7 @@ from superposition.plotting.style import (
 )
 from superposition.plotting.weights import WeightsPanel, weights_grid
 from superposition.runs import RunDir
-from superposition.theory import linear_optimum_loss
+from superposition.theory import linear_loss_decomposition, linear_optimum_loss
 from superposition.train import evaluate_loss, train
 from superposition.utils import PROBE_STREAM, derive_seed, make_generator
 
@@ -411,9 +411,12 @@ def evaluate(config: IntroPentagonConfig, grids: dict[str, GridResult]) -> list[
             )
         for cond, s in enumerate(config.sparsities):
             p = 1.0 - s
-            _, _, loss = linear.best_weights(cond)
+            W, b, loss = linear.best_weights(cond)
             optimum = linear_optimum_loss(linear.importance, config.n_hidden, p)
             rel = abs(loss - optimum) / optimum
+            # The same model's exact expected loss (p. 13): the sampled estimate's error is
+            # mostly sampling noise and the winner's curse of picking the lowest of 8 (R1-11).
+            exact = float(linear_loss_decomposition(W[None], b[None], linear.importance, p).total)
             criteria.append(
                 check(
                     f"S{s:g}_loss_vs_closed_form",
@@ -424,10 +427,13 @@ def evaluate(config: IntroPentagonConfig, grids: dict[str, GridResult]) -> list[
                         "loss": round(loss, 5),
                         "optimum": round(optimum, 5),
                         "rel_diff": round(rel, 4),
+                        "exact_loss": round(exact, 6),
+                        "exact_rel_diff": round(abs(exact - optimum) / optimum, 6),
                     },
                     {"rel_diff_max": thr.linear_optimum_rel_tol},
                     group="linear",
-                    notes=f"evaluated on {config.train.eval_samples:,} fresh samples",
+                    notes=f"graded on {config.train.eval_samples:,} fresh samples; exact_loss is "
+                    "the same model's exact expected loss (theory.linear_loss_decomposition)",
                 )
             )
 
