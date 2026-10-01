@@ -29,9 +29,13 @@ def test_uniform_geometry_dense_and_plateau_points() -> None:
 
 
 @pytest.mark.paper
-def test_uniform_geometry_quick_profile_passes() -> None:
+def test_uniform_geometry_quick_profile() -> None:
+    """The cited outcome: PARTIAL 3/4. D* passes all three criteria; the clusters at the
+    characteristic fractions, counted only in their polytopes (D-603), are backed at 1/2 alone
+    (docs/REPRODUCTION.md, E03). A change there should be reported, not absorbed."""
     run = run_experiment("uniform_geometry", "quick", device="cpu", echo=False, figures=False)
     doc = run.read_acceptance()
-    failing = [(c["id"], c["value"]) for c in doc["criteria"] if c["status"] == "FAIL"]
-    assert doc["overall"] == "PASS", failing
+    status = {c["id"]: c["status"] for c in doc["criteria"]}
+    for criterion in ("dense_dstar_is_1", "half_plateau", "falls_after_plateau"):
+        assert status[criterion] == "PASS", criterion
     assert doc["n_graded"] == 4
