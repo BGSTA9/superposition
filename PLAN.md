@@ -221,7 +221,16 @@ Not Phase 6. Report: docs/progress/rectification.md.
 
 ## Phase 6: extensions, review, polish (SPEC §7 E12, §10, §11, §12)
 
-- [ ] **E12 activation_functions**: E02 for relu, gelu, silu, softplus, leaky_relu, sigmoid.
-- [ ] Independent review → `docs/REVIEW.md`.
-- [ ] Complete every doc; README gallery; notebook 11.
-- [ ] Fresh-clone test: clone → `uv sync` → `pytest -m "not slow"` → quick E00 → app.
+Report: docs/progress/phase-6.md. Decisions D-601–D-608.
+
+- [x] **E12 activation_functions** (p. 51): E02 for relu, gelu, silu, softplus, leaky_relu,
+      sigmoid. Each activation gets its own family theory (exact losses by quadrature, D-601)
+      and an unrestricted optimum per cell (D-608). INFO only (no pass/fail), cited quick run
+      on n = 2, m = 1, an 8 × 8 grid. The full profile (both problems) was not run.
+- [x] Independent review → `docs/REVIEW.md`: five fresh-context reviewers, 59 findings, each
+      resolved or listed as open (D-607).
+  - [x] Re-graded: E03 PARTIAL 3/4 (D-603). E09 PASS 3/3 on tightened criteria (D-604).
+  - [~] E02 n = 3 agreement fails on two of three seeds (D-605); status left to the owner.
+- [x] Every doc complete; README gallery (E00–E12) and status table; study-guide stop 11 and the
+      extension menu; notebook 11.
+- [x] Fresh-clone test: clone → `uv sync` → `pytest -m "not slow"` → quick E00 → app.
