@@ -7,6 +7,7 @@ to them. Run one with ``superposition run <name>`` or
 
 from superposition.experiments import (
     abs_computation,
+    activation_functions,
     adversarial,
     basic_results,
     intro_pentagon,
@@ -36,6 +37,7 @@ REGISTRY: dict[str, Experiment] = {
         mech_interp_abs.EXPERIMENT,
         sae_recovery.EXPERIMENT,
         l1_removes_superposition.EXPERIMENT,
+        activation_functions.EXPERIMENT,
     )
 }
 
