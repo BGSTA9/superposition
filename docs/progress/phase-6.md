@@ -222,7 +222,7 @@ E11), no FAIL, and E12 report-only. E02's PASS carries the open seed question.
 | Item | Status |
 |---|---|
 | All phases complete, exit criteria verified | yes (phase reports 0–6; the rectification reports) |
-| CI green | yes at `b50d062` (after the setup-uv fix). This phase's commits are not pushed, so CI has not run on them; locally the CI commands pass |
+| CI green | yes: lint, type-check and the unit tier pass on GitHub Actions at `41aad4b`, the Phase 6 head (run 36859923829) |
 | Fresh-clone test | passed (above) |
 | Every experiment has a quick run, published figures and an honest REPRODUCTION entry | yes (E00–E12) |
 | The app and all notebooks run | yes. The app ran from the fresh clone and from the main tree. All twelve notebooks ran this phase: 00–03 in the slow tier, 04–11 against the cited runs |
