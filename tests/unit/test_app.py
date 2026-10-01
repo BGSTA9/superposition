@@ -77,7 +77,7 @@ def test_playground_linear_shows_closed_form_optimum() -> None:
 # --- results pages: Phase diagrams, Geometry, Non-uniform, Dynamics, Neurons, Adversarial -----
 
 RESULT_PAGES = {
-    "2_Phase_diagrams.py": ["phase_change"],
+    "2_Phase_diagrams.py": ["phase_change", "activation_functions"],
     "3_Geometry.py": ["uniform_geometry"],
     "4_Non-uniform.py": ["nonuniform_geometry"],
     "5_Dynamics.py": ["learning_dynamics"],
@@ -92,6 +92,14 @@ TINY_RUNS: dict[str, dict] = {
         "grid": {"n_importance": 4, "n_density": 4},
         "models_per_cell": 3,
         "theory": {"scale_grid": 11, "bias_grid": 31, "golden_iterations": 20},
+        "train": TINY_TRAIN,
+    },
+    "activation_functions": {
+        "activations": ["relu", "gelu"],
+        "grid": {"n_importance": 4, "n_density": 4},
+        "models_per_cell": 3,
+        "theory": {"scale_grid": 11, "bias_grid": 31, "golden_iterations": 15,
+                   "quadrature_nodes": 6, "check_nodes": 8},
         "train": TINY_TRAIN,
     },
     "uniform_geometry": {
@@ -253,6 +261,21 @@ def test_phase_diagrams_cell_selection(tiny_results: Path, monkeypatch: pytest.M
     assert "importance 0.1×" in at.subheader[0].value
     for view in at.radio(key="pc_view").options:
         at.radio(key="pc_view").set_value(view).run()
+        assert not at.exception
+
+
+def test_phase_diagrams_e12_tab(tiny_results: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """E12's tab switches activation and cell, and shows the regime shares."""
+    from superposition.runs import RESULTS_ENV
+
+    monkeypatch.setenv(RESULTS_ENV, str(tiny_results))
+    at = AppTest.from_file(str(APP / "pages" / "2_Phase_diagrams.py"), default_timeout=120).run()
+    at.radio(key="e12_activation").set_value("gelu").run()
+    at.select_slider(key="e12_density").set_value(3).run()
+    assert not at.exception
+    assert any("gelu" in str(chart.proto) for chart in at.get("plotly_chart"))
+    for view in at.radio(key="e12_view").options:
+        at.radio(key="e12_view").set_value(view).run()
         assert not at.exception
 
 

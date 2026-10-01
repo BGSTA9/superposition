@@ -35,6 +35,7 @@ from superposition.experiments.common import train_sparsity_grid
 from superposition.models import TiedKind, TiedModel
 from superposition.plotting.neurons import NeuronPanel, neuron_order_by_top_feature
 from superposition.runs import RunDir, latest_run, project_root
+from superposition.theory import PHASE_LABELS
 from superposition.utils import resolve_device
 
 # Control ranges of the Playground (SPEC §8).
@@ -875,6 +876,73 @@ def load_phase_change(run: RunDir) -> PhaseChangeRun:
             theory=theory,
         )
     return PhaseChangeRun(run.run_id, problems, config.discard_worst)
+
+
+@dataclass
+class ActivationFunctionsRun:
+    """An E12 run: ``problems[setting][activation]`` is that activation's phase diagram, in the
+    same form as an E02 problem (Paper: p. 51; pp. 14–16)."""
+
+    run_id: str
+    activations: list[str]
+    reference: str
+    problems: dict[str, dict[str, PhaseProblem]]
+    discard_worst: int
+    cells: pd.DataFrame
+
+
+def load_activation_functions(run: RunDir) -> ActivationFunctionsRun:
+    """Load an E12 run's trained grids, theoretical diagrams and per-cell table."""
+    from superposition.experiments.activation_functions import ActivationFunctionsConfig
+    from superposition.experiments.phase_change import (
+        PhaseGridResult,
+        TheoryResult,
+        extra_feature_regime,
+    )
+
+    config = from_dict(ActivationFunctionsConfig, yaml.safe_load(run.config_path.read_text()))
+    cells = run.read_table("cells")
+    thr = config.thresholds
+    problems: dict[str, dict[str, PhaseProblem]] = {}
+    for setting in config.settings:
+        problems[setting.label] = {}
+        for activation in config.activations:
+            stem = f"{setting.label}__{activation}"
+            grid = PhaseGridResult.from_checkpoint(run.load_checkpoint(f"{stem}__empirical"))
+            theory = TheoryResult.from_checkpoint(run.load_checkpoint(f"{stem}__theory"))
+            regime, _, _ = extra_feature_regime(
+                grid.W, setting.n_features - 1, thr.represented_norm, thr.superposition_score
+            )
+            mask = (cells["setting"] == setting.label) & (cells["activation"] == activation)
+            problems[setting.label][activation] = PhaseProblem(
+                label=setting.label,
+                n_features=setting.n_features,
+                n_hidden=setting.n_hidden,
+                importance=np.asarray(grid.importance_grid),
+                density=np.asarray(grid.density_grid),
+                regime=regime,
+                W=grid.W.numpy(),
+                b=grid.b.numpy(),
+                loss=grid.final_loss.numpy(),
+                models_per_cell=grid.models_per_cell,
+                cells=pd.DataFrame(cells[mask]).reset_index(drop=True),
+                theory=theory,
+            )
+    return ActivationFunctionsRun(
+        run_id=run.run_id,
+        activations=list(config.activations),
+        reference=config.reference,
+        problems=problems,
+        discard_worst=config.discard_worst,
+        cells=cells,
+    )
+
+
+def regime_shares(cells: pd.DataFrame, column: str) -> pd.DataFrame:
+    """Share of an E12 problem's cells in each regime, one row per activation (p. 51)."""
+    shares = pd.crosstab(cells["activation"], cells[column], normalize="index")
+    order = list(dict.fromkeys(cells["activation"]))
+    return pd.DataFrame(shares.loc[order, [c for c in PHASE_LABELS if c in shares.columns]])
 
 
 def phase_cell_models(problem: PhaseProblem, d: int, i: int, discard_worst: int) -> pd.DataFrame:
