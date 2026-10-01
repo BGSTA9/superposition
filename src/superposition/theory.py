@@ -21,6 +21,16 @@ leaves a piecewise cubic in x whose breakpoints are known, and integrates each p
 3-point Gauss–Legendre rule, which is exact for polynomials of degree ≤ 5. See
 docs/DECISIONS.md (D-301).
 
+**Other output activations (E12, an extension).** Redwood found that the phase diagrams "look
+quite different depending on the activation function" (p. 51). For an output x′ = σ(WᵀWx + b)
+with any registered σ, :func:`activation_square_integral` computes F_σ, the same integral with σ
+in place of the ReLU, by piecewise Gauss–Legendre quadrature split where the argument of σ
+crosses 0 (docs/DECISIONS.md D-601). It is exact for the ReLU and the leaky ReLU, whose pieces
+are polynomials. For the smooth activations, 24 nodes per piece are accurate to better than
+1e-9 across the box E12 searches (tested against adaptive quadrature); E12 searches with 12,
+whose error reaches about 1e-5 only at the box's far corners, and re-evaluates every optimum
+it finds with 24.
+
 **Sign convention.** The phase-change section writes ReLU(WᵀWx − b) (p. 14). We use +b
 everywhere (SPEC §3), so the paper's b is our −b; no result depends on it.
 """
@@ -47,6 +57,10 @@ _GL_WEIGHTS = np.array([5 / 9, 8 / 9, 5 / 9])
 
 # Entries of a family template below this magnitude count as exactly zero.
 _TEMPLATE_TOL = 1e-12
+
+# Gauss–Legendre nodes per piece for non-ReLU activations (D-601; accuracy tested in
+# tests/unit/test_theory.py).
+DEFAULT_QUADRATURE_NODES = 16
 
 
 def uniform_feature_variance(feature_probability: float | Tensor) -> float | Tensor:
@@ -240,24 +254,170 @@ def own_error_1d(a: ArrayLike, c: ArrayLike) -> FloatArray:
 
 
 def pair_output_loss(
-    p_own: ArrayLike, p_other: ArrayLike, a: ArrayLike, beta: ArrayLike, c: ArrayLike
+    p_own: ArrayLike,
+    p_other: ArrayLike,
+    a: ArrayLike,
+    beta: ArrayLike,
+    c: ArrayLike,
+    activation: str = "relu",
+    nodes: int = DEFAULT_QUADRATURE_NODES,
 ) -> FloatArray:
-    """E[(xᵢ − ReLU(a xᵢ + β xⱼ + c))²] for independent sparse xᵢ, xⱼ, exactly (elementwise).
+    """E[(xᵢ − σ(a xᵢ + β xⱼ + c))²] for independent sparse xᵢ, xⱼ, exactly (elementwise).
 
     The expected squared error of one output of the ReLU output model that reads its own
     feature with coefficient a = ‖Wᵢ‖² and one other feature with β = Wᵢ·Wⱼ (Paper: p. 13,
     "the integral over x decomposes into a term for each sparsity pattern"). The four sparsity
     patterns of (xᵢ, xⱼ) are weighted by their probabilities: neither active (ReLU(c)²), only
     the own feature, only the other one, and both (the 2D integral F(1, a, β, c)).
+
+    ``activation`` names the output nonlinearity σ (``superposition.models.ACTIVATIONS``). The
+    ReLU uses the closed forms above; any other σ uses :func:`activation_square_integral` and
+    its 1D counterparts with ``nodes`` Gauss–Legendre nodes per piece (E12, p. 51).
     """
     p_own, p_other = np.asarray(p_own, dtype=np.float64), np.asarray(p_other, dtype=np.float64)
     c = np.asarray(c, dtype=np.float64)
+    if activation != "relu":
+        return _activation_pair_output_loss(p_own, p_other, a, beta, c, activation, nodes)
     return (
         (1 - p_own) * (1 - p_other) * np.maximum(c, 0.0) ** 2
         + p_own * (1 - p_other) * own_error_1d(a, c)
         + (1 - p_own) * p_other * relu_square_1d(beta, c)
         + p_own * p_other * relu_square_integral(1.0, a, beta, c)
     )
+
+
+# --- other output activations (E12; Paper: Comments & Replications, p. 51) -------------------
+
+
+def _gauss_legendre_unit(nodes: int) -> tuple[Tensor, Tensor]:
+    """Gauss–Legendre nodes and weights on [0, 1], float64."""
+    x, w = np.polynomial.legendre.leggauss(nodes)
+    return torch.from_numpy((x + 1) / 2), torch.from_numpy(w / 2)
+
+
+def _pieces(lo: Tensor, hi: Tensor, nodes: int) -> tuple[Tensor, Tensor]:
+    """Quadrature points and weights ``(*lo.shape, nodes)`` on the intervals [lo, hi]."""
+    t, w = _gauss_legendre_unit(nodes)
+    width = (hi - lo)[..., None]
+    return lo[..., None] + width * t, width * w
+
+
+def _root(slope: Tensor, intercept: Tensor) -> Tensor:
+    """Where slope·t + intercept = 0, clipped into [0, 1] (0 when slope = 0: no split)."""
+    safe = torch.where(slope == 0, torch.ones_like(slope), slope)
+    return torch.where(slope == 0, torch.zeros_like(slope), (-intercept / safe).clamp(0.0, 1.0))
+
+
+def _as_flat_tensors(*values: ArrayLike) -> tuple[tuple[int, ...], list[Tensor]]:
+    arrays = np.broadcast_arrays(*(np.asarray(v, dtype=np.float64) for v in values))
+    return arrays[0].shape, [torch.from_numpy(np.ascontiguousarray(a).reshape(-1)) for a in arrays]
+
+
+def activation_square_integral(
+    activation: str,
+    own: ArrayLike,
+    a: ArrayLike,
+    beta: ArrayLike,
+    c: ArrayLike,
+    nodes: int = DEFAULT_QUADRATURE_NODES,
+    chunk: int = 8192,
+) -> FloatArray:
+    """F_σ(γ, α, β, c) = ∫₀¹∫₀¹ (γx − σ(αx + βy + c))² dy dx, elementwise.
+
+    Paper: Comments & Replications, p. 51 (Redwood: the phase diagrams depend on the
+    activation). The generalization of :func:`relu_square_integral` to any registered
+    activation σ (``superposition.models.ACTIVATIONS``, evaluated in float64 with the same
+    torch function the model trains with).
+
+    Method (docs/DECISIONS.md D-601): split x ∈ [0, 1] where αx + c = 0 or αx + c + β = 0,
+    and, for each x, split y ∈ [0, 1] where αx + βy + c = 0; integrate every piece with an
+    ``nodes``-point Gauss–Legendre rule. On each piece σ's argument keeps one sign, so the
+    integrand is a polynomial for the ReLU and leaky ReLU (exact) and smooth for the others.
+
+    All arguments broadcast; the result is a float64 array of their broadcast shape.
+    """
+    from superposition.models import get_activation
+
+    sigma = get_activation(activation)
+    shape, (own_t, a_t, beta_t, c_t) = _as_flat_tensors(own, a, beta, c)
+    out = torch.empty_like(a_t)
+    for start in range(0, a_t.numel(), chunk):
+        part = slice(start, start + chunk)
+        g, al, be, cc = own_t[part], a_t[part], beta_t[part], c_t[part]
+        edges = torch.sort(
+            torch.stack(
+                [
+                    torch.zeros_like(al),
+                    _root(al, cc),
+                    _root(al, cc + be),
+                    torch.ones_like(al),
+                ]
+            ),
+            dim=0,
+        ).values
+        x, wx = _pieces(edges[:-1], edges[1:], nodes)  # (3, k, q)
+        t = al[:, None] * x + cc[:, None]
+        split = _root(be[:, None].expand_as(t), t)
+        y, wy = _pieces(
+            torch.stack([torch.zeros_like(split), split]),
+            torch.stack([split, torch.ones_like(split)]),
+            nodes,
+        )  # (2, 3, k, q, q)
+        u = t[..., None] + be[:, None, None] * y
+        error = (g[:, None, None] * x[..., None] - sigma(u)) ** 2
+        inner = (error * wy).sum(-1).sum(0)  # (3, k, q)
+        out[part] = (inner * wx).sum(-1).sum(0)
+    return out.reshape(shape).numpy()
+
+
+def activation_error_1d(
+    activation: str,
+    own: ArrayLike,
+    a: ArrayLike,
+    c: ArrayLike,
+    nodes: int = DEFAULT_QUADRATURE_NODES,
+) -> FloatArray:
+    """∫₀¹ (γx − σ(ax + c))² dx, split where ax + c = 0 (elementwise).
+
+    With γ = 1 it is the 1-sparse feature benefit term; with γ = 0 (and a = β) the 1-sparse
+    interference term ∫σ(βy + c)² (p. 13, with σ in place of the ReLU).
+    """
+    from superposition.models import get_activation
+
+    sigma = get_activation(activation)
+    shape, (own_t, a_t, c_t) = _as_flat_tensors(own, a, c)
+    split = _root(a_t, c_t)
+    x, w = _pieces(
+        torch.stack([torch.zeros_like(split), split]),
+        torch.stack([split, torch.ones_like(split)]),
+        nodes,
+    )  # (2, k, q)
+    error = (own_t[:, None] * x - sigma(a_t[:, None] * x + c_t[:, None])) ** 2
+    return (error * w).sum(-1).sum(0).reshape(shape).numpy()
+
+
+def _activation_pair_output_loss(
+    p_own: FloatArray,
+    p_other: FloatArray,
+    a: ArrayLike,
+    beta: ArrayLike,
+    c: FloatArray,
+    activation: str,
+    nodes: int,
+) -> FloatArray:
+    """:func:`pair_output_loss` for a non-ReLU σ; skips the terms whose weight is 0."""
+    from superposition.models import get_activation
+
+    sigma = get_activation(activation)
+    zero = sigma(torch.from_numpy(np.array(c, dtype=np.float64))).numpy() ** 2
+    total = (1 - p_own) * (1 - p_other) * zero
+    total = total + p_own * (1 - p_other) * activation_error_1d(activation, 1.0, a, c, nodes)
+    if np.any(p_other != 0):
+        total = total + (1 - p_own) * p_other * activation_error_1d(activation, 0.0, beta, c, nodes)
+        total = total + p_own * p_other * activation_square_integral(
+            activation, 1.0, a, beta, c, nodes
+        )
+    return np.asarray(total, dtype=np.float64)
 
 
 @dataclass
@@ -331,6 +491,7 @@ def relu_output_expected_loss(
     b: Float[Tensor, " feat"] | FloatArray,
     importance: ArrayLike,
     feature_probability: ArrayLike,
+    activation: str = "relu",
 ) -> float:
     """Exact expected loss of one ReLU output model x′ = ReLU(WᵀWx + b).
 
@@ -344,6 +505,8 @@ def relu_output_expected_loss(
         b: ``(feat,)``.
         importance: ``(feat,)``.
         feature_probability: scalar or ``(feat,)``.
+        activation: the output nonlinearity; another name than ``"relu"`` gives the loss of
+            x′ = σ(WᵀWx + b) by quadrature (E12, p. 51; :func:`pair_output_loss`).
     """
     W_np = np.asarray(W.detach().cpu() if isinstance(W, Tensor) else W, dtype=np.float64)
     b_np = np.asarray(b.detach().cpu() if isinstance(b, Tensor) else b, dtype=np.float64)
@@ -361,7 +524,50 @@ def relu_output_expected_loss(
         j = others[0] if others else None
         beta = gram[i, j] if j is not None else 0.0
         p_other = p[j] if j is not None else 0.0
-        total += imp[i] * float(pair_output_loss(p[i], p_other, gram[i, i], beta, b_np[i]))
+        total += imp[i] * float(
+            pair_output_loss(p[i], p_other, gram[i, i], beta, b_np[i], activation)
+        )
+    return total
+
+
+def tied_output_expected_losses(
+    W: FloatArray,
+    b: FloatArray,
+    importance: ArrayLike,
+    feature_probability: ArrayLike,
+    activation: str = "relu",
+    nodes: int = DEFAULT_QUADRATURE_NODES,
+) -> FloatArray:
+    """Exact expected loss of many models x′ = σ(WᵀWx + b) at once, one per row.
+
+    The vectorized form of :func:`relu_output_expected_loss` for the family optima of a phase
+    diagram (every output reads at most one other feature; entries of WᵀW below 1e-12 count
+    as zero). E12 uses it to re-evaluate each family's optimum with more quadrature nodes.
+
+    Args:
+        W: ``(models, hidden, feat)``; b: ``(models, feat)``.
+        importance, feature_probability: ``(models, feat)``, ``(models,)`` or scalars.
+    """
+    W = np.asarray(W, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+    n_models, _, n = W.shape
+    gram = np.einsum("khi,khj->kij", W, W)
+    imp = np.broadcast_to(np.asarray(importance, dtype=np.float64), (n_models, n))
+    p = np.asarray(feature_probability, dtype=np.float64)
+    p = np.broadcast_to(p[:, None] if p.ndim == 1 else p, (n_models, n))
+    total = np.zeros(n_models)
+    for i in range(n):
+        off = gram[:, i, :].copy()
+        off[:, i] = 0.0
+        off[np.abs(off) < 1e-12] = 0.0
+        if np.any((off != 0).sum(-1) > 1):
+            raise NotImplementedError("an output reads two or more other features")
+        j = np.abs(off).argmax(-1)
+        beta = off[np.arange(n_models), j]
+        p_other = np.where(beta != 0, p[np.arange(n_models), j], 0.0)
+        total += imp[:, i] * pair_output_loss(
+            p[:, i], p_other, gram[:, i, i], beta, b[:, i], activation, nodes
+        )
     return total
 
 
@@ -470,6 +676,9 @@ class OptimizerSettings:
 
     ``fit_bias = False`` fixes every bias at 0: the setting of McGrath's exact analysis
     ("ignoring bias terms", p. 51), used to compare with the confused-feature regime.
+
+    ``activation`` is the output nonlinearity (E12 varies it, p. 51); a non-ReLU activation's
+    losses use quadrature with ``quadrature_nodes`` nodes per piece (D-601).
     """
 
     fit_bias: bool = True
@@ -478,6 +687,8 @@ class OptimizerSettings:
     bias_range: tuple[float, float] = (-1.5, 1.5)
     bias_grid: int = 121
     golden_iterations: int = 40
+    activation: str = "relu"
+    quadrature_nodes: int = DEFAULT_QUADRATURE_NODES
 
 
 def _last_argmin(values: FloatArray) -> NDArray[np.int64]:
@@ -567,7 +778,15 @@ def _optimize_unique_factor(
         pad = (slice(None),) + (None,) * (np.broadcast(s2, bias).ndim - 1)
         beta = s2 * G0[i, j] if j is not None else np.zeros_like(s2)
         p_other = p[:, j][pad] if j is not None else 0.0
-        return pair_output_loss(p[:, i][pad], p_other, s2 * G0[i, i], beta, bias)
+        return pair_output_loss(
+            p[:, i][pad],
+            p_other,
+            s2 * G0[i, i],
+            beta,
+            bias,
+            settings.activation,
+            settings.quadrature_nodes,
+        )
 
     bias_grid = np.linspace(*settings.bias_range, settings.bias_grid)
     bias_step = bias_grid[1] - bias_grid[0]

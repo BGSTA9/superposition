@@ -17,7 +17,7 @@ from scipy.integrate import quad
 
 from superposition import metrics, theory
 from superposition.data import IndependentSparse
-from superposition.models import TiedModel
+from superposition.models import TiedModel, get_activation
 from superposition.utils import make_generator
 
 N_SIGMA = 4.0
@@ -322,3 +322,135 @@ def test_confused_family_needs_zero_biases() -> None:
     with_bias = theory.theoretical_phase_diagram(families, importance, density)
     assert (no_bias.labels == theory.CONFUSED).any()
     assert not (with_bias.labels == theory.CONFUSED).any()
+
+
+# --- other output activations (E12, p. 51; docs/DECISIONS.md D-601) --------------------------
+
+SMOOTH = ("gelu", "silu", "softplus", "sigmoid")
+
+
+def reference_activation_integral(activation: str, own: float, a: float, beta: float, c: float):
+    """F_σ by nested adaptive quadrature, splitting where σ's argument crosses 0."""
+    sigma = get_activation(activation)
+
+    def f(u: float) -> float:
+        return float(sigma(torch.tensor(u, dtype=torch.float64)))
+
+    def inner(x: float) -> float:
+        t = a * x + c
+        kinks = [-t / beta] if beta != 0 and 0 < -t / beta < 1 else None
+        value, _ = quad(
+            lambda y: (own * x - f(t + beta * y)) ** 2,
+            0,
+            1,
+            points=kinks,
+            epsabs=1e-13,
+            epsrel=1e-13,
+            limit=200,
+        )
+        return value
+
+    kinks = [x for x in ([-c / a, -(c + beta) / a] if a != 0 else []) if 0 < x < 1] or None
+    value, _ = quad(inner, 0, 1, points=kinks, epsabs=1e-13, epsrel=1e-13, limit=200)
+    return value
+
+
+def test_activation_integral_is_exact_for_piecewise_linear_activations() -> None:
+    """ReLU, leaky ReLU and identity give polynomial pieces: the quadrature is exact."""
+    rng = np.random.default_rng(11)
+    own = rng.integers(0, 2, 200).astype(float)
+    a, beta, c = rng.normal(0.0, 3.0, (3, 200))
+    relu = theory.activation_square_integral("relu", own, a, beta, c, nodes=4)
+    assert np.allclose(relu, theory.relu_square_integral(own, a, beta, c), atol=1e-12)
+    for activation in ("leaky_relu", "identity"):
+        for k in range(5):
+            exact = reference_activation_integral(activation, own[k], a[k], beta[k], c[k])
+            value = theory.activation_square_integral(activation, own[k], a[k], beta[k], c[k], 4)
+            assert float(value) == pytest.approx(exact, abs=1e-11)
+
+
+@pytest.mark.parametrize("activation", SMOOTH)
+def test_activation_integral_matches_adaptive_quadrature(activation: str) -> None:
+    """D-601: 24 nodes per piece are accurate to 1e-9 across E12's search box (scale ≤ 4, so
+    |α|, |β| ≤ 16, and bias in [−8, 4]); the 12-node search stays within 1e-4 there."""
+    rng = np.random.default_rng(3)
+    for _ in range(6):
+        own = float(rng.integers(0, 2))
+        a, beta, c = rng.uniform(0, 16), rng.uniform(-16, 16), rng.uniform(-8, 4)
+        exact = reference_activation_integral(activation, own, a, beta, c)
+        fine = float(theory.activation_square_integral(activation, own, a, beta, c, nodes=24))
+        coarse = float(theory.activation_square_integral(activation, own, a, beta, c, nodes=12))
+        assert fine == pytest.approx(exact, abs=1e-9)
+        assert coarse == pytest.approx(exact, abs=1e-4)
+
+
+def test_activation_1d_terms_are_special_cases_of_the_2d_integral() -> None:
+    rng = np.random.default_rng(4)
+    a, beta, c = rng.normal(0.0, 2.0, (3, 40))
+    for activation in SMOOTH:
+        own_error = theory.activation_error_1d(activation, 1.0, a, c, nodes=24)
+        interference = theory.activation_error_1d(activation, 0.0, beta, c, nodes=24)
+        assert np.allclose(
+            own_error, theory.activation_square_integral(activation, 1.0, a, 0.0, c, 24)
+        )
+        assert np.allclose(
+            interference, theory.activation_square_integral(activation, 0.0, 0.0, beta, c, 24)
+        )
+
+
+@pytest.mark.parametrize(
+    ("activation", "W", "b", "p"),
+    [
+        ("gelu", [[1.1, -1.1]], [0.1, 0.1], 0.1),
+        ("silu", [[0.9, 0.9]], [0.2, -0.3], 0.5),
+        ("softplus", [[1.6, -1.2]], [-1.5, -1.0], 0.05),
+        ("sigmoid", [[2.5, -2.5]], [-3.0, -2.5], 0.2),
+        ("leaky_relu", [[1.0, 0.0]], [0.0, 0.25], 1.0),
+    ],
+)
+def test_exact_loss_with_other_activations_matches_monte_carlo(
+    activation: str, W: list, b: list, p: float
+) -> None:
+    importance = torch.tensor([1.0, 0.7])
+    exact = theory.relu_output_expected_loss(
+        np.array(W), np.array(b), importance.numpy(), p, activation
+    )
+    model = TiedModel(2, 1, 1, out_act=activation)
+    with torch.no_grad():
+        model.W.copy_(torch.tensor([W]))
+        model.b.copy_(torch.tensor([b]))
+    mean, se = monte_carlo_loss(model, p, importance, 1_000_000, seed=8)
+    assert abs(exact - float(mean[0])) < N_SIGMA * float(se[0]) + 1e-9
+
+
+def test_vectorized_exact_losses_match_one_at_a_time() -> None:
+    rng = np.random.default_rng(6)
+    W = rng.normal(0.0, 1.0, (5, 1, 2))
+    b = rng.normal(0.0, 0.5, (5, 2))
+    importance, p = np.array([[1.0, 0.3]] * 5), np.geomspace(0.02, 1.0, 5)
+    for activation in ("relu", "gelu", "sigmoid"):
+        batch = theory.tied_output_expected_losses(W, b, importance, p, activation)
+        one = [
+            theory.relu_output_expected_loss(W[k], b[k], importance[k], p[k], activation)
+            for k in range(5)
+        ]
+        assert np.allclose(batch, one, rtol=1e-12)
+    with pytest.raises(NotImplementedError):
+        theory.tied_output_expected_losses(
+            np.array([[[1.0, 0.5, 0.5], [0.0, 0.8, -0.6]]]), np.zeros((1, 3)), np.ones(3), 0.1
+        )
+
+
+def test_wider_box_leaves_the_relu_diagrams_unchanged() -> None:
+    """D-602: E12's box and golden-section count give E02's ReLU labels on E02's grid."""
+    importance, density = np.geomspace(0.1, 10, 12), np.geomspace(0.01, 1, 12)
+    e12 = theory.OptimizerSettings(scale_max=4.0, bias_range=(-8.0, 4.0), golden_iterations=30)
+    for paper, confused in (
+        (theory.N2M1_FAMILIES, theory.N2M1_CONFUSED),
+        (theory.N3M2_FAMILIES, theory.N3M2_CONFUSED),
+    ):
+        families = (*paper, confused)
+        e02_diagram = theory.theoretical_phase_diagram(families, importance, density)
+        e12_diagram = theory.theoretical_phase_diagram(families, importance, density, settings=e12)
+        assert (e02_diagram.labels == e12_diagram.labels).all()
+        assert np.allclose(e02_diagram.losses, e12_diagram.losses, rtol=1e-6, atol=1e-12)
