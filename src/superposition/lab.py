@@ -827,6 +827,8 @@ class PhaseProblem:
     models_per_cell: int
     cells: pd.DataFrame
     theory: Any
+    activation: str = "relu"  # the output nonlinearity (E12 varies it)
+    exact_loss: np.ndarray | None = None  # per model, when the run stored it (E12, n = 2)
 
     def grid(self, column: str) -> np.ndarray:
         """A per-cell column of the run's table as a ``(n_density, n_importance)`` array."""
@@ -902,6 +904,9 @@ def load_activation_functions(run: RunDir) -> ActivationFunctionsRun:
 
     config = from_dict(ActivationFunctionsConfig, yaml.safe_load(run.config_path.read_text()))
     cells = run.read_table("cells")
+    exact_table = (
+        run.read_table("model_losses") if (run.path / "model_losses.parquet").exists() else None
+    )
     thr = config.thresholds
     problems: dict[str, dict[str, PhaseProblem]] = {}
     for setting in config.settings:
@@ -914,6 +919,15 @@ def load_activation_functions(run: RunDir) -> ActivationFunctionsRun:
                 grid.W, setting.n_features - 1, thr.represented_norm, thr.superposition_score
             )
             mask = (cells["setting"] == setting.label) & (cells["activation"] == activation)
+            exact = None
+            if exact_table is not None:
+                rows = pd.DataFrame(
+                    exact_table[
+                        (exact_table["setting"] == setting.label)
+                        & (exact_table["activation"] == activation)
+                    ]
+                ).sort_values(by="instance")
+                exact = rows["exact_loss"].to_numpy() if len(rows) else None
             problems[setting.label][activation] = PhaseProblem(
                 label=setting.label,
                 n_features=setting.n_features,
@@ -927,6 +941,8 @@ def load_activation_functions(run: RunDir) -> ActivationFunctionsRun:
                 models_per_cell=grid.models_per_cell,
                 cells=pd.DataFrame(cells[mask]).reset_index(drop=True),
                 theory=theory,
+                activation=activation,
+                exact_loss=exact,
             )
     return ActivationFunctionsRun(
         run_id=run.run_id,
@@ -947,24 +963,31 @@ def regime_shares(cells: pd.DataFrame, column: str) -> pd.DataFrame:
 
 def phase_cell_models(problem: PhaseProblem, d: int, i: int, discard_worst: int) -> pd.DataFrame:
     """The models trained at cell (density ``d``, importance ``i``), lowest loss first, with
-    their extra-feature regime and whether they vote (the highest-loss ones do not, p. 14)."""
+    their extra-feature regime and whether they vote (the highest-loss ones do not, p. 14).
+
+    The vote uses the run's sampled losses, as the experiment does. When the run stored exact
+    losses (E12, n = 2), they get their own column and set the order: at low density a
+    20,000-sample estimate can rank models wrongly (review R5-05)."""
     per_cell = problem.models_per_cell
     first = (d * len(problem.importance) + i) * per_cell
-    order = first + np.argsort(problem.loss[first : first + per_cell], kind="stable")
+    sampled_rank = np.argsort(np.argsort(problem.loss[first : first + per_cell], kind="stable"))
     rows = []
-    for rank, k in enumerate(order):
-        rows.append(
-            {
-                "model": int(k - first),
-                "loss": float(problem.loss[k]),
-                "regime": str(problem.regime[k]),
-                "votes": rank < per_cell - discard_worst,
-                "‖W_extra‖": float(np.linalg.norm(problem.W[k][:, -1])),
-                "W": np.round(problem.W[k], 3).tolist(),
-                "b": np.round(problem.b[k], 3).tolist(),
-            }
-        )
-    return pd.DataFrame(rows)
+    for j in range(per_cell):
+        k = first + j
+        row = {
+            "model": j,
+            "loss": float(problem.loss[k]),
+            "regime": str(problem.regime[k]),
+            "votes": bool(sampled_rank[j] < per_cell - discard_worst),
+            "‖W_extra‖": float(np.linalg.norm(problem.W[k][:, -1])),
+            "W": np.round(problem.W[k], 3).tolist(),
+            "b": np.round(problem.b[k], 3).tolist(),
+        }
+        if problem.exact_loss is not None:
+            row["exact loss"] = float(problem.exact_loss[k])
+        rows.append(row)
+    order = "exact loss" if problem.exact_loss is not None else "loss"
+    return pd.DataFrame(rows).sort_values(order, kind="stable").reset_index(drop=True)
 
 
 def phase_cell_theory(problem: PhaseProblem, d: int, i: int) -> pd.DataFrame:
@@ -1021,7 +1044,7 @@ def phase_cell_shared_losses(
     W = np.array([*voting["W"], *families["W"]], dtype=np.float32)
     b = np.array([*voting["b"], *families["b"]], dtype=np.float32)
     n_inst = len(W)
-    model = TiedModel.from_kind("relu_output", problem.n_features, problem.n_hidden, n_inst)
+    model = TiedModel(problem.n_features, problem.n_hidden, n_inst, out_act=problem.activation)
     with torch.no_grad():
         model.W.copy_(torch.from_numpy(W))
         model.b.copy_(torch.from_numpy(b))
@@ -1042,7 +1065,9 @@ def phase_cell_shared_losses(
 
     def exact(W: list, b: list) -> float:
         try:
-            return theory_exact_loss(np.array(W), np.array(b), importance.numpy(), density)
+            return theory_exact_loss(
+                np.array(W), np.array(b), importance.numpy(), density, problem.activation
+            )
         except NotImplementedError:  # an output reads two or more other features
             return float("nan")
 

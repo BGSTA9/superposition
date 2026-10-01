@@ -118,12 +118,20 @@ def explore(
         theory = theory.drop(columns=["loss with b = 0"])
     cols = st.columns(2)
     with cols[0]:
-        st.markdown("**Trained models**, lowest loss first (the last one does not vote)")
+        exact = "exact loss" in models
+        st.markdown(
+            "**Trained models**, lowest "
+            + ("exact loss" if exact else "loss")
+            + " first (the model with the highest sampled loss does not vote)"
+        )
         st.dataframe(
             models,
             hide_index=True,
             width="stretch",
-            column_config={"loss": st.column_config.NumberColumn(format="%.3e")},
+            column_config={
+                "loss": st.column_config.NumberColumn("sampled loss", format="%.3e"),
+                "exact loss": st.column_config.NumberColumn(format="%.3e"),
+            },
         )
     with cols[1]:
         st.markdown("**Theory**: each family's optimal exact loss here")
@@ -143,7 +151,10 @@ def explore(
     importance = np.ones(problem.n_features)
     importance[-1] = problem.importance[i]
     panels = [
-        (f"trained · {REGIME_NAMES[r['regime']]} · loss {r['loss']:.2e}", np.array(r["W"]))
+        (
+            f"trained · {REGIME_NAMES[r['regime']]} · loss {r.get('exact loss', r['loss']):.2e}",
+            np.array(r["W"]),
+        )
         for r in representatives.to_dict("records")
     ]
     winner = theory[theory["paper family"]].iloc[0]
