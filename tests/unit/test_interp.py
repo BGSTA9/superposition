@@ -202,3 +202,28 @@ def test_role_table_columns() -> None:
     table = interp.role_table(roles, W1, W2, ab)
     assert list(table["role"]) == [r.label for r in roles]
     assert {"zero: agrees", "mean: agrees", "predicted rise"} <= set(table.columns)
+
+
+def test_role_consistent_motifs_need_the_motif_roles() -> None:
+    """R4-01 (docs/REVIEW.md): the weight pattern alone is not the motif. A neuron storing a
+    third feature besides the flipped pair is unexplained, so its pattern does not count."""
+    W1, W2, b = motif_model()
+    roles = interp.neuron_roles(W1, W2)
+    patterns = interp.find_motifs(W1, W2, b)
+    assert interp.role_consistent_motifs(patterns, roles) == patterns
+    W1[1, 2], W2[2, 1] = 0.6, 0.6  # neuron 1 now also computes feature 2
+    roles = interp.neuron_roles(W1, W2)
+    assert roles[1].kind == interp.UNEXPLAINED
+    patterns = interp.find_motifs(W1, W2, b)
+    assert patterns and interp.role_consistent_motifs(patterns, roles) == []
+
+
+def test_inhibitor_with_unexplained_content_is_not_fully_named() -> None:
+    """D-604: an inhibitor counts as fully named only if the rest of the neuron is explained."""
+    W1, W2, _ = motif_model()
+    roles = interp.neuron_roles(W1, W2)
+    assert roles[3].fully_named
+    W1[3, 1], W2[0, 3] = 0.8, 0.9  # the inhibitor's rest now mixes features 0 and 2
+    role = interp.neuron_roles(W1, W2)[3]
+    assert role.label == "inhibitor(1) + unexplained(0, 2)"
+    assert role.named and not role.fully_named

@@ -136,6 +136,20 @@ class NeuronRole:
         return self.kind in NAMED_KINDS
 
     @property
+    def fully_named(self) -> bool:
+        """Named, with nothing unexplained left: an inhibitor whose other content fits no role
+        does not count (docs/DECISIONS.md D-604; on random weights almost any neuron whose most
+        negative gain dominates is an inhibitor)."""
+        return self.named and not (self.kind == INHIBITOR and self.also_kind == UNEXPLAINED)
+
+    def has_role(self, kind: str, features: tuple[int, ...]) -> bool:
+        """Whether this neuron carries ``kind(features)`` as its role or its secondary role."""
+        return (self.kind, self.features) == (kind, features) or (
+            self.also_kind,
+            self.also_features,
+        ) == (kind, features)
+
+    @property
     def predicted_rise(self) -> tuple[int, ...]:
         """Features whose loss must rise when this neuron is ablated: the ones it computes,
         plus the one it inhibits (its interference is exposed without it)."""
@@ -317,6 +331,24 @@ def find_motifs(
                             )
                         )
     return motifs
+
+
+def role_consistent_motifs(motifs: list[Motif], roles: list[NeuronRole]) -> list[Motif]:
+    """The motifs whose neurons carry the motif's roles (pp. 38–39; D-604).
+
+    :func:`find_motifs` checks the weight pattern only. Here the asymmetric neuron must have
+    the role asymmetric-superposition(heavy, victim) (as its role or its secondary role), so it
+    stores those two features and nothing else, and the partner must be an inhibitor of the
+    victim. A neuron storing three features with a flipped pair, or a partner whose negative
+    gain is incidental, is not the paper's motif.
+    """
+    return [
+        m
+        for m in motifs
+        if roles[m.asymmetric_neuron].has_role(ASYMMETRIC, (m.heavy, m.victim))
+        and roles[m.inhibitor_neuron].kind == INHIBITOR
+        and roles[m.inhibitor_neuron].features == (m.victim,)
+    ]
 
 
 # --- ablations -----------------------------------------------------------------------------------

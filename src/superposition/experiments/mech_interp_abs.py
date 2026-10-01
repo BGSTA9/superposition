@@ -113,6 +113,8 @@ class TrainedShape:
     best: Tensor  # (cond,)
     importance: Tensor  # (feat,)
     wall_time_s: float
+    W1_init: Tensor | None = None  # (inst, hidden, feat), before training (D-604 baseline)
+    W2_init: Tensor | None = None  # (inst, feat, hidden)
 
     @property
     def label(self) -> str:
@@ -132,6 +134,7 @@ def train_shape(shape: ModelShape, config: MechInterpConfig, device: torch.devic
     p = torch.tensor(probabilities, dtype=torch.float32)[condition]
     n_inst = len(condition)
     model = AbsModel(shape.n_features, shape.n_hidden, n_inst, seed=config.seed).to(device)
+    W1_init, W2_init = model.W1.detach().cpu().clone(), model.W2.detach().cpu().clone()
     dist = IndependentSparse(p, n_inst, shape.n_features, interp.ABS_LOW, interp.ABS_HIGH)
     importance = geometric_importance(shape.n_features, config.importance_decay)
     result = train_from_config(model, dist, importance, config.train, config.seed, progress=True)
@@ -148,6 +151,8 @@ def train_shape(shape: ModelShape, config: MechInterpConfig, device: torch.devic
         best=select_best(result.final_loss, condition),
         importance=importance,
         wall_time_s=result.wall_time_s,
+        W1_init=W1_init,
+        W2_init=W2_init,
     )
 
 
@@ -164,7 +169,8 @@ class ModelAnalysis:
     instance: int
     loss: float
     roles: list[interp.NeuronRole]
-    motifs: list[interp.Motif]
+    motifs: list[interp.Motif]  # role-consistent (D-604)
+    motif_patterns: list[interp.Motif]  # the weight pattern alone (find_motifs)
     ablation: interp.Ablation
     rebuild: interp.Rebuild
     agrees: list[bool | None]  # per neuron: zero and mean ablations both fit (None: no prediction)
@@ -175,15 +181,17 @@ class ModelAnalysis:
 
     def counts(self) -> dict[str, int]:
         live = self.live
-        named = [r for r in live if r.named]
+        named = [r for r in live if r.fully_named]
         return {
             "neurons": len(self.roles),
             "live": len(live),
             "dead": len(self.roles) - len(live),
             "named": len(named),
-            "spec_named": sum(r.kind in interp.SPEC_NAMED_KINDS for r in live),
+            "named_incl_partial_inhibitors": sum(r.named for r in live),
+            "spec_named": sum(r.kind in interp.SPEC_NAMED_KINDS and r.fully_named for r in live),
             "agree": sum(bool(self.agrees[r.neuron]) for r in named),
             "motifs": len(self.motifs),
+            "motif_patterns": len(self.motif_patterns),
         }
 
 
@@ -207,6 +215,7 @@ def analyze_model(
         )
         agrees.append(None if zero is None or mean is None else zero and mean)
     rebuild = interp.rebuild_test(roles, W1, W2, b, trained.importance, p, n_samples, generator)
+    patterns = interp.find_motifs(W1, W2, b, thr)
     return ModelAnalysis(
         shape=trained.label,
         feature_probability=p,
@@ -214,7 +223,8 @@ def analyze_model(
         instance=k,
         loss=float(trained.final_loss[k]),
         roles=roles,
-        motifs=interp.find_motifs(W1, W2, b, thr),
+        motifs=interp.role_consistent_motifs(patterns, roles),
+        motif_patterns=patterns,
         ablation=ablation,
         rebuild=rebuild,
         agrees=agrees,
@@ -228,7 +238,9 @@ def motif_census(trained: TrainedShape, thr: interp.RoleThresholds) -> pd.DataFr
     for k in range(trained.W1.shape[0]):
         W1, W2, b = trained.model_weights(k)
         c = int(trained.condition[k])
-        for motif in interp.find_motifs(W1, W2, b, thr):
+        patterns = interp.find_motifs(W1, W2, b, thr)
+        consistent = set(interp.role_consistent_motifs(patterns, interp.neuron_roles(W1, W2, thr)))
+        for motif in patterns:
             rows.append(
                 {
                     "shape": trained.label,
@@ -237,24 +249,51 @@ def motif_census(trained: TrainedShape, thr: interp.RoleThresholds) -> pd.DataFr
                     "instance": k,
                     "is_best": k in best,
                     "loss": float(trained.final_loss[k]),
+                    "role_consistent": motif in consistent,
                     **vars(motif),
                 }
             )
     return pd.DataFrame(rows)
 
 
-def restarts_with_motif(trained: TrainedShape, census: pd.DataFrame) -> dict[float, str]:
-    """Per density, how many restarts contain at least one motif ("k/restarts")."""
+def restarts_with_motif(
+    trained: TrainedShape, census: pd.DataFrame, role_consistent: bool = True
+) -> dict[float, str]:
+    """Per density, how many restarts contain at least one motif ("k/restarts"); with
+    ``role_consistent=False``, any instance of the weight pattern counts."""
     out = {}
     for c, p in enumerate(trained.probabilities):
         n = int((trained.condition == c).sum())
-        hits = (
-            census.loc[census["feature_probability"] == p, "instance"].nunique()
-            if len(census)
-            else 0
-        )
+        hits = 0
+        if len(census):
+            mask = census["feature_probability"] == p
+            if role_consistent:
+                mask &= census["role_consistent"].astype(bool)
+            hits = census.loc[mask, "instance"].nunique()
         out[p] = f"{hits}/{n}"
     return out
+
+
+def named_at_initialization(
+    trained: TrainedShape, thr: interp.RoleThresholds
+) -> dict[str, float | int]:
+    """Roles assigned to the untrained weights of every restart: the share of live neurons
+    the role rules would name in a random model (a baseline for the 90% bar; D-604)."""
+    if trained.W1_init is None or trained.W2_init is None:
+        return {}
+    live = named = fully = 0
+    for k in range(trained.W1_init.shape[0]):
+        for role in interp.neuron_roles(trained.W1_init[k], trained.W2_init[k], thr):
+            if role.kind == interp.DEAD:
+                continue
+            live += 1
+            named += role.named
+            fully += role.fully_named
+    return {
+        "live": live,
+        "named_fraction": round(named / live, 4) if live else 0.0,
+        "fully_named_fraction": round(fully / live, 4) if live else 0.0,
+    }
 
 
 def role_rows(analysis: ModelAnalysis, W1n: Tensor, W2n: Tensor) -> pd.DataFrame:
@@ -313,7 +352,7 @@ def rebuild_rows(analysis: ModelAnalysis) -> pd.DataFrame:
     )
 
 
-def summary_row(analysis: ModelAnalysis, motif_restarts: str) -> dict:
+def summary_row(analysis: ModelAnalysis, motif_restarts: str, pattern_restarts: str) -> dict:
     counts = analysis.counts()
     return {
         "shape": analysis.shape,
@@ -324,6 +363,7 @@ def summary_row(analysis: ModelAnalysis, motif_restarts: str) -> dict:
         **counts,
         "roles": [r.label for r in analysis.roles],
         "restarts_with_motif": motif_restarts,
+        "restarts_with_motif_pattern": pattern_restarts,
         "rebuild_recovered": analysis.rebuild.fraction_recovered,
         "rebuild_recovered_trained_bias": analysis.rebuild.fraction_recovered_trained_bias,
     }
@@ -340,6 +380,7 @@ def run(
     censuses: list[pd.DataFrame] = []
     summary: list[dict] = []
     roles_tables, ablation_tables, rebuild_tables = [], [], []
+    baselines: dict[str, dict[str, float | int]] = {}
     for shape in config.shapes:
         logger.info(
             f"n={shape.n_features}, m={shape.n_hidden}: "
@@ -352,6 +393,8 @@ def run(
         census = motif_census(trained, thr)
         censuses.append(census)
         per_density = restarts_with_motif(trained, census)
+        per_density_patterns = restarts_with_motif(trained, census, role_consistent=False)
+        baselines[trained.label] = named_at_initialization(trained, thr)
         for k in trained.best.tolist():
             analysis = analyze_model(
                 trained, k, thr, config.thresholds.analysis_samples, config.seed
@@ -361,7 +404,8 @@ def run(
             roles_tables.append(role_rows(analysis, W1n[0], W2n[0]))
             ablation_tables.append(ablation_rows(analysis))
             rebuild_tables.append(rebuild_rows(analysis))
-            summary.append(summary_row(analysis, per_density[analysis.feature_probability]))
+            p = analysis.feature_probability
+            summary.append(summary_row(analysis, per_density[p], per_density_patterns[p]))
             counts = analysis.counts()
             logger.info(
                 f"    1−S={format_probability(analysis.feature_probability)}: "
@@ -377,7 +421,7 @@ def run(
     run_dir.write_table(pd.concat(ablation_tables, ignore_index=True), "ablations")
     run_dir.write_table(pd.concat(rebuild_tables, ignore_index=True), "rebuild")
     run_dir.write_table(motifs, "motifs")
-    return evaluate(config, summary_frame, motifs)
+    return evaluate(config, summary_frame, motifs, baselines)
 
 
 def _model_key(row: dict) -> str:
@@ -403,9 +447,12 @@ def spread(values: list[float]) -> dict[str, float] | None:
 
 
 def evaluate(
-    config: MechInterpConfig, summary: pd.DataFrame, motifs: pd.DataFrame
+    config: MechInterpConfig,
+    summary: pd.DataFrame,
+    motifs: pd.DataFrame,
+    baselines: dict[str, dict[str, float | int]] | None = None,
 ) -> list[Criterion]:
-    """E09 criteria from the per-model summary and the motif census."""
+    """E09 criteria from the per-model summary and the motif census (D-501, D-604)."""
     thr = config.thresholds
     all_rows: list[dict] = [dict(r) for r in summary.to_dict("records")]
     records = [r for r in all_rows if r["graded"]]
@@ -417,13 +464,16 @@ def evaluate(
     densities = ", ".join(format_probability(p) for p in config.feature_probabilities)
     shapes = ", ".join(f"n={s.n_features}/m={s.n_hidden}" for s in config.shapes)
     motif_configs = {_model_key(r): r["restarts_with_motif"] for r in all_rows}
-    motif_rows: list[dict] = [dict(r) for r in motifs.to_dict("records")]
+    pattern_configs = {_model_key(r): r.get("restarts_with_motif_pattern") for r in all_rows}
+    pattern_rows: list[dict] = [dict(r) for r in motifs.to_dict("records")]
+    motif_rows = [r for r in pattern_rows if bool(r.get("role_consistent", True))]
     n_models_with_motif = len({(r["shape"], r["instance"]) for r in motif_rows})
+    n_models_with_pattern = len({(r["shape"], r["instance"]) for r in pattern_rows})
     criteria = [
         check(
             "named_roles",
-            f"≥ {thr.named_fraction_min:.0%} of live neurons receive a named role (best model of "
-            f"each of {shapes} at 1 − S ∈ {{{densities}}})",
+            f"≥ {thr.named_fraction_min:.0%} of live neurons receive a named role, with nothing "
+            f"unexplained left (best model of each of {shapes} at 1 − S ∈ {{{densities}}}; D-604)",
             PAGE,
             named_fraction >= thr.named_fraction_min,
             {
@@ -431,6 +481,9 @@ def evaluate(
                 "named": named,
                 "live": live,
                 "dead": _total(records, "dead"),
+                "named_incl_partial_inhibitors": _total(records, "named_incl_partial_inhibitors")
+                if records and "named_incl_partial_inhibitors" in records[0]
+                else named,
                 "fraction_spec_roles_only": round(_total(records, "spec_named") / live, 4)
                 if live
                 else 0.0,
@@ -457,10 +510,16 @@ def evaluate(
         check(
             "motif_found",
             "The asymmetric superposition + inhibition motif is found in at least one model "
-            "(searched in every restart); restarts with a motif per configuration",
+            "(searched in every restart; its neurons must carry the motif's roles, D-604); "
+            "restarts with a motif per configuration, and with the weight pattern alone",
             PAGE,
             n_models_with_motif >= 1,
-            {"models_with_motif": n_models_with_motif, "per_configuration": motif_configs},
+            {
+                "models_with_motif": n_models_with_motif,
+                "per_configuration": motif_configs,
+                "models_with_weight_pattern": n_models_with_pattern,
+                "per_configuration_weight_pattern": pattern_configs,
+            },
             "≥ 1 model",
         ),
         info(
@@ -478,15 +537,25 @@ def evaluate(
             },
         ),
     ]
+    if baselines:
+        criteria.append(
+            info(
+                "named_at_initialization",
+                "The same role rules on the untrained weights of every restart: the share of "
+                "live neurons they would name in a random model (a baseline for the 90% bar)",
+                PAGE,
+                baselines,
+            )
+        )
     if motif_rows:
         best = [m for m in motif_rows if m["is_best"]]
         criteria.append(
             info(
                 "motif_details",
-                "Motifs in the best models: input and output size ratios, the positive "
-                "interference, the inhibition, and the net 1-sparse interference on the victim "
-                "(< 0: converted into negative interference, p. 39); its spread, also relative "
-                "to the interference it cancels (D-R03)",
+                "Role-consistent motifs in the best models: input and output size ratios, the "
+                "positive interference, the inhibition, and the net 1-sparse interference on the "
+                "victim (< 0: converted into negative interference, p. 39); its spread, also "
+                "relative to the interference it cancels (D-R03), and over every restart",
                 PAGE,
                 {
                     "motifs_in_best_models": len(best),
@@ -529,6 +598,7 @@ def evaluate(
                         "agree": f"{r['agree']}/{r['named']}",
                         "motifs": int(r["motifs"]),
                         "restarts_with_motif": r["restarts_with_motif"],
+                        "restarts_with_motif_pattern": r.get("restarts_with_motif_pattern"),
                         "rebuild_recovered": round(float(r["rebuild_recovered"]), 4),
                         "roles": r["roles"],
                     }
