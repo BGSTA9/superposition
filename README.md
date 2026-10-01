@@ -21,6 +21,11 @@ The repository does four things (see [SPEC.md](SPEC.md)):
 > the owner. The current statuses are below and in [docs/REPRODUCTION.md](docs/REPRODUCTION.md).
 > Build history: [PLAN.md](PLAN.md) and [docs/progress/](docs/progress/).
 
+**New here?** Start with the [visitor's tour](docs/TOUR.md): a stop-by-stop roadmap for reading
+the paper alongside this repository, from p. 1 to p. 62. For each section it gives the pages to
+read, the idea, where the repository shows it, what the replication found, and what to read
+with care.
+
 ## Quickstart
 
 Requires [uv](https://docs.astral.sh/uv/). Everything runs on a laptop CPU; `--device auto`
@@ -184,8 +189,9 @@ What the independent review found, and what changed because of it, is in
 
 ## Learning path
 
-Start with [docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md) and the notebooks in `notebooks/`, one per
-paper section (00–11). The study guide ends with a menu of extension projects drawn from the
+For a first reading of the paper, follow [docs/TOUR.md](docs/TOUR.md). For deeper study, use
+[docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md) and the notebooks in `notebooks/`, one per paper
+section (00–11). The study guide ends with a menu of extension projects drawn from the
 paper's open questions (pp. 45–46), each with a first experiment. [docs/PAPER_MAP.md](docs/PAPER_MAP.md) maps every paper section to code,
 experiments, notebooks and app pages; [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the terms.
 

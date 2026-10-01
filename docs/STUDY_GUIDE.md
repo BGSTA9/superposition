@@ -1,7 +1,9 @@
 # Study guide
 
 An ordered path through the paper and this repository for a reader who knows Python, PyTorch
-and linear algebra and is new to mechanistic interpretability. Each stop is:
+and linear algebra and is new to mechanistic interpretability. For a first reading, alongside
+the paper section by section, start with docs/TOUR.md; this guide is the deeper path. Each stop
+is:
 **read** (paper pages) → **notebook** → **app page** → **explain it back** (questions to answer
 aloud or in writing, without looking) → **exercises** (at the end of the notebook).
 

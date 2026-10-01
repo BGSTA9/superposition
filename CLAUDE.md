@@ -31,8 +31,9 @@ uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Pla
 - `tests/unit/` (fast, CI) · `tests/replication/` (`slow`, or `paper` for a whole quick
   profile; `paper` is opt-in: deselected unless `-m` names it, see `conftest.py`).
 - `notebooks/`: learning path, committed without outputs (nbstripout).
-- `docs/`: REPRODUCTION, PAPER_MAP, DESIGN, DECISIONS, STUDY_GUIDE, GLOSSARY, REVIEW,
-  `progress/phase-N.md`.
+- `docs/`: TOUR (the visitor's roadmap), REPRODUCTION, PAPER_MAP, DESIGN, DECISIONS,
+  STUDY_GUIDE, GLOSSARY, REVIEW, `progress/phase-N.md`. TOUR quotes statuses and numbers from
+  REPRODUCTION: update it when a status changes.
 
 ## Conventions
 

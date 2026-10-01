@@ -6,6 +6,16 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### After Phase 6 (2026-10-01)
+
+#### Added
+- **docs/TOUR.md, a visitor's tour:** a roadmap for reading the paper alongside the repository,
+  in 18 stops from p. 1 to p. 62. Each stop gives the pages to read, the idea, where the
+  repository shows it, the cited status, and what to read with care. It also has three routes
+  (reader, hands-on, deep study), the conventions to settle first, a diagram of the paper's
+  parts, what each experiment adds to the paper's own evidence, how to audit a result, and
+  where each footnote belongs. The README and the study guide point to it.
+
 ### Phase 6: extensions, review, polish (2026-10-01)
 
 Report: docs/progress/phase-6.md. Review findings and their resolutions: docs/REVIEW.md.
