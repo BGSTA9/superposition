@@ -31,7 +31,7 @@ import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import pandas as pd
@@ -134,6 +134,18 @@ class PhaseChangeConfig(ExperimentConfig):
     theory: TheorySettings = field(default_factory=TheorySettings)
     thresholds: PhaseChangeThresholds = field(default_factory=PhaseChangeThresholds)
     train: TrainConfig = field(default_factory=_default_train)
+
+
+class PhaseGridConfig(Protocol):
+    """What training and voting on a phase grid need; E02's and E12's configs both provide it."""
+
+    seed: int
+    grid: PhaseGrid
+    models_per_cell: int
+    discard_worst: int
+    base_importance: float
+    thresholds: PhaseChangeThresholds
+    train: TrainConfig
 
 
 # --- labeling (pure functions) ---------------------------------------------------------------
@@ -254,11 +266,16 @@ class PhaseGridResult:
 
 def train_phase_grid(
     setting: ProblemSetting,
-    config: PhaseChangeConfig,
+    config: PhaseGridConfig,
     device: torch.device,
     progress: bool = False,
+    out_act: str = "relu",
 ) -> PhaseGridResult:
-    """Train ``models_per_cell`` ReLU output models at every (density, importance) cell."""
+    """Train ``models_per_cell`` ReLU output models at every (density, importance) cell.
+
+    ``out_act`` swaps the output ReLU for another registered activation (E12, p. 51); E02
+    always uses the ReLU.
+    """
     importance_grid, density_grid = config.grid.importance(), config.grid.density()
     n_cells = len(importance_grid) * len(density_grid)
     n_inst = n_cells * config.models_per_cell
@@ -267,8 +284,8 @@ def train_phase_grid(
     extra = torch.tensor(np.tile(importance_grid, len(density_grid)), dtype=torch.float32)
     importance = torch.full((n_inst, setting.n_features), config.base_importance)
     importance[:, -1] = extra[cell]
-    model = TiedModel.from_kind(
-        "relu_output", setting.n_features, setting.n_hidden, n_inst, seed=config.seed
+    model = TiedModel(
+        setting.n_features, setting.n_hidden, n_inst, out_act=out_act, seed=config.seed
     ).to(device)
     dist = IndependentSparse(density[cell], n_inst, setting.n_features)
     result = train_from_config(
@@ -390,7 +407,7 @@ def run(
 
 
 def cell_frame(
-    config: PhaseChangeConfig, empirical: PhaseGridResult, predicted: TheoryResult
+    config: PhaseGridConfig, empirical: PhaseGridResult, predicted: TheoryResult
 ) -> pd.DataFrame:
     """One row per cell: empirical majority, label counts, mean norm/superposition, theory."""
     thr = config.thresholds

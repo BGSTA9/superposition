@@ -140,6 +140,34 @@ def plot_agreement(
         ax.set_title(title, fontsize=9.5, loc="left")
 
 
+def _draw_panel(
+    ax: Axes, kind: str, title: str, data: dict, importance: np.ndarray, density: np.ndarray
+) -> None:
+    if kind == "regimes":
+        plot_regimes(ax, data["labels"], importance, density, title)
+    elif kind == "norm_superposition":
+        plot_norm_superposition(ax, data["norm"], data["superposition"], importance, density, title)
+    elif kind == "agreement":
+        plot_agreement(
+            ax,
+            data["empirical"],
+            data["theory"],
+            importance,
+            density,
+            data.get("near_boundary"),
+            title,
+        )
+    else:
+        raise ValueError(f"unknown panel kind {kind!r}")
+
+
+def _regime_legend(fig: Figure, regimes: Sequence[str]) -> None:
+    handles = [
+        Patch(facecolor=REGIME_COLORS[r], edgecolor="none", label=REGIME_NAMES[r]) for r in regimes
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles), fontsize=8)
+
+
 def phase_figure(
     panels: Sequence[tuple[str, str, dict]],
     importance: np.ndarray,
@@ -157,34 +185,47 @@ def phase_figure(
         fig, axes = plt.subplots(1, len(panels), figsize=(3.3 * len(panels) + 0.4, 3.6))
         axes = np.atleast_1d(axes)
         for ax, (kind, title, data) in zip(axes, panels, strict=True):
-            if kind == "regimes":
-                plot_regimes(ax, data["labels"], importance, density, title)
-            elif kind == "norm_superposition":
-                plot_norm_superposition(
-                    ax, data["norm"], data["superposition"], importance, density, title
-                )
-            elif kind == "agreement":
-                plot_agreement(
-                    ax,
-                    data["empirical"],
-                    data["theory"],
-                    importance,
-                    density,
-                    data.get("near_boundary"),
-                    title,
-                )
-            else:
-                raise ValueError(f"unknown panel kind {kind!r}")
+            _draw_panel(ax, kind, title, data, importance, density)
         for ax in axes[1:]:
             ax.set_ylabel("")
-        handles = [
-            Patch(facecolor=REGIME_COLORS[r], edgecolor="none", label=REGIME_NAMES[r])
-            for r in regimes
-        ]
-        fig.legend(handles=handles, loc="lower center", ncol=len(handles), fontsize=8)
+        _regime_legend(fig, regimes)
         if suptitle:
             fig.suptitle(suptitle, x=0.02, ha="left", fontsize=10.5)
         fig.tight_layout(rect=(0, 0.08, 1, 0.93 if suptitle else 1.0))
+    return fig
+
+
+def phase_grid_figure(
+    rows: Sequence[tuple[str, Sequence[tuple[str, str, dict]]]],
+    importance: np.ndarray,
+    density: np.ndarray,
+    suptitle: str = "",
+    regimes: Sequence[str] = ("not_learned", "superposition", "dedicated", "confused"),
+) -> Figure:
+    """A grid of phase-diagram panels: one row per view, one column per variant (E12).
+
+    ``rows`` is a list of ``(row_title, panels)``, each panel as in :func:`phase_figure`. Only
+    the first column keeps its y label (the row title) and only the last row its x label.
+    """
+    n_rows, n_cols = len(rows), max(len(panels) for _, panels in rows)
+    with paper_style():
+        fig, axes = plt.subplots(
+            n_rows, n_cols, figsize=(2.35 * n_cols + 0.6, 2.45 * n_rows + 0.7), squeeze=False
+        )
+        for r, (row_title, panels) in enumerate(rows):
+            for c in range(n_cols):
+                ax = axes[r, c]
+                if c >= len(panels):
+                    ax.set_axis_off()
+                    continue
+                kind, title, data = panels[c]
+                _draw_panel(ax, kind, title, data, importance, density)
+                ax.set_ylabel(f"{row_title}\n1 − S" if c == 0 else "")
+                ax.set_xlabel("extra importance" if r == n_rows - 1 else "")
+        _regime_legend(fig, regimes)
+        if suptitle:
+            fig.suptitle(suptitle, x=0.02, ha="left", fontsize=10.5)
+        fig.tight_layout(rect=(0, 0.05, 1, 0.95 if suptitle else 1.0))
     return fig
 
 
