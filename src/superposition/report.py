@@ -220,9 +220,10 @@ def status_table(rows: list[StatusRow]) -> str:
             )
             continue
         suffix = "" if row.source == "cited" else " (uncited)"
+        graded = f"{c.n_passed}/{c.n_graded}" if c.n_graded else "— (report only)"
         lines.append(
             f"| {row.code} | `{row.name}` | {row.paper_pages} | **{c.overall}**{suffix} | "
-            f"{c.n_passed}/{c.n_graded} | `{c.run_id}` | {c.profile} · {c.device} |"
+            f"{graded} | `{c.run_id}` | {c.profile} · {c.device} |"
         )
     return "\n".join(lines)
 
