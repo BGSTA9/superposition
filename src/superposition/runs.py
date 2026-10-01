@@ -58,8 +58,17 @@ def results_root() -> Path:
     return Path(env) if env else project_root() / "results"
 
 
+# Untracked files here change what a run executes, so they make the tree dirty (R1-10).
+CODE_PATHS = ("src", "configs")
+
+
 def git_info(root: Path | None = None) -> dict[str, Any]:
-    """Current git commit and whether the working tree has uncommitted changes."""
+    """Current git commit and whether the working tree has uncommitted changes.
+
+    Tracked files count anywhere; untracked files count under :data:`CODE_PATHS` (a new module
+    or config that is not committed is code the commit does not contain). Other untracked files,
+    such as notes or results, do not.
+    """
     root = root or project_root()
 
     def git(*args: str) -> str | None:
@@ -73,7 +82,10 @@ def git_info(root: Path | None = None) -> dict[str, Any]:
 
     commit = git("rev-parse", "HEAD")
     status = git("status", "--porcelain", "--untracked-files=no")
-    return {"commit": commit, "dirty": None if status is None else bool(status)}
+    untracked = git("status", "--porcelain", "--untracked-files=all", "--", *CODE_PATHS)
+    if status is None or untracked is None:
+        return {"commit": commit, "dirty": None}
+    return {"commit": commit, "dirty": bool(status) or bool(untracked)}
 
 
 def package_versions() -> dict[str, str | None]:

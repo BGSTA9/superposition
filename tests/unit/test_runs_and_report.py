@@ -242,3 +242,26 @@ def test_pinning_refuses_dirty_runs(results: Path, tmp_path: Path) -> None:
     assert pin_run("intro_pentagon", allow_dirty=True, path=tmp_path / "c.yaml").dirty is True
     with pytest.raises(FileNotFoundError):
         pin_run("basic_results", path=tmp_path / "c.yaml")
+
+
+def test_untracked_code_makes_the_tree_dirty(tmp_path: Path) -> None:
+    """R1-10: a run that imports a module not yet committed must not be recorded as clean."""
+    import subprocess
+
+    from superposition.runs import git_info
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.com")
+    git("config", "user.name", "test")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    assert git_info(tmp_path)["dirty"] is False
+    (tmp_path / "notes.md").write_text("untracked notes do not count\n")
+    assert git_info(tmp_path)["dirty"] is False
+    (tmp_path / "src" / "new_module.py").write_text("y = 2\n")
+    assert git_info(tmp_path)["dirty"] is True
