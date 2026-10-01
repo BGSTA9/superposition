@@ -86,6 +86,10 @@ class ActivationTheorySettings:
     golden_iterations: int = 30
     quadrature_nodes: int = 12
     check_nodes: int = 24
+    # The unrestricted optimum (n = 2, m = 1; D-608): compass search from every family optimum.
+    relax_step: float = 0.1
+    relax_tol: float = 1e-6
+    relax_iterations: int = 600
 
     def optimizer(self, activation: str) -> theory.OptimizerSettings:
         return theory.OptimizerSettings(
@@ -190,6 +194,119 @@ def compute_activation_theory(
     return result, check
 
 
+@dataclass
+class RelaxedTheory:
+    """The unrestricted optimum per cell (cells density-major): every weight and bias free.
+
+    The families of D-302 tie each tegum factor to one weight scale, so an antipodal pair always
+    has equal lengths; a trained model can beat them (R1-03, R5-03). For n = 2, m = 1 the whole
+    model has four parameters, so the unrestricted optimum is cheap to search.
+    """
+
+    loss: np.ndarray  # (cells,)
+    W: np.ndarray  # (cells, hidden, feat)
+    b: np.ndarray  # (cells, feat)
+    labels: np.ndarray  # (cells,) E02's label of the extra feature at the optimum
+    start_family: list[str]  # the family whose optimum the search started from
+
+    def to_checkpoint(self) -> dict[str, Any]:
+        return dict(self.__dict__)
+
+
+def compass_search(
+    loss_fn: Any, start: np.ndarray, step: float, tol: float, iterations: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Minimize ``loss_fn(theta, rows)`` from every row of ``start`` (``(k, d)``) by compass search.
+
+    ``rows`` tells ``loss_fn`` which start row each row of ``theta`` belongs to, so per-row
+    data (a cell's importance and density) follows it.
+
+    Each iteration tries ±step along every coordinate for every row in one vectorized call,
+    moves a row to its best improving neighbour, and halves the step of rows that found none,
+    until every step is below ``tol``. Derivative-free, so the kinks of a ReLU loss are no
+    obstacle; it converges to a local minimum, which is why it starts from every family optimum.
+    """
+    theta = start.astype(np.float64).copy()
+    k, d = theta.shape
+    f = loss_fn(theta, np.arange(k))
+    steps = np.full(k, step)
+    directions = np.concatenate([np.eye(d), -np.eye(d)])  # (2d, d)
+    for _ in range(iterations):
+        active = steps >= tol
+        if not active.any():
+            break
+        idx = np.flatnonzero(active)
+        candidates = theta[idx, None, :] + steps[idx, None, None] * directions[None]
+        values = loss_fn(candidates.reshape(-1, d), np.repeat(idx, 2 * d)).reshape(len(idx), 2 * d)
+        best = values.argmin(1)
+        best_value = values[np.arange(len(idx)), best]
+        better = best_value < f[idx] - 1e-15
+        moved = idx[better]
+        theta[moved] = candidates[better, best[better]]
+        f[moved] = best_value[better]
+        steps[idx[~better]] *= 0.5
+    return theta, f
+
+
+def relaxed_theory(
+    setting: ProblemSetting,
+    config: ActivationFunctionsConfig,
+    activation: str,
+    predicted: TheoryResult,
+) -> RelaxedTheory | None:
+    """The unrestricted optimum of every cell, searched from each family's optimum (D-608).
+
+    Only for n = 2, m = 1, where every model's loss is exact (each output reads one other
+    feature); None otherwise.
+    """
+    if (setting.n_features, setting.n_hidden) != (2, 1):
+        return None
+    grid, thr = config.grid, config.thresholds
+    n, m = setting.n_features, setting.n_hidden
+    n_fam, n_dens, n_imp = predicted.W.shape[:3]
+    cells = n_dens * n_imp
+    dens, imp = np.meshgrid(grid.density(), grid.importance(), indexing="ij")
+    importance = np.full((cells, n), config.base_importance)
+    importance[:, -1] = imp.ravel()
+    start = np.concatenate(
+        [
+            predicted.W.reshape(n_fam * cells, m * n),
+            predicted.b.reshape(n_fam * cells, n),
+        ],
+        axis=1,
+    )
+    rep_importance = np.tile(importance, (n_fam, 1))
+    rep_density = np.tile(dens.ravel(), n_fam)
+
+    def loss_fn(theta: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        return theory.tied_output_expected_losses(
+            theta[:, : m * n].reshape(-1, m, n),
+            theta[:, m * n :],
+            rep_importance[rows],
+            rep_density[rows],
+            activation,
+            config.theory.quadrature_nodes,
+        )
+
+    t = config.theory
+    theta, f = compass_search(loss_fn, start, t.relax_step, t.relax_tol, t.relax_iterations)
+    f = f.reshape(n_fam, cells)
+    winner = f.argmin(0)
+    best = theta.reshape(n_fam, cells, -1)[winner, np.arange(cells)]
+    W = best[:, : m * n].reshape(cells, m, n)
+    b = best[:, m * n :]
+    labels, _, _ = extra_feature_regime(
+        torch.tensor(W, dtype=torch.float32), n - 1, thr.represented_norm, thr.superposition_score
+    )
+    return RelaxedTheory(
+        loss=f[winner, np.arange(cells)],
+        W=W,
+        b=b,
+        labels=np.asarray(labels),
+        start_family=[predicted.family_names[int(k)] for k in winner],
+    )
+
+
 # --- per-cell table --------------------------------------------------------------------------
 
 
@@ -218,17 +335,34 @@ def activation_frame(
     activation: str,
     empirical: PhaseGridResult,
     predicted: TheoryResult,
+    relaxed: RelaxedTheory | None = None,
+    exact: np.ndarray | None = None,
 ) -> pd.DataFrame:
-    """E02's per-cell table for one activation, plus the best model's loss and the theory's."""
+    """E02's per-cell table for one activation, plus the best model's loss and the theory's.
+
+    With exact model losses (n = 2), the cell's best model is the one with the lowest *exact*
+    loss: at low density a 20,000-sample estimate sees only a few double activations (R5-05).
+    The vote and its discard stay E02's, on the sampled losses.
+    """
     frame = cell_frame(config, empirical, predicted).drop(columns=["theory_no_bias"])
     frame.insert(1, "activation", activation)
-    exact = exact_model_losses(empirical, config.base_importance, activation)
     losses = empirical.final_loss.double().numpy() if exact is None else exact
-    frame["best_loss"] = empirical.by_cell(losses).reshape(len(frame), -1).min(1)
+    per_cell = empirical.by_cell(losses).reshape(len(frame), -1)
+    frame["best_loss"] = per_cell.min(1)
     frame["best_loss_source"] = "sampled (20,000)" if exact is None else "exact"
+    if exact is not None:
+        thr = config.thresholds
+        labels, _, _ = extra_feature_regime(
+            empirical.W, empirical.W.shape[-1] - 1, thr.represented_norm, thr.superposition_score
+        )
+        by_cell = empirical.by_cell(labels).reshape(len(frame), -1)
+        frame["best_model"] = by_cell[np.arange(len(frame)), per_cell.argmin(1)]
     n_paper = len(predicted.family_labels) - 1
     frame["theory_loss"] = predicted.losses[..., :n_paper].min(-1).ravel()
     frame["theory_loss_with_confused"] = predicted.losses.min(-1).ravel()
+    if relaxed is not None:
+        frame["relaxed_theory"] = relaxed.labels
+        frame["relaxed_loss"] = relaxed.loss
     return frame
 
 
@@ -244,6 +378,14 @@ def _changes(before: np.ndarray, after: np.ndarray) -> dict[str, int]:
     """Counts of label changes ``"a → b"`` between two diagrams of the same grid."""
     moved = Counter(f"{a} → {b}" for a, b in zip(before, after, strict=True) if a != b)
     return dict(moved.most_common())
+
+
+def tied_ranking(values: dict[str, float]) -> list[list[str]]:
+    """Names grouped by equal value, highest first: ties stay ties (R5-06)."""
+    groups: dict[float, list[str]] = {}
+    for name, value in values.items():
+        groups.setdefault(round(float(value), 4), []).append(name)
+    return [groups[v] for v in sorted(groups, reverse=True)]
 
 
 def _ratio_summary(ratio: np.ndarray) -> dict[str, float]:
@@ -278,6 +420,11 @@ def evaluate_activations(
                     "empirical": _counts(empirical),
                     "theory": _counts(own),
                     "theory_with_confused": _counts(with_confused),
+                    **(
+                        {"unrestricted_theory": _counts(frame["relaxed_theory"])}
+                        if "relaxed_theory" in frame
+                        else {}
+                    ),
                     "cells": len(frame),
                 },
                 group=group,
@@ -293,6 +440,25 @@ def evaluate_activations(
                     "with_confused_family": round(float((empirical == with_confused).mean()), 4),
                     "best_model_vs_paper_families": round(
                         float((np.asarray(frame["best_model"]) == own).mean()), 4
+                    ),
+                    "best_model_source": str(frame["best_loss_source"].iloc[0]),
+                    **(
+                        {
+                            "unrestricted_theory": round(
+                                float((empirical == np.asarray(frame["relaxed_theory"])).mean()), 4
+                            ),
+                            "best_model_vs_unrestricted_theory": round(
+                                float(
+                                    (
+                                        np.asarray(frame["best_model"])
+                                        == np.asarray(frame["relaxed_theory"])
+                                    ).mean()
+                                ),
+                                4,
+                            ),
+                        }
+                        if "relaxed_theory" in frame
+                        else {}
                     ),
                 },
                 group=group,
@@ -352,6 +518,27 @@ def evaluate_activations(
                     group=group,
                 )
             )
+        if "relaxed_theory" in frame:
+            relaxed = np.asarray(frame["relaxed_theory"])
+            gain = (
+                np.asarray(frame["theory_loss_with_confused"]) - np.asarray(frame["relaxed_loss"])
+            ) / np.asarray(frame["theory_loss_with_confused"])
+            criteria.append(
+                info(
+                    "unrestricted_theory",
+                    "Every weight and bias free (n = 2, m = 1; D-608): cells whose label differs "
+                    "from the families' and how, and how much lower the unrestricted optimum is",
+                    "p. 15; R5-03",
+                    {
+                        "changes_from_families": _changes(with_confused, relaxed),
+                        "lower_than_families_by_more_than": {
+                            f"{t:g}": int((gain > t).sum()) for t in (0.001, 0.01)
+                        },
+                        "largest_gain": round(float(gain.max()), 4),
+                    },
+                    group=group,
+                )
+            )
         criteria.append(
             info(
                 "quadrature_check",
@@ -370,9 +557,21 @@ def evaluate_activations(
                 float((frame["theory_with_confused"] == theory.SUPERPOSITION).mean()), 4
             ),
             "empirical_confused": round(float((frame["empirical"] == theory.CONFUSED).mean()), 4),
+            **(
+                {
+                    "unrestricted_theory": round(
+                        float((frame["relaxed_theory"] == theory.SUPERPOSITION).mean()), 4
+                    )
+                }
+                if "relaxed_theory" in frame
+                else {}
+            ),
         }
         for activation, frame in frames.items()
     }
+    sources = ["empirical", "theory"] + (
+        ["unrestricted_theory"] if all("relaxed_theory" in f for f in frames.values()) else []
+    )
     criteria.append(
         info(
             "superposition_share",
@@ -381,8 +580,10 @@ def evaluate_activations(
             "p. 51",
             {
                 "shares": shares,
-                "ranking_empirical": sorted(shares, key=lambda a: -shares[a]["empirical"]),
-                "ranking_theory": sorted(shares, key=lambda a: -shares[a]["theory"]),
+                **{
+                    f"ranking_{source}": tied_ranking({a: v[source] for a, v in shares.items()})
+                    for source in sources
+                },
             },
             group=setting.label,
         )
@@ -403,6 +604,7 @@ def run(
         get_activation(activation)  # fail fast on an unknown name
     criteria: list[Criterion] = []
     tables = []
+    model_tables: list[pd.DataFrame] = []
     for setting in config.settings:
         frames: dict[str, pd.DataFrame] = {}
         checks: dict[str, dict[str, Any]] = {}
@@ -424,7 +626,28 @@ def run(
             run_dir.save_checkpoint(
                 f"{setting.label}__{activation}__theory", predicted.to_checkpoint()
             )
-            frames[activation] = activation_frame(config, activation, empirical, predicted)
+            start = time.perf_counter()
+            relaxed = relaxed_theory(setting, config, activation, predicted)
+            if relaxed is not None:
+                logger.info(f"  unrestricted optima in {time.perf_counter() - start:.1f} s (D-608)")
+                run_dir.save_checkpoint(
+                    f"{setting.label}__{activation}__relaxed", relaxed.to_checkpoint()
+                )
+            exact = exact_model_losses(empirical, config.base_importance, activation)
+            if exact is not None:
+                model_tables.append(
+                    pd.DataFrame(
+                        {
+                            "setting": setting.label,
+                            "activation": activation,
+                            "instance": np.arange(len(exact)),
+                            "exact_loss": exact,
+                        }
+                    )
+                )
+            frames[activation] = activation_frame(
+                config, activation, empirical, predicted, relaxed, exact
+            )
             labels, _, _ = extra_feature_regime(
                 empirical.W,
                 setting.n_features - 1,
@@ -435,6 +658,8 @@ def run(
         criteria += evaluate_activations(config, setting, frames, checks, signs)
         tables += list(frames.values())
     run_dir.write_table(pd.concat(tables, ignore_index=True), "cells")
+    if model_tables:
+        run_dir.write_table(pd.concat(model_tables, ignore_index=True), "model_losses")
     return criteria
 
 
@@ -478,6 +703,16 @@ def figures(run_dir: RunDir) -> list[Path]:
                 ],
             ),
         ]
+        if "relaxed_theory" in frame:
+            rows.append(
+                (
+                    "theory, unrestricted",
+                    [
+                        ("regimes", a, {"labels": labels(a, "relaxed_theory")})
+                        for a in config.activations
+                    ],
+                )
+            )
         if reference is not None:
             rows.append(
                 (

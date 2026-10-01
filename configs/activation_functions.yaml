@@ -43,7 +43,8 @@ base:
     eval_samples: 20000
 profiles:
   # quick: n = 2, m = 1 on an 8 × 8 grid, six activations × 640 models, batch 256.
-  # Runtime: to be measured (estimated from a 1,000-step benchmark: ≈ 9 minutes on an Apple M2 CPU).
+  # Measured: 477–548 s on an Apple M2 CPU (--device cpu; two runs before the unrestricted
+  # optimum of D-608 was added, which costs about 20 s more).
   quick: {}
   # full: both E02 problems on E02's quick grid (12 × 12, batch 256), so the ReLU column is E02's
   # quick run. Not run; estimated from E02's measured 474 s of training per activation: ≈ 1 hour

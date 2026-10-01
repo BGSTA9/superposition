@@ -1203,3 +1203,26 @@ that apply them.
 - **Caveat:** the reviewers' own analysis scripts are not part of the repository. A number in
   REVIEW.md that comes from them is labeled as the reviewer's analysis. A number that the docs
   rely on was first re-computed by code in this repository and a logged run.
+
+### D-608 · 2026-10-01 · E12: the unrestricted optimum, exact best models, tied rankings
+- **Findings (review R5-01–R5-06, R5-10):**
+  - The family theory ties each tegum factor to one weight scale (D-302), so "identical
+    theoretical diagrams" can be an artifact of the restriction.
+  - The cell's "best model" was the lowest *sampled* loss, which at low density is noise.
+  - The rankings of activations hid ties.
+  - The lab's shared-sample scorer assumed the ReLU.
+- **Decision:**
+  - For n = 2, m = 1, E12 also reports the *unrestricted* optimum of every cell. All four
+    parameters (w₀, w₁, b₀, b₁) are searched from every family optimum by vectorized compass
+    search on the exact loss: steps from 0.1 halving to 1e-6, at most 600 iterations. It is
+    reported as INFO `unrestricted_theory`, as a row of the diagrams figure, and as a share.
+  - The family theory stays the graded-style comparison inherited from E02.
+  - With exact losses, a cell's best model is the lowest exact loss; the vote and its discard
+    stay E02's, on sampled losses. Exact per-model losses are stored as table `model_losses`
+    and shown in the lab.
+  - Rankings group ties.
+  - `PhaseProblem` carries its activation, which the shared-sample scorer uses.
+- **Why compass search:** derivative-free, so the ReLU's kinks do no harm, and vectorized
+  over cells and starts. Starting from every family optimum guards against its locality. A
+  unit test checks that it never ends above the family optimum.
+- **Paper:** p. 15; p. 51.

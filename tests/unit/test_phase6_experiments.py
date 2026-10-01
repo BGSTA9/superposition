@@ -66,7 +66,10 @@ def frames_and_checks() -> tuple[dict[str, pd.DataFrame], dict[str, dict]]:
     for activation in config.activations:
         predicted, checks[activation] = e12.compute_activation_theory(setting, config, activation)
         models = theory_models(setting, config, predicted)
-        frames[activation] = e12.activation_frame(config, activation, models, predicted)
+        exact = e12.exact_model_losses(models, config.base_importance, activation)
+        frames[activation] = e12.activation_frame(
+            config, activation, models, predicted, exact=exact
+        )
     return frames, checks
 
 
@@ -134,7 +137,7 @@ def test_superposition_share_and_ranking(frames_and_checks) -> None:
     assert value["shares"]["gelu"]["empirical"] == 1.0
     expected = float((frames["relu"]["empirical"] == theory.SUPERPOSITION).mean())
     assert value["shares"]["relu"]["empirical"] == pytest.approx(expected, abs=1e-4)
-    assert value["ranking_empirical"][0] == "gelu"
+    assert value["ranking_empirical"][0] == ["gelu"]
 
 
 def test_exact_model_losses_fall_back_when_outputs_read_two_features() -> None:
@@ -154,3 +157,51 @@ def test_exact_model_losses_fall_back_when_outputs_read_two_features() -> None:
         wall_time_s=0.0,
     )
     assert e12.exact_model_losses(grid, 1.0, "gelu") is None
+
+
+def test_compass_search_finds_a_quadratic_minimum() -> None:
+    target = np.array([[0.3, -1.2], [2.0, 0.5]])
+
+    def loss(theta: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        return ((theta - target[rows]) ** 2).sum(-1)
+
+    theta, f = e12.compass_search(loss, np.zeros((2, 2)), step=0.1, tol=1e-8, iterations=2000)
+    assert np.allclose(theta, target, atol=1e-6) and np.all(f < 1e-10)
+
+
+def test_unrestricted_optimum_is_never_worse_than_the_families() -> None:
+    """D-608: searched from every family optimum, the unrestricted optimum can only be lower;
+    labeled by E02's rule it is a regime label."""
+    config, setting = small_config(), e02.ProblemSetting()
+    for activation in ("relu", "gelu"):
+        predicted, _ = e12.compute_activation_theory(setting, config, activation)
+        relaxed = e12.relaxed_theory(setting, config, activation, predicted)
+        assert relaxed is not None
+        families = predicted.losses.min(-1).ravel()
+        assert np.all(relaxed.loss <= families + 1e-12)
+        assert set(relaxed.labels) <= set(theory.PHASE_LABELS)
+    n3 = e02.ProblemSetting("n3_m2", 3, 2, "p. 16")
+    predicted, _ = e12.compute_activation_theory(n3, config, "relu")
+    assert e12.relaxed_theory(n3, config, "relu", predicted) is None  # no exact loss for n = 3
+
+
+def test_tied_ranking_keeps_ties() -> None:
+    ranking = e12.tied_ranking({"relu": 0.72, "softplus": 0.72, "gelu": 0.66, "silu": 0.44})
+    assert ranking == [["relu", "softplus"], ["gelu"], ["silu"]]
+
+
+def test_phase_cell_models_order_by_exact_loss_but_vote_by_sampled_loss() -> None:
+    """R5-05: the table puts the lowest exact loss first; the vote stays the experiment's."""
+    from superposition import lab
+
+    W = np.zeros((3, 1, 2))
+    W[:, 0, :] = [[1.0, -1.0], [1.0, 0.0], [0.0, 1.0]]
+    problem = lab.PhaseProblem(
+        label="n2_m1", n_features=2, n_hidden=1, importance=np.ones(1), density=np.full(1, 0.1),
+        regime=np.array(["superposition", "not_learned", "dedicated"]), W=W, b=np.zeros((3, 2)),
+        loss=np.array([0.3, 0.1, 0.2]), models_per_cell=3, cells=pd.DataFrame(), theory=None,
+        activation="relu", exact_loss=np.array([0.05, 0.2, 0.1]),
+    )  # fmt: skip
+    table = lab.phase_cell_models(problem, 0, 0, discard_worst=1)
+    assert list(table["model"]) == [0, 2, 1]  # by exact loss
+    assert dict(zip(table["model"], table["votes"], strict=True)) == {0: False, 1: True, 2: True}
