@@ -66,6 +66,11 @@ does not represent: project the standard basis onto the complement of v and norm
 is an antipodal pair; W ⊥ [1, 1, 1] a triangle. The theoretical phase diagrams optimize each
 family's scale and biases exactly and keep the cheapest (E02; D-302).
 
+**Output activation σ** (pp. 10, 13, 51). The nonlinearity in x′ = σ(WᵀWx + b); the paper
+uses the ReLU. What makes the ReLU special for superposition is that it outputs exactly 0 for
+any negative pre-activation, so negative interference is free (p. 13). Redwood found that the
+phase diagrams change with σ (p. 51); E12 compares six (`models.ACTIVATIONS`).
+
 **Confused feature** (pp. 51–53). McGrath's solution W₁ ≈ W₂: two features share one direction
 with the same sign, so either one lights up both outputs. It is optimal in his exact analysis,
 which ignores biases; E02 reports where it wins with and without biases.

@@ -2,9 +2,9 @@
 
 Every section of *Toy Models of Superposition* mapped to the code, experiments, notebooks and
 app pages that implement or explain it. Pages refer to the 62-page PDF print (see
-`references/README.md`). Cells marked "—" have no implementation by design; "planned (Phase N)"
-cells are filled in as the phases land (PLAN.md). The lab's Home page shows this table (it is
-parsed from this file, so edit it here).
+`references/README.md`). Cells marked "—" have no implementation by design. The lab's Home
+page shows this table (it is parsed from this file, so edit it here). docs/REVIEW.md lists what
+the Phase 6 review found in each experiment.
 
 | Paper section | Pages | Code | Experiment | Notebook | App page |
 |---|---|---|---|---|---|
@@ -34,7 +34,7 @@ parsed from this file, so edit it here).
 | Discussion | 45 | — | — | 11 | — |
 | Open Questions | 45–46 | — | extension menu in STUDY_GUIDE | 11 | — |
 | Related Work | 47–50 | — | — | — | — |
-| Comments & Replications (Redwood, McGrath, OpenAI) | 51–53 | `models` activation registry; `theory` confused family | E12 activation_functions; E02 | 04, 11 | Phase diagrams |
+| Comments & Replications (Redwood, McGrath, OpenAI) | 51–53 | `models` activation registry; `theory` confused family; `theory.activation_square_integral` (exact losses for any output activation); `plotting.activations` | E12 activation_functions; E02 | 04, 11 | Phase diagrams (E12 tab) |
 | Citation information | 55 | `references/README.md`, `CITATION.cff` | — | — | — |
 | Footnotes (1: importance; 15: abs rescaling; 17: losses not comparable; 20: sparse coding; 21: a little L1 is free) | 56–57 | `train` loss; `metrics.normalize_hidden_units` (15); `interp.path_gains` (15-invariant); `sae` (20) | E08, E09 (15); E10 (20); E11 (21) | 08–10 | Neurons, SAE lab |
 | Appendix: Nonlinear Compression | 60 | — | — | — | — |

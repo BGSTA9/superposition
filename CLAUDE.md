@@ -10,8 +10,8 @@ After any context reset, re-read this file, `PLAN.md` and the latest `docs/progr
 uv sync                                    # create/refresh the env from uv.lock
 make lint                                  # ruff check + ruff format --check + pyright (basic)
 make test                                  # fast tier: pytest -m "not slow" (CI)
-make test-slow                             # slow tier (< 15 min): E00, reduced E02–E04, lab, notebooks 00–03
-make test-paper                            # paper tier (hours, estimated): every quick profile + notebooks 04–10
+make test-slow                             # slow tier (< 15 min): E00, reduced E02–E04 and E12, lab, notebooks 00–03
+make test-paper                            # paper tier (hours, estimated): every quick profile + notebooks 04–11
 uv run superposition list                  # registered experiments
 uv run superposition run intro_pentagon --profile quick [--seed N] [--device auto|cpu|mps|cuda]
 uv run superposition figures intro_pentagon --run latest --publish
@@ -53,8 +53,10 @@ uv run superposition app [--port 8501] [--headless]   # Streamlit lab (Home, Pla
   commit code → run → write the narrative → `superposition report --pin <exp>` (records the run
   in `docs/cited_runs.yaml`; refuses dirty runs) → commit docs. Unpinned experiments fall back
   to their latest run, marked "(uncited)".
-- A run records `git.dirty` when it *starts*: while runs are queued back to back, do not edit
-  tracked files (new untracked files are fine), or the later runs become uncitable.
+- A run records `git.dirty` when it *starts*: tracked changes anywhere, or untracked files under
+  `src/` or `configs/` (D-606). Queue cited runs from a clean detached `git worktree` (own
+  `uv sync`, `SUPERPOSITION_RESULTS` pointing at the main `results/`), so editing the main tree
+  cannot make them uncitable.
 - Tests never write to `results/`: the root `conftest.py` points `SUPERPOSITION_RESULTS` at a temp
   dir and registers a `python3` kernel for this interpreter (a user-level `python3` kernelspec
   would otherwise shadow the project env in nbmake). It also sets `MPLBACKEND=Agg`: AppTest runs

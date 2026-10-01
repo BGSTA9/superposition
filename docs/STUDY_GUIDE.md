@@ -5,9 +5,11 @@ and linear algebra and is new to mechanistic interpretability. Each stop is:
 **read** (paper pages) → **notebook** → **app page** → **explain it back** (questions to answer
 aloud or in writing, without looking) → **exercises** (at the end of the notebook).
 
-Pages refer to the 62-page PDF print (see `references/README.md`). Stops are added as their
-notebooks and app pages land (PLAN.md); the menu of extension projects drawn from the paper's
-open questions (pp. 45–46) is written in Phase 6.
+Pages refer to the 62-page PDF print (see `references/README.md`). Stops 0–11 follow the
+notebooks; the last section is a menu of extension projects drawn from the paper's open
+questions (pp. 45–46). docs/REVIEW.md lists what an independent review found in each
+experiment: read an experiment's review entries after its stop, as a lesson in what can go
+wrong in a replication.
 
 ## Stop 0 · Orientation
 
@@ -203,3 +205,88 @@ open questions (pp. 45–46) is written in Phase 6.
      features (p. 41)?
   4. Why does an L1 penalty on h remove superposition mostly by killing features, and why does
      it not penalize an antipodal pair along a basis axis?
+
+## Stop 11 · Extensions: activation functions (p. 51) and the open questions (pp. 45–46)
+
+- **Read:** p. 51 (Redwood's comment), pp. 45–46 ("Open Questions"), and p. 13 again (why the
+  ReLU makes negative interference free).
+- **Notebook:** `notebooks/11_extensions.ipynb` (the six activations, one cell solved exactly
+  for each, E12's diagrams, and landscape versus optimization).
+- **Results:** `docs/REPRODUCTION.md`, section E12 (an extension: no pass/fail).
+- **App:** **Phase diagrams** → E12 tab. Compare the regime shares across activations, then pick
+  SiLU and find a cell where the vote says "dedicated" but the theory says "superposition";
+  read the models table to see whether the lowest-loss model agrees with the theory.
+- **Explain it back:**
+  1. Which property of the ReLU makes an antipodal pair cheap, and which of the five other
+     activations keep it?
+  2. Why can losses be compared across activations within one cell, but not across cells of
+     different density (footnote 17)?
+  3. How do you tell a difference in the loss landscape from a difference in what training
+     reaches? Which E12 rows answer that?
+  4. Why might a model whose two weights start with the same sign never reach the antipodal
+     pair in m = 1?
+
+## Extension projects (the paper's open questions, pp. 45–46)
+
+Each project names the question as the paper asks it (paraphrased), why it matters, and a first
+experiment you can run with this library in an afternoon. Keep the replication defaults
+untouched: put a variant in its own config profile or experiment, and log its choices in
+docs/DECISIONS.md (SPEC §2).
+
+1. **Is there a statistical test for catching superposition?** Superposition is defined on
+   weights we can read only in toy models.
+   - *First experiment:* train E01's n = 20, m = 5 models at several densities. For each, compute
+     a statistic of the hidden activations alone, such as the kurtosis of h along random
+     directions, or how many SAE latents survive (E10).
+   - *Check:* does the statistic separate the dense, superposition-free models from the sparse
+     ones without looking at W?
+2. **Can we change the phase diagram so features avoid superposition?** The paper names L1 on
+   activations, adversarial training and the activation function as promising.
+   - *First experiment:* E02's n = 2, m = 1 grid with `TrainConfig.l1_hidden` (E11's
+     mechanism) or with E06's adversarial attack added to training (p. 30).
+   - *Check:* as with E12, compare against the theory per cell. Does the superposition region
+     shrink, or do features just die?
+3. **Are there closed-form solutions beyond n = 2, m = 1?** `theory.py` solves restricted
+   families exactly.
+   - *First experiment:* add a two-scale antipodal family (unequal norms, review finding R1-03).
+     Then try n = 3, m = 2 families whose outputs read two other features, which needs 3D
+     integrals (extend `activation_square_integral`).
+4. **How realistic are these toy models?**
+   - *First experiment:* train a small MLP (one hidden layer) on a real dataset, then measure
+     its neurons' polysemanticity (`metrics.neuron_polysemanticity`). Compare with E07's
+     sparsity sweep, using input sparsity as the knob.
+5. **Can we estimate the feature importance and sparsity curves of real models?**
+   - *First experiment:* invert the toy model. Train E01-style models with known importance
+     curves and fit the curve back from the loss and neuron sparsity, as the paper suggests.
+6. **Does superposition go away at scale?**
+   - *First experiment:* E03's uniform setup at fixed n/m with growing m (30, 60, 120), on the
+     same density grid.
+   - *Check:* does the 1/2 plateau of D* move or stay put?
+7. **What is the most principled definition of superposition?**
+   - *First experiment:* compare the repo's three measures on E01's models across sparsity:
+     the superposition score (p. 11), Dᵢ (p. 18) and the rank test (p. 8). Where do they
+     disagree, and why?
+8. **How important are polysemantic neurons?**
+   - *First experiment:* in E08's n = 100, m = 40 models, ablate monosemantic and polysemantic
+     neurons separately (`interp.ablation_matrix`).
+   - *Check:* what share of the loss reduction does each group carry?
+9. **How many features fit in superposition?**
+   - *First experiment:* sweep m at a fixed sparsity in E03's setup, and plot the represented
+     features against m. Compare with a compressed-sensing bound of order m·log(n/m).
+10. **Is the phase change related to phase changes in compressed sensing?**
+    - *First experiment:* overlay E02's theoretical boundary with the sparsity at which ℓ₁
+      recovery of x from h = Wx succeeds for W at that cell's optimum.
+11. **How does superposition relate to non-robust features?**
+    - *First experiment:* E06 measures the vulnerability of a model in superposition. Train
+      adversarially (p. 30) at growing budgets, and track D* and the loss on clean inputs.
+12. **What computation can be done in superposition?**
+    - *First experiment:* replace E08's |x| target with max(x, 0), x², or a product of two
+      features, keeping the absolute-value model.
+    - *Check:* does the asymmetric motif of E09 reappear?
+13. **How does superposition change when features are not independent?**
+    - *First experiment:* E04(b) and (d) with more sets, and anticorrelated sets in m > 2.
+    - *Check:* can anticorrelated features pack more than m/D* features?
+14. **Do models use nonlinear representations?**
+    - *First experiment:* give the ReLU output model a deeper encoder and decoder (two layers
+      each) with a 2D bottleneck on uncorrelated sparse data.
+    - *Check:* does h stay a linear function of x?

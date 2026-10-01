@@ -37,7 +37,7 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
 | `models` | `TiedModel`, `AbsModel`, activation registry, per-instance init | utils |
 | `train` | trainer, evaluation, `select_best` | config, data |
 | `metrics` | pure metric functions of W; `loss_by_num_active` and `per_feature_loss` also run a model on sampled inputs | torch, networkx, data |
-| `theory` | exact expectations in closed form: linear optimum and decomposition, 0- and 1-sparse terms, the exact loss of a ReLU output model whose outputs read ≤ 1 other feature, weight families (W ⊥ v), their optima and theoretical phase diagrams (pp. 13–16, D-301, D-302) | torch, numpy, networkx |
+| `theory` | exact expectations in closed form: linear optimum and decomposition, 0- and 1-sparse terms, the exact loss of a ReLU output model whose outputs read ≤ 1 other feature, weight families (W ⊥ v), their optima and theoretical phase diagrams (pp. 13–16, D-301, D-302); the same for any output activation by split Gauss–Legendre quadrature (p. 51, D-601) | torch, numpy, networkx, models |
 | `adversarial` | analytic L2 attacks, no-superposition reference, vulnerability (p. 29) | models |
 | `interp` | path gains, neuron roles, motif detector, zero/mean ablations, rebuild test for the absolute-value model (pp. 38–39) | metrics, models, theory |
 | `sae` | multi-instance sparse autoencoders (L1, TopK, resampling) and ground-truth recovery metrics (pp. 42–44) | utils |
@@ -69,8 +69,12 @@ superposition app ─▶ streamlit run app/Home.py ─▶ app/pages/* ─▶ lab
   everything from a saved run, so figures can be regenerated (or restyled) without retraining.
 - **Criteria are data.** An experiment returns a list of `Criterion` (value, threshold,
   status, paper page). Thresholds live in config dataclasses, never inline.
-- **Provenance.** A run's manifest records the git commit and whether the tree was dirty;
-  published figures carry a `SOURCE.txt` with the run ID and commit.
+- **Provenance.** A run's manifest records the git commit and whether the tree was dirty
+  (tracked changes anywhere, or untracked files under `src/` and `configs/`, D-606); published
+  figures carry a `SOURCE.txt` with the run ID and commit.
+- **Held-out seeds.** A result that rests on one seed and sits near its bar is re-run on
+  fresh seeds with the unchanged profile and cited as a supplementary run (D-R05, D-605).
+  The decision rule is written down before those runs.
 
 ## The lab (`app/`, Phase 2+)
 
@@ -95,11 +99,17 @@ its profile, device, seed, commit, dirty flag and status summary. `superposition
 rebuilds the tables from those runs (never from whatever ran last), and the lab's Home page
 shows the cited status next to the latest local run. The workflow for a new result is:
 commit → run → write the narrative → `superposition report --pin <exp>` → commit the docs.
+Supplementary runs, such as a pilot or a held-out seed, are pinned with `--run ID --label L`
+(D-R07). Runs are launched from a clean detached `git worktree` with its own environment and
+`SUPERPOSITION_RESULTS` pointing at the main `results/`, so that editing the main tree while
+they run cannot make them dirty.
 
 ## Extension points
 
 - **A new activation:** `models.register_activation("name", fn)`; `TiedModel(hidden_act=...,
-  out_act=...)` picks it up.
+  out_act=...)` picks it up, and so do the exact losses and theoretical diagrams
+  (`theory.OptimizerSettings(activation="name")`, D-601). E12 and notebook 11, exercise 1,
+  show both.
 - **A new feature distribution:** any object with `n_features`, `n_inst` and
   `sample(batch_size, generator) -> (batch, inst, feat)` satisfies `data.FeatureDistribution`.
   `Composite` concatenates distributions along the feature axis.
