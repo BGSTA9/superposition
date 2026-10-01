@@ -171,6 +171,29 @@ def test_e03_fraction_clusters() -> None:
     found = {name for name, c in clusters.items() if c["cluster"]}
     assert found == {"antipodal pair (digon) (0.5)", "triangle (0.667)", "pentagon (0.4)"}
     assert clusters["tetrahedron (0.75)"]["count"] == 5  # too few to count as a cluster
+    # D-603: with each feature's tegum factor, a feature counts only in its fraction's polytope.
+    factors = [
+        ["digon (antipodal pair)"] * 30,
+        ["triangle"] * 12 + ["7 in 3 (non-uniform)"] * 12 + ["tetrahedron"] * 5 + [None] * 11,
+    ]
+    clusters = e03.fraction_clusters(dims, represented, 0.02, 0.2, 8, factors)
+    found = {name for name, c in clusters.items() if c["cluster"]}
+    assert found == {"antipodal pair (digon) (0.5)", "triangle (0.667)"}
+    assert clusters["pentagon (0.4)"]["count"] == 0
+
+
+def test_e03_a_band_between_two_fractions_is_not_two_clusters() -> None:
+    """R2-01: 2/5 and 3/8 are 0.025 apart, so their ±0.02 windows overlap. A single band of Dᵢ
+    centred between them must not count as a pentagon cluster and an antiprism cluster at once
+    unless the features really sit in pentagons and square antiprisms."""
+    rng = np.random.default_rng(1)
+    band = 0.3875 + rng.normal(0.0, 0.01, 76)
+    represented = [np.ones(76, bool)]
+    by_value = e03.fraction_clusters([band], represented, 0.02, 0.2, 8)
+    assert by_value["pentagon (0.4)"]["cluster"] and by_value["square antiprism (0.375)"]["cluster"]
+    one_factor = [["76 in 30 (non-uniform)"] * 76]
+    strict = e03.fraction_clusters([band], represented, 0.02, 0.2, 8, one_factor)
+    assert not any(c["cluster"] for c in strict.values())
 
 
 def paper_like_summary(dstar_fn) -> e03.Summary:
@@ -181,6 +204,10 @@ def paper_like_summary(dstar_fn) -> e03.Summary:
     mixed = np.concatenate([np.full(15, 2 / 3), np.full(20, 0.4), np.full(10, 0.5)])
     dims = [half if abs(d - 0.5) < 0.03 else mixed for d in dstar]
     represented = [np.ones(len(d), bool) for d in dims]
+    polytope = {2 / 3: "triangle", 0.4: "pentagon", 0.5: "digon (antipodal pair)"}
+    factors: list[list[str | None]] = [
+        [polytope[min(polytope, key=lambda f: abs(f - v))] for v in d] for d in dims
+    ]
     return e03.Summary(
         inverse_density=x,
         dstar=dstar,
@@ -188,6 +215,7 @@ def paper_like_summary(dstar_fn) -> e03.Summary:
         represented=represented,
         census=[{} for _ in x],
         sum_dimensionality=np.array([d.sum() for d in dims]),
+        factors=factors,
     )
 
 

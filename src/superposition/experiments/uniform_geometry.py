@@ -20,6 +20,7 @@ docs/DECISIONS.md (D-306).
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -103,11 +104,13 @@ class Summary:
     represented: list[np.ndarray]  # per point, bool mask
     census: list[dict[str, int]]  # per point, features per factor type
     sum_dimensionality: np.ndarray  # (points,), Σᵢ Dᵢ
+    # per point, the name of each feature's tegum factor (None if not represented; D-308)
+    factors: list[list[str | None]] | None = None
 
 
 def summarize(grid: GridResult, thr: UniformGeometryThresholds) -> Summary:
-    """D*, Dᵢ, represented masks and the tegum-factor census of each best restart."""
-    inverse, dstar, dims, reps, census, sums = [], [], [], [], [], []
+    """D*, Dᵢ, represented masks, tegum factors and their census of each best restart."""
+    inverse, dstar, dims, reps, census, sums, factors = [], [], [], [], [], [], []
     for cond in range(grid.n_conditions):
         W, _, _ = grid.best_weights(cond)
         inverse.append(1.0 / grid.condition_probability(cond))
@@ -115,13 +118,17 @@ def summarize(grid: GridResult, thr: UniformGeometryThresholds) -> Summary:
         d = metrics.feature_dimensionality(W[None])[0]
         dims.append(d.numpy())
         reps.append(metrics.represented_mask(W[None], thr.represented_norm)[0].numpy())
-        census.append(
-            metrics.geometry_census(
-                W, thr.edge_threshold, thr.represented_norm, thr.rank_rtol, thr.uniform_tol
-            )
+        names = metrics.feature_factors(
+            W, thr.edge_threshold, thr.represented_norm, thr.rank_rtol, thr.uniform_tol
         )
+        factors.append(names)
+        point: dict[str, int] = {}
+        for name in names:
+            if name is not None:
+                point[name] = point.get(name, 0) + 1
+        census.append(point)
         sums.append(float(d.sum()))
-    return Summary(np.array(inverse), np.array(dstar), dims, reps, census, np.array(sums))
+    return Summary(np.array(inverse), np.array(dstar), dims, reps, census, np.array(sums), factors)
 
 
 def plateau_span(
@@ -152,12 +159,17 @@ def fraction_clusters(
     tol: float,
     min_share: float,
     min_count: int,
+    factors: Sequence[Sequence[str | None]] | None = None,
 ) -> dict[str, dict]:
     """For each non-trivial characteristic fraction: its largest cluster in any one model.
 
     A fraction counts as a cluster when, in at least one best model, at least ``min_share`` of
     the represented features (and at least ``min_count``) have their nearest characteristic
-    fraction (within ``tol``) equal to it (docs/DECISIONS.md D-306).
+    fraction (within ``tol``) equal to it (docs/DECISIONS.md D-306). With ``factors`` (each
+    feature's tegum factor, per model), a feature counts only if its factor is the polytope of
+    that fraction, e.g. a feature at 2/5 only if it sits in a pentagon (D-603): p. 19's "each
+    fraction corresponds to a specific weight geometry", and 2/5 and 3/8 are too close for
+    Dᵢ alone to tell apart.
     """
     fractions = [
         (k, name, value)
@@ -166,12 +178,19 @@ def fraction_clusters(
     ]
     out: dict[str, dict] = {}
     for k, name, value in fractions:
+        polytope = metrics.polytope_of_fraction(value)
         best_share, best_count, best_point = 0.0, 0, -1
         for point, (dims, rep) in enumerate(zip(dimensionality, represented, strict=True)):
             if not rep.any():
                 continue
             nearest = metrics.classify_fraction(torch.as_tensor(dims[rep]), tol).numpy()
-            count = int((nearest == k).sum())
+            hit = nearest == k
+            if factors is not None:
+                names = np.array(
+                    [factors[point][int(i)] for i in np.flatnonzero(rep)], dtype=object
+                )
+                hit &= names == polytope
+            count = int(hit.sum())
             share = count / int(rep.sum())
             if share > best_share:
                 best_share, best_count, best_point = share, count, point
@@ -246,31 +265,48 @@ def evaluate(config: UniformGeometryConfig, summary: Summary) -> list[Criterion]
         )
     )
 
-    clusters = fraction_clusters(
-        summary.dimensionality,
-        summary.represented,
-        thr.fraction_tol,
-        thr.cluster_min_share,
-        thr.cluster_min_count,
-    )
-    found = [name for name, c in clusters.items() if c["cluster"]]
-    for c in clusters.values():
-        c["at_inverse_density"] = round(float(x[c.pop("at_point")]), 3)
-    criteria.append(
-        check(
-            "fraction_clusters",
-            f"Nonzero Dᵢ cluster within ±{thr.fraction_tol} of at least {thr.min_clusters} "
-            "characteristic fractions",
-            "p. 19",
-            len(found) >= thr.min_clusters,
-            {"clusters": found, "by_fraction": clusters},
-            {
-                "min_clusters": thr.min_clusters,
-                "cluster": f"≥ {thr.cluster_min_share:.0%} and ≥ {thr.cluster_min_count} of one "
-                "model's represented features",
-            },
+    rule = {
+        "min_clusters": thr.min_clusters,
+        "cluster": f"≥ {thr.cluster_min_share:.0%} and ≥ {thr.cluster_min_count} of one "
+        "model's represented features",
+    }
+    if summary.factors is None:
+        raise ValueError("E03's cluster criterion needs each feature's tegum factor (D-603)")
+    for criterion_id, factors in (("fraction_clusters", summary.factors), ("by_value", None)):
+        clusters = fraction_clusters(
+            summary.dimensionality,
+            summary.represented,
+            thr.fraction_tol,
+            thr.cluster_min_share,
+            thr.cluster_min_count,
+            factors,
         )
-    )
+        found = [name for name, c in clusters.items() if c["cluster"]]
+        for c in clusters.values():
+            c["at_inverse_density"] = round(float(x[c.pop("at_point")]), 3)
+        if factors is not None:
+            criteria.append(
+                check(
+                    criterion_id,
+                    f"Nonzero Dᵢ cluster within ±{thr.fraction_tol} of at least "
+                    f"{thr.min_clusters} characteristic fractions, each feature counted only "
+                    "in the polytope of its fraction (D-603)",
+                    "p. 19",
+                    len(found) >= thr.min_clusters,
+                    {"clusters": found, "by_fraction": clusters},
+                    {**rule, "membership": "Dᵢ near the fraction and in its polytope (D-308)"},
+                )
+            )
+        else:
+            criteria.append(
+                info(
+                    "fraction_clusters_by_value",
+                    "The same count by Dᵢ alone (the rule of D-306, before D-603): a band "
+                    "between 2/5 and 3/8 counts for both",
+                    "p. 19",
+                    {"clusters": found, "by_fraction": clusters, **rule},
+                )
+            )
 
     criteria.append(
         info(

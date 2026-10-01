@@ -289,6 +289,28 @@ def component_geometry(
     return k, rank, f"{k} in {rank} ({'uniform' if uniform else 'non-uniform'})"
 
 
+def feature_factors(
+    W: Float[Tensor, "hidden feat"],
+    edge_threshold: float = 0.05,
+    represented_threshold: float = 0.5,
+    rank_rtol: float = 0.1,
+    dimensionality_tol: float = 0.05,
+) -> list[str | None]:
+    """The name of the tegum factor each feature belongs to, for one instance (None if the
+    feature is not represented).
+
+    Paper: pp. 18–20. Components come from :func:`geometry_graph`; each is named by
+    :func:`component_geometry`.
+    """
+    _, components = geometry_graph(W, edge_threshold, represented_threshold)
+    names: list[str | None] = [None] * W.shape[1]
+    for component in components:
+        _, _, name = component_geometry(W, component, rank_rtol, dimensionality_tol)
+        for i in component:
+            names[i] = name
+    return names
+
+
 def geometry_census(
     W: Float[Tensor, "hidden feat"],
     edge_threshold: float = 0.05,
@@ -302,12 +324,23 @@ def geometry_census(
     :func:`component_geometry`. Returns feature counts per name (not factor counts), so the
     values sum to the number of represented features.
     """
-    _, components = geometry_graph(W, edge_threshold, represented_threshold)
     census: dict[str, int] = {}
-    for component in components:
-        k, _, name = component_geometry(W, component, rank_rtol, dimensionality_tol)
-        census[name] = census.get(name, 0) + k
+    factors = feature_factors(
+        W, edge_threshold, represented_threshold, rank_rtol, dimensionality_tol
+    )
+    for name in factors:
+        if name is not None:
+            census[name] = census.get(name, 0) + 1
     return census
+
+
+def polytope_of_fraction(value: float) -> str | None:
+    """The uniform polytope of :data:`POLYTOPES` whose features all have Dᵢ = ``value``
+    (r/k for k features in r dimensions; p. 19), or None."""
+    for (k, r), name in POLYTOPES.items():
+        if k > 1 and abs(r / k - value) < 1e-9:
+            return name
+    return None
 
 
 def neuron_polysemanticity(
