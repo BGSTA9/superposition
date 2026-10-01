@@ -608,7 +608,8 @@ what the draft session had seen before each choice (its transcript is the eviden
   *transition*. A trajectory type is the ordered list of stages lasting ≥ 1,000 steps (the
   final stage always counts).
 - **Rationale:** these are the paper's A–D stages (p. 27) written as tests. In an aligned pair
-  of triangles on opposite sides, cross-set partners sit at cos −1/3 or −2/3; after the 60°
+  of triangles on opposite sides, cross-set partners sit at cos +1/3 or −2/3 (corrected in Phase
+6 from "−1/3 or −2/3", review R2-11; the test is unaffected); after the 60°
   rotation into the antiprism they are exactly antipodal, which is the octahedron test. The
   1,000-step minimum keeps transient flickers out of the type while keeping the paper's
   plateaus (hundreds to thousands of steps).
@@ -675,9 +676,11 @@ what the draft session had seen before each choice (its transcript is the eviden
   of predicting the mean, Var(|xᵢ|) = p/3 − p²/4. Plain Monte Carlo would see a feature active
   only once per thousand samples at 1 − S = 0.001.
 - **Computed well:** ratio < 0.5 (SPEC). A feature computed on one side only (ReLU(xᵢ) but not
-  ReLU(−xᵢ)) has a ratio just above 0.5, so it sits on this boundary; the precise estimator
-  keeps it from crossing by noise, and the side diagnostic reports one-sided features
-  separately.
+  ReLU(−xᵢ)) has a ratio just above 0.5, so it sits on this boundary; the side diagnostic
+  reports one-sided features separately. (This entry first claimed that the precise estimator
+  keeps such features from crossing the bar by noise. Review R3-05 showed that it does not at
+  1 − S ≤ 0.01, where a re-estimate moves the counts by up to 4. Corrected in Phase 6; the
+  graded count of D-R01, at 0.75, is stable.)
 - **Neurons:** counted on footnote-15-normalized W₁ with the 25% rule; a neuron whose
   normalized W₂ column is below 0.05 everywhere is dead. *Primary + secondary* (p. 38): a
   polysemantic neuron whose largest |W₁| is ≥ 2× the next.

@@ -182,7 +182,11 @@ progression p. 12 describes: antipodal pairs first, other structures as more fea
 packed in.
 
 **Represented features at the sparsest setting.** Counts at 1 − S = 0.001 (14/20 and 67/80) are
-of the same order as the paper's panels. Our 300-dpi readings (approximate, by eye): the p. 11
+of the same order as the paper's panels. The sparsest counts can shift by about ±2 with the
+choice of restart: the best restart is picked on a 20,000-sample loss. Re-evaluated on 400,000
+(n = 20) or 200,000 (n = 80) samples, the reviewer found that another restart is lowest in 7 of
+14 conditions, with counts such as 12 instead of 14 (n = 20, 1 − S = 0.003). Every E01
+criterion still passes with those picks (review R1-06). Our 300-dpi readings (approximate, by eye): the p. 11
 panel shows about 12 features at full norm plus about 4 near ‖Wᵢ‖ ≈ 0.5; the p. 12 panel shows
 about 50 at full norm plus a tail of partial ones. The counts are also stable in training
 length: the full profile (8 restarts, 30,000 steps, MPS, run `20260929T090856Z-6d287488`) passes
@@ -437,9 +441,19 @@ Run `20260930T091958Z-43c63e78` · profile `quick` · seed 0 · device `cpu` · 
 <!-- END AUTO:E04 -->
 
 **Discrepancies and notes.**
-- *(a) The snap comes later.* Our pentagon survives down to 0.316× the others' density and
-  collapses at ≤ 0.251×, against the paper's "≈ 2.5× less dense" (0.4×). Both runs agree
-  (D-309). Hypothesis: the paper's losses or restart counts; its figure does not give numbers.
+- *(a) Where the pentagon snaps: no discrepancy with the paper's figure.* Our pentagon
+  survives down to 0.316× the others' density and collapses at ≤ 0.251×. The p. 22 caption
+  says "≈ 2.5× less dense" (0.4×), but the boundary in the paper's own loss figure sits at about
+  0.27×, between our two grid points (review R2-04, from a pixel reading of p. 22). An earlier
+  version of this note called our snap "later" by comparing with the caption only. The
+  reviewer also found that our best losses divided by n = 5 match the p. 22 curves (for
+  example 1.7e-3 for the pentagon at 1×), so the paper evidently plots a per-feature mean.
+  That match was read off the figure, not computed in a run.
+- *(b) The anticorrelated criterion is lenient, and the data exceed it.* "Lower mean cosine than
+  the correlated sets" would pass with any negative within-pair cosine. The best restart is
+  exactly antipodal, as p. 24's figure shows, but only 5 of 16 restarts find it. The two setups
+  also differ in density: 0.01 per anticorrelated feature against 0.02 per correlated one
+  (D-307; review R2-09).
 - *(d) The regimes are shifted.* The paper's "one set collapsed" at 0.05–0.15, "two sets" at
   0.15–0.2 and "all sets" at 0.25–0.5 correspond to ours at 0.085–0.121, 0.172–0.35 and 0.5; at
   0.5 our collapsed features have norm 0.65, below 1/√2.
@@ -472,12 +486,14 @@ loss curve, and the stage of every run over training.
 
 **Status: PASS (2/2 graded criteria).**
 
-*(a) Energy levels.* All four restarts (n = 400, m = 30, 1/(1 − S) = 3) organize within about
-5,000 steps into 58 features at Dᵢ ≈ 1/2 and 342 at 0, with Σᵢ Dᵢ ≈ 29.87: 29 clean digons,
-and one dimension shared by a few weak features. They then sit on a plateau (the loss changes
+*(a) Energy levels.* All four restarts (n = 400, m = 30, 1/(1 − S) = 3) organize by step
+10,000 into 58 features at Dᵢ ≈ 1/2 and 342 at 0, with Σᵢ Dᵢ ≈ 29.87: 29 clean digons, and one
+dimension shared by a few weak features. Most of this happens in the first 5,000 steps, but two
+restarts still have a few features in between at step 5,000 (review R2-07). They then sit on a plateau (the loss changes
 by at most 0.015 between steps 10,000 and 25,000; its fluctuations are ≈ 0.011) until two of
-the weak features win that dimension. Their Dᵢ jumps from ≈ 0.05 towards 1/2 (by > 0.15 within 2,000 steps; one
-overshoots to ≈ 0.6 before settling) and the loss drops by 0.043–0.055 within ≈ 4,000 steps,
+the weak features win that dimension. Their Dᵢ jumps from ≈ 0.05 towards 1/2 (by > 0.15 within 2,000 steps). In every
+restart one of them overshoots before settling: the reviewer read peaks of 0.58–0.66 off the
+snapshots, close to the transient at 1/√2 in p. 26's figure and the loss drops by 0.043–0.055 within ≈ 4,000 steps,
 between steps 29,200 and 52,100 depending on the restart. The detector found exactly these
 two features in every restart (8 jumps, all with a coinciding loss drop) and nothing else.
 Every restart ends with 60 features at 1/2 and Σᵢ Dᵢ = 29.994 (D* ≈ 0.491, inside the p. 17
@@ -485,8 +501,8 @@ plateau). This is the p. 26 picture: a long plateau with one dimension badly use
 discrete jump and a sudden drop.
 
 *(b) Transformations.* All 48 runs (100%: 0.1 × Xavier init; set densities 0.01, 0.03, 0.1;
-16 each) end as the octahedron with cross-set antipodal pairs. The stages appear in the paper's
-order: every run passes through *collapsed* (each set moving as one direction) for a median
+16 each) end as the octahedron with cross-set antipodal pairs. Only this end state is graded.
+The stage labels appear in the paper's order, but stage B's geometry differs (see below): every run passes through *collapsed* (each set moving as one direction) for a median
 750–1,075 steps; 38 of 48 then sit in the aligned *prism* for at least 1,000 steps (median
 3,950 steps at 1 − S = 0.01, 1,475 at 0.03, 3,300 at 0.1) before rotating into the antiprism;
 others go straight to the octahedron, as the paper notes for step C. Counting only stages that
@@ -511,12 +527,19 @@ two directions are usually close to orthogonal:
 - at the end of each run's collapsed stage, the median cosine is −0.09, −0.09 and −0.04. At
   every density at least one run ends that stage with the sets opposed (minimum −1.0).
 
-This near-orthogonal placement is the ordering p. 23 describes for correlated features: "the
-model ideally represents correlated features orthogonally". It is also the "linear PCA
-solution" that p. 28 says the network learns "before moving to a better nonlinear solution".
-All runs still reach the octahedron. Following D-R02, it is reported as a documented variant of
-the trajectory, not a discrepancy. The paper's panel B picture (opposed sets) occurs, but in a
-minority of snapshots. The paper does not give this figure's density, initialization scale or
+The two sets are independent of each other, so in m = 3 there is room to give their two
+directions orthogonal axes, which removes interference between them. That is the "linear PCA
+solution" p. 28 says the network learns "before moving to a better nonlinear solution". (An
+earlier version of this paragraph justified it with p. 23's sentence about correlated features.
+That sentence is about features correlated with each other, and the two sets are not: review
+R2-03.) All runs still reach the octahedron. Following D-R02, this is reported as a documented
+variant of the trajectory, not a discrepancy.
+
+The paper's panel B picture, opposed sets, is the exception:
+- it is a minority of collapsed snapshots;
+- the reviewer counted only 6 of 48 runs that ever have a collapsed snapshot with opposed
+  centroids;
+- the published figure's B panel itself shows the variant (centroid cosine about −0.3). The paper does not give this figure's density, initialization scale or
 importance (D-403).
 
 **Evidence.** Generated from the cited run's `acceptance.json`:
@@ -540,9 +563,13 @@ Run `20260930T190604Z-2fae0fc5` · profile `quick` · seed 0 · device `cpu` · 
 - *Initialization.* Part (b) starts from 0.1 × the Xavier init to follow p. 27 ("initially,
   weights are initialized randomly close to zero"); SPEC §3's plain Xavier init is run as a
   variant in the full profile (D-403).
-- *Loss size.* Our jump's loss drop is ≈ 0.2% of the loss (p. 26: ≈ 0.8%, on a differently
-  normalized loss); it is visible because every snapshot is evaluated on the same 8,192 inputs
-  (D-402).
+- *Loss size.* Our jump's loss drop is ≈ 0.2% of the loss; p. 26's is ≈ 0.8%.
+  - A relative drop does not depend on how the loss is normalized, so an earlier explanation
+    ("a differently normalized loss") was wrong (review R2-05).
+  - The paper's final loss per feature, read off p. 26, is ≈ 0.053, against our 29.46/400 ≈
+    0.074. Our hypothesis is that its run used another density or n; the paper gives neither.
+  - The drop is visible in our runs because every snapshot is evaluated on the same 8,192
+    inputs (D-402).
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `fd32b02`): `20260930T190604Z-2fae0fc5`
 (518 s wall-clock). It reproduces the previous cited run (`20260929T172920Z-2fae0fc5`, commit
@@ -574,11 +601,18 @@ to 4.58). The curve has the paper's shape: flat while there is no superposition 
 to 1/(1 − S) = 1.23), a rise as antipodal pairs form, a shoulder while 1/D* sits near 2
 (V = 2.6–2.7 at 1/(1 − S) = 2.8–3.5, the p. 17 plateau), and a second rise as features pack
 more densely. The p. 30 scatter reaches about 8× at 1/D* ≈ 5; ours reaches 8.7× at 4.58.
+This size depends on choosing the worst attack per input (D-405); one attack per model, the
+other reading of p. 29, gives a smaller rise, which the reviewer measured at about 3.7×
+(review R3-13; not in the run's record).
 
-*n = 20, m = 5 (Iᵢ = 0.7ⁱ; SPEC's example), same range: both criteria fail.* This model hardly
-enters superposition in the range (1/D* ≤ 1.82), and vulnerability rises from 0.99 to only
-1.51 (rise 1.53×; peak 1.51 at 1/(1 − S) = 10), with Spearman ρ = 0.78 (threshold 0.8): it
-tracks 1/D* up to 1/(1 − S) ≈ 3.6, then dips to 1.10 while 1/D* keeps rising slowly.
+*n = 20, m = 5 (Iᵢ = 0.7ⁱ; SPEC's example), same range: both criteria fail, and vulnerability
+does not track superposition here.*
+- Vulnerability rises from 0.99 to only 1.51 (rise 1.53×; peak 1.51 at 1/(1 − S) = 10), with
+  Spearman ρ = 0.78 (threshold 0.8).
+- It tracks 1/D* up to 1/(1 − S) ≈ 3.6, then *falls* from 1.25 to 1.10 while 1/D* rises from
+  1.39 to 1.61 (1/(1 − S) = 3.6 to 7.7).
+- At the same features per dimension the two setups differ: at 1/D* ≈ 1.82–1.83 the uniform
+  model has V = 2.29 and this one 1.51.
 
 *n = 20, m = 5 extended to 1/(1 − S) = 1,000 (not graded).* Vulnerability peaks at 1.98 at
 1/(1 − S) = 21.5 (1/D* ≈ 1.96), then falls to 0.38 at 1,000 although 1/D* rises to 3.15
@@ -601,23 +635,34 @@ Run `20260929T173800Z-e84cec26` · profile `quick` · seed 0 · device `cpu` · 
 <!-- END AUTO:E06 -->
 
 **Discrepancies and hypotheses.**
-- *Why n = 20, m = 5 fails.* The claim is that vulnerability tracks superposition; this model
-  has little superposition over the paper's range (at most 1.8 features per dimension, against
-  4.6 for the uniform model), and its importance decay concentrates the loss on the top
-  features, so the reference damage I₀ε² is large compared with what interference can add. A
-  small rise is what the claim predicts here; the failing criteria reflect our choice to grade
-  a second setting, not a contradiction of the p. 29 figure. We report it as graded because we
-  said we would before running it (D-406).
+- *n = 20, m = 5 is a genuine case where vulnerability does not track superposition* in the
+  paper's range. An earlier version of this section called the small rise "what the claim
+  predicts". It is not: vulnerability falls over a range where 1/D* rises, and is lower than the
+  uniform model's at the same 1/D* (review R3-03). The paper shows only the uniform setting, so
+  this does not contradict its figure, but it limits the claim.
+  - *Hypothesis, partial:* the importance decay concentrates the loss on the top features, so
+    the reference damage I₀ε² is large compared with what interference can add. This explains
+    the small size of the rise, not the dip. The reviewer's diagnostic with unit importance in
+    the attack loss still finds the dip (not in the run's record).
+  - *What it is not:* the biases of the represented features stay near 0 in this range, so the
+    bias mechanism of the extended range (below) does not apply. It is not sampling noise
+    either: the reviewer re-ran the attacks with two fresh seeds and got the same ρ.
+  - We graded this setting because we said we would before running it (D-406).
 - *Extended range.* ε = 0.1 · E‖x‖₂ shrinks with the density (0.069 at 1/(1 − S) = 10, 0.0095
   at 100, 0.001 at 1,000). Up to 1/(1 − S) = 46 the represented features' biases are ≈ 0; from
   100 on they are clearly negative (median −0.16 to −0.23 in the cited run's best models,
-  computed in notebook 07), 20 to 200 times larger than ε, and that is exactly where vulnerability
+  computed in notebook 07 and not stored in the run's record; the reviewer reproduced them),
+  20 to 200 times larger than ε, and that is exactly where vulnerability
   falls (1.10 at 100, 0.38 at 1,000). An attack that small cannot lift an output past its
   threshold, so the measure stops tracking superposition. Untested prediction: a budget that
   does not shrink with sparsity would keep tracking it (notebook 07, exercise 4).
 - *Operationalization* (D-405): per-example worst case over the n candidate attacks (and δ = 0),
   loss against the clean target, and the no-superposition reference W = [Iₘ | 0], whose damage
   equals max Iᵢ ε² exactly (checked in every run; see the INFO notes).
+- *What the Spearman criterion shows.* V and 1/D* both rise with sparsity, so a high ρ follows
+  from both being monotone in 1/(1 − S); it does not show that V follows 1/D*'s shape (review
+  R3-12). The shape does line up in the uniform setting: V's shoulder (2.63–2.73) sits where
+  1/D* is on its plateau near 2 (1.99–2.02).
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `5a825d0`): `20260929T173800Z-e84cec26`
 (401 s wall-clock).
@@ -642,18 +687,27 @@ stack plot for one sparsity per regime, and the neuron counts across sparsity.
 **Status: PASS (3/3 graded criteria).** Dense (1 − S = 1): five monosemantic neurons, one per
 most important feature. The polysemantic count never falls as sparsity rises (0, 0, 2, 2, 3,
 3, 5, 5 at 1 − S = 1, 0.5, 0.3, 0.2, 0.15, 0.12, 0.07, 0.03) and all five neurons are
-polysemantic at the sparsest setting. The regimes match p. 33 closely: at 0.3 and 0.2, three
-monosemantic neurons plus two neurons sharing three features (a binary code); at 0.15, two
-monosemantic and three polysemantic neurons with 7 features represented; at 0.07, all five
-neurons polysemantic with 8 features represented (p. 33: "eight features in five neurons");
-at 0.03, 9 features in five neurons.
+polysemantic at the sparsest setting. The regimes match p. 33 at four of the six settings it
+names:
+- at 0.3 and 0.2, three monosemantic neurons plus two neurons sharing three features (a binary
+  code);
+- at 0.15, two monosemantic and three polysemantic neurons with 7 features represented;
+- at 0.07, all five neurons polysemantic with 8 features represented (p. 33: "eight features in
+  five neurons").
+
+They differ at 0.12 and at 0.03, where the best model represents 9 features, not all 10 on
+pairs of neurons (see the notes below).
 
 *Sidestepping the ReLU (p. 34, INFO).* Given a hidden bias, the best models set **all** five
-biases positive at every tested sparsity (mean 0.28 at 1 − S = 1, 0.93 at 0.1, 0.80 at 0.03),
-and their ReLUs clip only 0.06–0.21% of (input, neuron) pairs, against 34.6% (0.1) and 53.8%
-(0.03) for the replication model without a hidden bias. The sidestepping models also reach
-much lower losses (0.0054 vs 0.0199 at 0.1; 0.00043 vs 0.00288 at 0.03): the ReLU only limits
-this model.
+biases positive at every tested sparsity (mean 0.28 at 1 − S = 1, 0.93 at 0.1, 0.80 at 0.03).
+Their ReLUs clip only 0.06–0.21% of (input, neuron) pairs. The replication model without a
+hidden bias clips 53.8% at 0.03, and 34.6% at its nearest grid point to 0.1, which is 0.12
+(review R3-04).
+- At 0.03, where both models share the sparsity, the sidestepping model's loss is much lower
+  (0.00043 vs 0.00288): the ReLU only limits this model.
+- The row labeled 0.1 compares the bias model at 0.1 (0.0054) with the replication model at
+  0.12 (0.0199). That is two sparsities, so the losses are not comparable (footnote 17). The
+  clipping shares are still far apart.
 
 **Evidence.** Generated from the cited run's `acceptance.json`:
 
@@ -670,6 +724,9 @@ Run `20260929T174443Z-d54df07e` · profile `quick` · seed 0 · device `cpu` · 
 <!-- END AUTO:E07 -->
 
 **Discrepancies and notes.**
+- At 1 − S = 0.03 the best model represents 9 features (the 10th has ‖W₉‖ ≈ 0.05); p. 33's
+  sparsest regime has all 10, each on a pair of neurons. Two of the five lowest-loss restarts
+  there do represent all 10 (review R3-09, from the reviewer's reading of the checkpoint).
 - At 1 − S = 0.12 we find two monosemantic neurons and 7 represented features; p. 33 shows one
   monosemantic neuron and six features in four neurons. Regimes near 0.12–0.15 are narrow
   ("this sparsity level … seems quite narrow"), and only 5–8% of our restarts reach the best
@@ -716,14 +773,16 @@ computed well (against m/2).
 
 ![E08(b) capacity](figures/abs_computation/abs_capacity.png)
 
-**Status: PARTIAL (2/4 graded criteria).** Part (a) and the neuron picture of p. 37 reproduce;
-computation in superposition does not, under the re-derived criterion or the original one.
+**Status: PARTIAL (2/4 graded criteria).** Part (a) reproduces exactly. Of the neuron picture
+of pp. 37–38, the trend reproduces (monosemantic when dense, polysemantic when sparse, primary
+plus secondary features in between), but two details do not (below). Computation in
+superposition does not reproduce, under the re-derived criterion or the original one.
 
 *(a) passes exactly.* Each feature gets one positive-side and one negative-side neuron
 (normalized W₁ rows ±eᵢ, off-feature weights ≤ 0.002; W₂ weights 1.000; b = 0) and every
 per-feature loss is 0 to six decimals.
 
-*(b) Neurons: the picture of p. 37 reproduces; the strict dense criterion misses by one
+*(b) Neurons: the trend of p. 37 reproduces; the strict dense criterion misses by one
 neuron.*
 - At 1 − S = 1, 39 of 40 neurons are monosemantic (one neuron carries three features), so
   "every neuron is monosemantic" fails; at 1 − S = 0.3 all 40 are.
@@ -731,16 +790,33 @@ neuron.*
   0.001. The most features on one neuron grows from 1 (at 1 − S = 0.3) to 59 (at 0.001).
 - Neurons with one primary feature (≥ 2× the next weight) plus secondary ones peak at
   intermediate sparsity (11 at 0.1, 15 at 0.03, 8 at 0.01), as p. 38 describes.
+- *Not reproduced (review R3-01):*
+  - p. 38 says the neurons of the most important features "tend to be monosemantic". In the
+    reviewer's analysis of the stack plots, monosemantic and polysemantic neurons have the
+    same median top-feature importance rank at 1 − S = 0.1, 0.03 and 0.01. The published
+    stack plot shows polysemantic neurons at the far left at 0.1 and 0.03.
+  - The dense model spends its 40 neurons on few features. It usefully computes only 13 (the
+    count below), with several neurons on the same feature. Its loss is 5.5× the
+    no-superposition reference at the same density (table below), so even the dense model is
+    not the paper's clean one-neuron-per-feature solution.
+  - The polysemantic counts at 1 − S = 0.001 include weights that barely moved from their
+    initial values (review R3-11). All 40 neurons stay polysemantic if those are left out.
 
 *(b) Computation: fails under both criteria.*
 - *Re-derived criterion (graded):* the best models usefully compute 13, 19, 23, 33, 35, 27
   and 23 features at 1 − S = 1 … 0.001. At the sparsest setting that is 23, against more
   than 40 required.
-  - From 1 − S = 0.1 on, more than m/2 features are usefully computed: more features touched
-    than a model without superposition can compute exactly.
-  - At no sparsity are more features usefully computed than the model has neurons.
+  - At no sparsity are more features usefully computed than the model has neurons. A model
+    without superposition could usefully compute m of them, one side each, so counts above
+    m/2 do not by themselves show superposition (an earlier sentence here said they did:
+    review R3-08).
 - *SPEC's original criterion (INFO):* 13, 19, 13, 8, 9, 8 and 3 features computed well, and 3
   at 0.001, against more than 20.
+  - These sparse counts are noisy. At 1 − S ≤ 0.01 about 20 features sit within ±0.02 of the
+    50% bar, and their inactive term is estimated from rare events.
+  - A re-estimate by the reviewer with another seed changed the counts at 0.01, 0.003 and
+    0.001 from 9, 8 and 3 to 5, 5 and 7 (review R3-05).
+  - The graded counts at the 75% bar did not change.
 - *The uncited full profile* (8 restarts × 30,000 steps; run `20260929T180008Z-db58449f`) does
   not get there either. From its saved per-feature losses it usefully computes 29 features at
   0.001, and at most 33 at any sparsity (at 0.03).
@@ -784,7 +860,7 @@ Run `20260930T191445Z-49fd30ed` · profile `quick` · seed 0 · device `cpu` · 
 | b_n100_m40 | (b) Diagnostic variant, not the replication (D-R01): both weight matrices initialized at 0.187× the Xavier init, the sc… | pp. 36–38 | INFO | {"1-S=0.01": {"loss_default": 0.007849, "loss_variant": 0.001268, "computed_well_default": 9, "computed_well_variant": 25, "usefully_comput… | — |
 <!-- END AUTO:E08 -->
 
-**Why: dead sides at initialization (D-409).**
+**A contributing factor: dead sides at initialization (D-409).**
 - At very sparse settings almost every input has one active feature, so each side of feature i
   (xᵢ > 0 or xᵢ < 0) is trained only by its own examples.
 - The output bias starts at 0 (SPEC §3). A side whose initial gain Σₕ W₂[i,h] ReLU(±W₁[h,i])
@@ -792,7 +868,18 @@ Run `20260930T191445Z-49fd30ed` · profile `quick` · seed 0 · device `cpu` · 
   gradient reaches it.
 - INFO `b_side_diagnostics` measures this. At 1 − S = 0.001, 0 of the 89 sides that were dead at
   initialization are computed after training, against 23 of the 111 alive ones. The same holds
-  at 0.003 (1/87 against 28/113) and 0.01 (2/87 against 37/113).
+  at 0.003 (1/87 against 28/113) and 0.01 (2/87 against 37/113). These counts are meaningful
+  only at 1 − S ≤ 0.01: when dense, a side that is predicted by its mean also passes the
+  diagnostic's 0.25 bar, so the dense rows overcount (review R3-10).
+- *Dead sides are not the whole story* (review R3-02; an earlier version of this section gave
+  them as the cause):
+  - 111 sides start alive at 0.001, more than either criterion needs, yet only 23 of them end
+    up computed.
+  - The dense model, where the 1-sparse mechanism does not apply, is also far from its
+    reference (5.5×).
+  - Untested alternatives: sides that die during training as output biases go negative; a
+    best restart chosen by a noisy 20,000-sample loss (at 0.001 the noise is about as large as
+    the spread between restarts: review R3-06); training length.
 
 **What the reference implementations showed (D-R01).** The owner allowed consulting Anthropic's
 archived notebook and ARENA §1.5.4 to diagnose the dead sides. No code was copied; D-R01 lists
@@ -814,7 +901,9 @@ sparsities as the default runs:
 | output bias starting at +0.1 (2 restarts) | 0.00353 / 0.00037 | 10 / 14 | 34 / 27 | 15 of 109 / 8 of 103 |
 
 - *Init scale at 0.01:* the smaller init cuts the loss 6× and revives dead sides (22 of 109,
-  against 2 of 87). It computes 25 features well, more than m/2, but usefully computes fewer
+  against 2 of 87). The variant's restarts start from different random draws than the default
+  runs (other instance indices), so the comparison is unpaired: part of any difference may
+  come from the draws (review R3-07). It computes 25 features well, more than m/2, but usefully computes fewer
   (30 against 35): fewer features, more of them on both sides.
 - *Init scale at 0.001:* it changes little. A hypothesis, not tested here: each side sees only
   about 5,000 examples in 10,000 steps at that density, too few for weights that start small to
@@ -830,8 +919,9 @@ the neurons look as the paper describes, and the computation it describes is not
   reproduce, and the statement that the model "usefully approximate[s]" |x|. SPEC's
   operationalization (> m/2 computed well) is replaced by D-R01's re-derivation (> m usefully
   computed); both fail, and both are reported.
-- *Hypotheses for the gap.* Optimization: dead sides at initialization; an init scale that
-  helps at 1 − S = 0.01 but may need longer training at 0.001; more neurons (footnote 16).
+- *Hypotheses for the gap.* Optimization: dead sides at initialization, as one factor among
+  several (above); an init scale that helps at 1 − S = 0.01 but may need longer training at
+  0.001; more neurons (footnote 16).
   Details of the paper's setup that it does not state (restarts, training length): ARENA trains
   one model per density for 5,000 steps and reports no count.
 
@@ -999,7 +1089,14 @@ represented features (‖Wᵢ‖ > 0.5) are scored.
 - *Graded (D-R04): the SAE a practitioner would pick without ground truth.* That is the
   sparsest SAE of the sweep (lowest held-out L0) among those that explain at least 90% of the
   activation variance (held-out FVU ≤ 0.1). The rule never looks at recovery, and it was fixed
-  and committed before the run that grades it.
+  and committed before the run that grades it. Two caveats (review R4-04, R4-11):
+  - The rule is free of ground truth only within the sweep, and the sweep itself was built from
+    the true n: dictionary sizes n, 2n and 4n, and TopK k = 1 from the known sparsity. p. 43
+    names the number of features as exactly what a practitioner would not know. The reviewer
+    re-ran the rule without the n-sized dictionaries; it changes no outcome.
+  - The grading run reproduces the run inspected before the rule was fixed bit for bit, so the
+    outcome was computable from data already seen. No bar near 0.1 (0.05, 0.1 or 0.12) changes
+    the count.
 - *Upper bound (INFO):* the best SAE by ground truth, which was graded before D-R04.
 - *Also reported:* the pass rate across the sweep, and the TopK k = 8 against k = 16 contrast on
   the E03 model.
@@ -1055,7 +1152,8 @@ pentagon's features, 10 of 12 and 2 of 10 the n = 20 models' (1 − S = 0.01, 0.
 the E03 model's.
 
 *Resampling (INFO).* With the frequency rule of D-503, resampling fired for 43 latents of the
-ReLU + L1 SAEs at 1 − S = 0.001 (none at the other settings) and for 2–56 latents of TopK SAEs.
+ReLU + L1 SAEs at 1 − S = 0.001 (none at the other settings) and for 0–56 latents of TopK SAEs
+(4 of the 9 resampled none; review R4-05).
 It changed little:
 - the best recovery is 100% with and without it everywhere;
 - the mean recovery moves by initialization noise (pentagon 0.72 → 0.85 with nothing
@@ -1096,8 +1194,10 @@ Run `20260930T192302Z-13117b27` · profile `quick` · seed 0 · device `cpu` · 
 - The toy models are retrained with their experiments' settings rather than loaded, so they
   differ in detail from the E01 cited run (11 and 13 represented features here, 12 and 14
   there, at 1 − S = 0.01 and 0.001).
-- TopK SAEs keep exactly k latents active on every input, including the all-zero input, so
-  their L0 equals k by construction.
+- TopK SAEs keep the k largest ReLU outputs, so fewer than k latents fire when fewer than k
+  pre-activations are positive. Their L0 is close to k here (7.9996 for the E03 model's
+  k = 8) because the latents also fire on the all-zero input; it is not k by construction (an
+  earlier version said it was: review R4-05).
 
 **Run IDs.** Cited (quick, CPU, seed 0, commit `fd32b02`): `20260930T192302Z-13117b27` (415 s
 wall-clock). Its toy models and SAEs are identical to those of the previous cited run
@@ -1140,13 +1240,22 @@ and a lone feature cannot be in superposition with anything. The owner decided t
 pentagon PARTIAL (D-R05). In the acceptance record this is a graded PARTIAL: "falls to none"
 needs at least two features left to pass.
 
-*n = 20, m = 5 (1 − S = 0.01): the claim as stated.* The unregularized model superposes 13
-features. As λ grows, the least important superposed features go first (13 → 10 → 6 → 4
+*n = 20, m = 5 (1 − S = 0.01): the claim as stated, by killing features.* The unregularized
+model superposes 13 features. As λ grows, the least important superposed features go first (13 → 10 → 6 → 4
 superposed at λ = 0.003, 0.03, 0.1). At λ = 0.2 the model keeps the four most important
 features, orthogonal and with no superposition, at 8.4× the loss (0.00033 → 0.00277). Larger λ
-kills more features (2 at 0.4, 1 at 0.55, none at 0.8). The first steps are nearly free, as
-footnote 21 predicts: at λ = 0.003 three superposed features disappear and the loss rises by
-6%. The held-out seed repeats this (below).
+kills more features (2 at 0.4, 1 at 0.55, none at 0.8). Superposition is removed by killing
+features, as p. 42 says, not by rearranging them: the first superposition-free model keeps 4
+features in m = 5 dimensions, and no λ keeps m orthogonal features (at λ = 0.1 the best model
+still superposes 4 of its 6; review R4-09).
+
+At λ = 0.003 the superposed count falls from 13 to 10 and the loss rises by 6%. This does not
+test footnote 21's "essentially no effect on performance" (review R4-08):
+- the grid has nothing between λ = 0 and 0.003;
+- the λ = 0 best restart is at the top of its restarts' range of superposed features;
+- on the held-out seed the step is 11 → 10 at a 7.5% loss rise.
+
+The held-out seed repeats the rest (below).
 
 *Pentagon (n = 5, m = 2, 1 − S = 0.1): superposition goes only with the features.*
 - The pentagon survives small λ (up to 0.03, loss +0.5%).
@@ -1165,9 +1274,12 @@ pentagon does:
 - The survivors are basis aligned. The pentagon's arrangement, which is not, goes first: at
   λ = 0.05 feature 4 dies and the other four move onto the hidden axes as two antipodal pairs.
   An antipodal pair along one hidden axis is basis aligned, and its penalty is smaller than that
-  of two orthogonal features: h = w(x₀ − x₁), and |x₀ − x₁| ≤ x₀ + x₁ whenever both are active. In a
-  development run's checkpoints (D-505), the antipodal pair, the orthogonal pair and feature 0
-  alone had training objectives within 0.4% of each other at λ = 0.6, with the pair lowest.
+  of two orthogonal features: h = w(x₀ − x₁), and |x₀ − x₁| ≤ x₀ + x₁ whenever both are active.
+  Among the cited run's own restarts at λ = 0.6, the antipodal pair, the orthogonal pair and
+  feature 0 alone reach training objectives of 0.12333, 0.12359 and 0.12380, within 0.4% of
+  each other with the pair lowest. (These come from the reviewer's reading of the cited
+  checkpoint, review R4-07. An earlier version cited an uncited development run that is no
+  longer on disk.)
 - So the pair is kept until the importance threshold passes feature 1, and superposition ends
   only when one feature is left.
 
@@ -1206,8 +1318,16 @@ evaluation samples; run `20260930T184744Z-e8c803d0`, cited as `l1_removes_superp
   by 29% and 21% there. At both λ values seed 1's restarts miss the state seed 0 found, whose
   training objective is lower: {0, 1, 2} at 0.55 (0.1193, against 0.1210 for seed 1's two
   pairs) and {0} at 0.65 (0.1259 against 0.1268 for seed 1's pair).
-- At λ = 0.6 the two seeds' winners are different states, one antipodal pair (seed 0) and
-  feature 0 alone (seed 1), with training objectives 0.12333 and 0.12330: a tie to 0.03%.
+- At λ = 0.6 the two seeds' winners are different states: one antipodal pair (seed 0) and
+  feature 0 alone (seed 1).
+  - Each run scores its objectives on its own 200,000 samples (0.12333 and 0.12330), and each
+    estimate has a standard error of about 0.4%. An earlier version called this "a tie to
+    0.03%", but the difference is far below the noise.
+  - The reviewer scored both states on common samples. Seed 0's antipodal pair is lower, by
+    about 0.25% (about 4 standard errors of the difference), and none of seed 1's 16 restarts
+    at λ = 0.6 found it (review R4-06).
+  - So seed 1's superposition-free model at λ = 0.6 is itself a restart that missed the lower
+    state.
 - On this seed the pentagon therefore passes "superposition at λ = 0", is PARTIAL on "falls to
   none", and fails "declines" and "loss rises". The whole run is PARTIAL 5/8.
 
@@ -1238,8 +1358,9 @@ Run `20260930T184744Z-e8c803d0` · profile `quick` · seed 1 · device `cpu` · 
   a single λ (0.65 on the cited seed, 0.6 on the held-out one). The λ grid was refined between
   0.5 and 0.8 after a development run with a coarser grid (…, 0.6, 0.8, 1) found no
   superposition-free λ with a feature alive. The diagnosis predicted the window (λ ≈ 0.61–0.67)
-  before the cited run, and the criteria were not changed then (D-505). The held-out seed
-  confirms that the window exists, but not where it is.
+  before the cited run, and the criteria were not changed then (D-505). The held-out seed does
+  not confirm the window: its superposition-free model at λ = 0.6 is a restart that missed a
+  lower-objective state (review R4-06), so the window rests on the cited seed alone.
 - *Against p. 42* (above). "Killing features below a certain importance threshold" holds in both
   setups and on both seeds: the survivors are always the most important features ({0, 1, 2, 3}
   at λ = 0.2 for n = 20; {0} for the pentagon). Antipodal pairs along a hidden axis are basis
