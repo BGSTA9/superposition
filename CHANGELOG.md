@@ -6,6 +6,47 @@ in SPEC.md §11 until a first release.
 
 ## [Unreleased]
 
+### Phase 6: extensions, review, polish (2026-10-01)
+
+Report: docs/progress/phase-6.md. Review findings and their resolutions: docs/REVIEW.md.
+Decisions D-601–D-608.
+
+#### Added
+- **E12 activation_functions** (an extension; p. 51; D-602): E02's phase diagrams with the output
+  ReLU replaced by gelu, silu, softplus, leaky_relu and sigmoid. Same grid, seeds and starting
+  weights. Each activation gets its own family theory and an unrestricted optimum per cell
+  (D-608). There is no pass/fail.
+- **Exact losses for any output activation** (`theory.activation_square_integral`,
+  `activation_error_1d`, `tied_output_expected_losses`; split Gauss–Legendre quadrature, D-601).
+  The family optimizer takes an activation.
+- **The Phase diagrams page gets an E12 tab.**
+- **Notebook 11** `11_extensions` (E12 and the paper's open questions).
+- **Study-guide stop 11 and a menu of 14 extension projects** drawn from pp. 45–46.
+- **New INFO rows:**
+  - E02: `initial_sign` and `exact_loss_vs_theory`;
+  - E00: the exact loss of the graded linear models;
+  - E09: `named_at_initialization`.
+- **Held-out seeds 1 and 2 for E02**, cited as `phase_change:seed1` and `phase_change:seed2`
+  (D-605).
+- **docs/REVIEW.md:** the independent review by five fresh-context reviewers, with all 59
+  findings and their resolutions (D-607).
+
+#### Changed
+- **E03:** a Dᵢ cluster counts only when its features sit in that fraction's polytope (D-603).
+  **PASS 4/4 → PARTIAL 3/4.**
+- **E09:** motifs count only when their neurons carry the motif's roles, and "named" means
+  nothing unexplained (D-604). Still **PASS 3/3**; the motif is in 68 models, not 134.
+- **E02:** the n = 3 agreement does not hold across seeds (0.819, 0.764 and 0.792). This is
+  reported under D-605's rule, and the status is left to the owner.
+- **Overclaims corrected** in REPRODUCTION.md (E00–E02, E04–E11), the README, notebook 08, and
+  DECISIONS D-404 and D-408 (see docs/REVIEW.md).
+- **Provenance:** untracked files under `src/` and `configs/` make a run dirty (D-606).
+- **The lab orders a phase cell's models by exact loss** where it is known.
+- **The status table shows "report only"** for experiments without graded criteria.
+
+#### Fixed
+- E11's paper-tier test no longer pins the pentagon's seed-dependent decline.
+
 ### Rectification session 2 (2026-09-30)
 
 Six owner decisions (docs/DECISIONS.md D-R01–D-R06), applied before Phase 6. The quick profiles
