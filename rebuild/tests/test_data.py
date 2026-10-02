@@ -10,6 +10,7 @@ import math
 
 import pytest
 import torch
+
 from superposition_rebuild.data import (
     AnticorrelatedSets,
     Composite,
@@ -18,7 +19,6 @@ from superposition_rebuild.data import (
     IndependentSparse,
     geometric_importance,
 )
-
 from superposition.utils import make_generator
 
 N = 40_000

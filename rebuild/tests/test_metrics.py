@@ -12,11 +12,11 @@ import pytest
 import torch
 from hypothesis import given, settings
 from hypothesis import strategies as st
+
 from superposition_rebuild import metrics
 from superposition_rebuild.data import IndependentSparse, geometric_importance
 from superposition_rebuild.models import TiedModel
 from superposition_rebuild.train import evaluate_loss
-
 from superposition.utils import make_generator
 
 ATOL = 1e-5

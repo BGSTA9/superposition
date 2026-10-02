@@ -6,6 +6,7 @@ import math
 
 import pytest
 import torch
+
 from superposition_rebuild.models import (
     ACTIVATIONS,
     AbsModel,

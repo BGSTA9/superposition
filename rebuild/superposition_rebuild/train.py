@@ -25,15 +25,20 @@ docs/DECISIONS.md.
 
 from __future__ import annotations
 
+import math
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+import numpy as np
 import torch
 from jaxtyping import Float, Int
 from torch import Tensor, nn
+from tqdm import tqdm
 
 from superposition.config import Schedule, TrainConfig
 from superposition_rebuild.data import FeatureDistribution
+from superposition.utils import DATA_STREAM, EVAL_STREAM, derive_seed, make_generator
 
 # Cap on elements per evaluation chunk (batch · inst · feat), to bound memory.
 _EVAL_CHUNK_ELEMENTS = 1 << 24

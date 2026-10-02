@@ -194,6 +194,9 @@ For a first reading of the paper, follow [docs/TOUR.md](docs/TOUR.md). For deepe
 section (00–11). The study guide ends with a menu of extension projects drawn from the
 paper's open questions (pp. 45–46), each with a first experiment. [docs/PAPER_MAP.md](docs/PAPER_MAP.md) maps every paper section to code,
 experiments, notebooks and app pages; [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the terms.
+To learn to build a project like this yourself, without an AI writing the code, follow the
+[research cookbook](docs/cookbook/README.md): how this repository was actually built, a recipe
+per experiment, and a rebuild kit for the core engine.
 
 ## How to cite
 

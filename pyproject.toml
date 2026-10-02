@@ -75,6 +75,11 @@ explicit = true
 line-length = 100
 target-version = "py311"
 extend-include = ["*.ipynb"]
+# rebuild/ is the cookbook's rebuild kit: a skeleton the owner fills in by hand. It stays out of
+# lint and formatting (and, through the include list below, pyright and the default tests).
+# force-exclude applies this to the file lists pre-commit passes, too.
+extend-exclude = ["rebuild"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "RUF"]

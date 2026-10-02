@@ -25,13 +25,17 @@ Sign convention: we use ``+b`` everywhere. The phase-change section writes ReLU(
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from typing import Literal
 
+import einops
 import torch
 import torch.nn.functional as F
 from jaxtyping import Float
 from torch import Tensor, nn
+
+from superposition.utils import INIT_STREAM, derive_seed
 
 Activation = Callable[[Tensor], Tensor]
 TiedKind = Literal["linear", "relu_output", "relu_hidden"]

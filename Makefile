@@ -5,7 +5,7 @@ UV ?= uv
 RUN := $(UV) run
 EXPERIMENTS = $(shell $(RUN) superposition list --names 2>/dev/null)
 
-.PHONY: help setup lint format test test-slow test-paper run-quick figures report app clean-results
+.PHONY: help setup lint format test test-slow test-paper rebuild-test run-quick figures report app clean-results
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -31,6 +31,9 @@ test-slow:  ## Slow tier (< 15 min): short replication tests, lab tests, short n
 
 test-paper:  ## Paper tier (hours, estimated): every quick profile re-run and checked, long notebooks
 	$(RUN) pytest -m paper --nbmake tests/replication notebooks
+
+rebuild-test:  ## Rebuild kit (docs/cookbook): run its tests against your own implementation
+	$(RUN) pytest -c rebuild/pytest.ini rebuild/tests
 
 run-quick:  ## Run the quick profile of every registered experiment
 	@for exp in $(EXPERIMENTS); do \

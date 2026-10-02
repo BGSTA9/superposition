@@ -19,10 +19,18 @@ mutates its inputs or depends on global state, except :func:`loss_by_num_active`
 
 from __future__ import annotations
 
+import math
+from collections.abc import Callable
+
+import einops
 import networkx as nx
+import numpy as np
 import torch
+import torch.nn.functional as F
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
+
+from superposition_rebuild.data import IndependentSparse
 
 # Norms below this count as exactly zero when normalizing (Ŵᵢ = Wᵢ/‖Wᵢ‖).
 _ZERO_NORM = 1e-12

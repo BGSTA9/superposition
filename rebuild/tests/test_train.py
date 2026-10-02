@@ -6,8 +6,10 @@ import math
 
 import pytest
 import torch
+
 from superposition_rebuild.data import IndependentSparse, geometric_importance
 from superposition_rebuild.models import AbsModel, TiedModel
+from superposition.theory import linear_optimum_loss
 from superposition_rebuild.train import (
     TrainResult,
     evaluate_loss,
@@ -16,8 +18,6 @@ from superposition_rebuild.train import (
     select_best,
     train,
 )
-
-from superposition.theory import linear_optimum_loss
 from superposition.utils import make_generator
 
 

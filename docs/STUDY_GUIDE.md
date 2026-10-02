@@ -11,7 +11,8 @@ Pages refer to the 62-page PDF print (see `references/README.md`). Stops 0–11 
 notebooks; the last section is a menu of extension projects drawn from the paper's open
 questions (pp. 45–46). docs/REVIEW.md lists what an independent review found in each
 experiment: read an experiment's review entries after its stop, as a lesson in what can go
-wrong in a replication.
+wrong in a replication. After this guide, [the research cookbook](cookbook/README.md) teaches
+you to rebuild the engine and run a project like this one by hand.
 
 ## Stop 0 · Orientation
 
