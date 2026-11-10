@@ -30,3 +30,6 @@ htmlcov/
 .vscode/
 
 .cookbook-evidence/
+.claude
+COOKBOOK_SPEC.md
+SPEC.md
