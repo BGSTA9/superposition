@@ -4,7 +4,7 @@ A research-grade, independent replication of
 [*Toy Models of Superposition*](https://transformer-circuits.pub/2022/toy_model/index.html)
 (Elhage et al., 2022), with an interactive lab and mechanistic-interpretability tooling.
 
-The repository does four things (see [SPEC.md](SPEC.md)):
+The repository does four things:
 
 1. **Replicates** the paper's experiments reproducibly, and reports every claim honestly as
    PASS, PARTIAL or FAIL ([docs/REPRODUCTION.md](docs/REPRODUCTION.md)).
@@ -14,7 +14,7 @@ The repository does four things (see [SPEC.md](SPEC.md)):
    ablations, and sparse autoencoders scored against the known ground truth.
 4. **Serves as a learning instrument**: notebooks and a study guide that follow the paper.
 
-> **Status:** all six build phases are complete (SPEC §11): the engine, the theory, E00–E12,
+<!-- > **Status:** all six build phases are complete (SPEC §11): the engine, the theory, E00–E12,
 > notebooks 00–11, and the lab (Home, Playground, Phase diagrams, Geometry, Non-uniform,
 > Dynamics, Neurons, Adversarial, SAE lab). An independent review by five fresh-context
 > reviewers is in [docs/REVIEW.md](docs/REVIEW.md); it re-graded E03 and left two decisions to
@@ -24,7 +24,7 @@ The repository does four things (see [SPEC.md](SPEC.md)):
 **New here?** Start with the [visitor's tour](docs/TOUR.md): a stop-by-stop roadmap for reading
 the paper alongside this repository, from p. 1 to p. 62. For each section it gives the pages to
 read, the idea, where the repository shows it, what the replication found, and what to read
-with care.
+with care. -->
 
 ## Quickstart
 
